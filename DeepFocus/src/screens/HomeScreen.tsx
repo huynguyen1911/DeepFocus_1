@@ -1,24 +1,18 @@
-import React, { useState } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { Card, Text, useTheme, Divider } from "react-native-paper";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useState } from 'react';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Card, Text, useTheme, Divider } from 'react-native-paper';
 
-import CustomButton from "../components/CustomButton";
-import TimerCard from "../components/TimerCard";
-import { getGreeting } from "../utils/helpers";
+import CustomButton from '../components/CustomButton';
+import TimerCard from '../components/TimerCard';
+import { getGreeting } from '../utils/helpers';
 
 const HomeScreen = () => {
   const theme = useTheme();
   const [greeting] = useState(getGreeting());
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-    >
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Welcome Card */}
           <Card style={styles.welcomeCard}>
@@ -142,7 +136,7 @@ const HomeScreen = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
