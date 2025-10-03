@@ -15,9 +15,14 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:8081",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:8081",
+      "http://192.168.1.58:8081", // Add your IP address
+      "http://localhost:19006", // Expo web
+      "exp://192.168.1.58:8081", // Expo mobile
+    ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );

@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   SETTINGS: "@deepfocus_settings",
   STATS: "@deepfocus_stats",
   THEME: "@deepfocus_theme",
+  AUTH_TOKEN: "@deepfocus_auth_token",
+  USER_DATA: "@deepfocus_user_data",
 };
 
 // Timer states

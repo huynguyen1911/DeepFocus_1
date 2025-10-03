@@ -1,17 +1,91 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { Card, Text, useTheme, Divider } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Card, Text, useTheme, Divider, IconButton, Menu } from 'react-native-paper';
 
 import CustomButton from '../components/CustomButton';
 import TimerCard from '../components/TimerCard';
 import { getGreeting } from '../utils/helpers';
+import { useAuth } from '../contexts/AuthContext';
 
 const HomeScreen = () => {
   const theme = useTheme();
+  const { user, logout } = useAuth();
   const [greeting] = useState(getGreeting());
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc chắn muốn đăng xuất không?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel',
+        },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Header with User Menu */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text variant="titleMedium" style={{ color: theme.colors.onPrimary }}>
+              DeepFocus
+            </Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.onPrimary, opacity: 0.8 }}>
+              Xin chào, {user?.username || 'User'}!
+            </Text>
+          </View>
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="account-circle"
+                iconColor={theme.colors.onPrimary}
+                size={28}
+                onPress={() => setMenuVisible(true)}
+              />
+            }
+          >
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                // Navigate to profile
+              }}
+              title="Hồ sơ"
+              leadingIcon="account"
+            />
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                // Navigate to settings
+              }}
+              title="Cài đặt"
+              leadingIcon="cog"
+            />
+            <Menu.Item
+              onPress={() => {
+                setMenuVisible(false);
+                handleLogout();
+              }}
+              title="Đăng xuất"
+              leadingIcon="logout"
+            />
+          </Menu>
+        </View>
+      </View>
+
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
           {/* Welcome Card */}
@@ -27,7 +101,7 @@ const HomeScreen = () => {
                 variant="headlineMedium"
                 style={[styles.welcomeText, { color: theme.colors.primary }]}
               >
-                Chào mừng đến với DeepFocus!
+                Chào mừng {user?.username}!
               </Text>
               <Text
                 variant="titleMedium"
@@ -83,6 +157,50 @@ const HomeScreen = () => {
             </View>
           </View>
 
+          {/* User Focus Profile */}
+          {user?.focusProfile && (
+            <View style={styles.profileSection}>
+              <Text
+                variant="titleLarge"
+                style={[
+                  styles.sectionTitle,
+                  { color: theme.colors.onBackground },
+                ]}
+              >
+                Hồ sơ tập trung
+              </Text>
+
+              <Card style={styles.profileCard}>
+                <Card.Content style={styles.profileContent}>
+                  <View style={styles.profileRow}>
+                    <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                      Cấp độ:
+                    </Text>
+                    <Text variant="titleMedium" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+                      {user.focusProfile.level}
+                    </Text>
+                  </View>
+                  <View style={styles.profileRow}>
+                    <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                      Mục tiêu hàng ngày:
+                    </Text>
+                    <Text variant="titleMedium" style={{ color: theme.colors.secondary }}>
+                      {user.focusProfile.dailyGoal} phút
+                    </Text>
+                  </View>
+                  <View style={styles.profileRow}>
+                    <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>
+                      Thời gian làm việc:
+                    </Text>
+                    <Text variant="titleMedium" style={{ color: theme.colors.tertiary }}>
+                      {user.focusProfile.workDuration} phút
+                    </Text>
+                  </View>
+                </Card.Content>
+              </Card>
+            </View>
+          )}
+
           {/* Quick Stats */}
           <View style={styles.statsSection}>
             <Text
@@ -102,7 +220,7 @@ const HomeScreen = () => {
                     variant="headlineSmall"
                     style={[styles.statNumber, { color: theme.colors.primary }]}
                   >
-                    0
+                    {user?.focusProfile?.sessionStats?.completedSessions || 0}
                   </Text>
                   <Text
                     variant="bodyMedium"
@@ -122,7 +240,7 @@ const HomeScreen = () => {
                       { color: theme.colors.secondary },
                     ]}
                   >
-                    0m
+                    {user?.focusProfile?.sessionStats?.totalFocusTime || 0}m
                   </Text>
                   <Text
                     variant="bodyMedium"
@@ -143,6 +261,18 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  header: {
+    backgroundColor: '#FF5252',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    elevation: 4,
+    shadowOpacity: 0.3,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
@@ -202,6 +332,22 @@ const styles = StyleSheet.create({
   },
   pauseButton: {
     flex: 1,
+  },
+  profileSection: {
+    marginBottom: 32,
+  },
+  profileCard: {
+    elevation: 2,
+    borderRadius: 8,
+  },
+  profileContent: {
+    padding: 16,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   statsSection: {
     marginBottom: 20,
