@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   useTheme,
   Divider,
+  Snackbar,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -35,6 +36,8 @@ const LoginScreen = () => {
   // Form validation state
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Clear errors when component mounts
   useEffect(() => {
@@ -95,20 +98,28 @@ const LoginScreen = () => {
       const result = await login(formData.email.trim(), formData.password);
 
       if (result.success) {
-        // Navigation handled by AuthNavigator
-        Alert.alert("Thành công", `Chào mừng ${result.user.username}!`, [
-          { text: "OK" },
-        ]);
+        // Navigation handled by AuthContext
+        console.log("✅ Login successful, navigating to home");
       } else {
-        Alert.alert(
-          "Đăng nhập thất bại",
-          result.error || "Có lỗi xảy ra, vui lòng thử lại",
-          [{ text: "OK" }]
-        );
+        // Handle specific error codes
+        if (
+          result.error &&
+          result.error.includes("Email hoặc mật khẩu không chính xác")
+        ) {
+          setSnackbarMessage(
+            "Email hoặc mật khẩu không chính xác. Vui lòng thử lại."
+          );
+        } else {
+          setSnackbarMessage(
+            result.error || "Đăng nhập thất bại. Vui lòng thử lại."
+          );
+        }
+        setSnackbarVisible(true);
       }
     } catch (error) {
       console.error("❌ Login error:", error);
-      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ", [{ text: "OK" }]);
+      setSnackbarMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+      setSnackbarVisible(true);
     }
   };
 
@@ -245,6 +256,20 @@ const LoginScreen = () => {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       )}
+
+      {/* Snackbar for errors */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        action={{
+          label: "Đóng",
+          onPress: () => setSnackbarVisible(false),
+        }}
+        style={styles.snackbar}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -343,6 +368,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.3)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  snackbar: {
+    backgroundColor: "#D32F2F",
   },
 });
 

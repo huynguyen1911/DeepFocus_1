@@ -154,7 +154,17 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user };
     } catch (error) {
-      const errorMessage = error.message || "Đăng nhập thất bại";
+      // Parse error message from backend
+      let errorMessage = "Đăng nhập thất bại";
+
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      }
+
+      // Don't log error here - it causes console error throw
+      // Just set the error state and return it
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: errorMessage,
@@ -181,7 +191,17 @@ export const AuthProvider = ({ children }) => {
 
       return { success: true, user };
     } catch (error) {
-      const errorMessage = error.message || "Đăng ký thất bại";
+      // Parse error message from backend
+      let errorMessage = "Đăng ký thất bại";
+
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      }
+
+      // Don't log error here - it causes console error throw
+      // Just set the error state and return it
       dispatch({
         type: AUTH_ACTIONS.SET_ERROR,
         payload: errorMessage,

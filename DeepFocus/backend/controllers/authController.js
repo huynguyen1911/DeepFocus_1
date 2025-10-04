@@ -21,9 +21,9 @@ const registerUser = async (req, res) => {
       email: email.toLowerCase(),
     });
     if (existingUserByEmail) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "User with this email already exists",
+        message: "Email đã tồn tại",
       });
     }
 
@@ -131,7 +131,7 @@ const loginUser = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Email hoặc mật khẩu không chính xác",
       });
     }
 
@@ -139,7 +139,7 @@ const loginUser = async (req, res) => {
     if (!user.isActive) {
       return res.status(401).json({
         success: false,
-        message: "Account is inactive. Please contact support.",
+        message: "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ hỗ trợ.",
       });
     }
 
@@ -149,7 +149,7 @@ const loginUser = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Email hoặc mật khẩu không chính xác",
       });
     }
 

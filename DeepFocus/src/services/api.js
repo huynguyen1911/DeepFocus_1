@@ -57,14 +57,8 @@ apiClient.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Log error in development
-    if (__DEV__) {
-      console.error(
-        "❌ API Error:",
-        error.response?.status,
-        error.response?.data?.message || error.message
-      );
-    }
+    // Don't log errors here - let components handle error display
+    // This prevents console.error from throwing and breaking Snackbar display
 
     // Handle specific error cases
     if (error.response?.status === 401) {
@@ -107,7 +101,8 @@ export const authAPI = {
       console.log("✅ Login successful:", user.username);
       return { token, user };
     } catch (error) {
-      console.error("❌ Login failed:", error.message);
+      // Don't log here - let AuthContext handle it to avoid console errors
+      // Just re-throw the formatted error from interceptor
       throw error;
     }
   },
@@ -131,7 +126,8 @@ export const authAPI = {
       console.log("✅ Registration successful:", user.username);
       return { token, user };
     } catch (error) {
-      console.error("❌ Registration failed:", error.message);
+      // Don't log here - let AuthContext handle it to avoid console errors
+      // Just re-throw the formatted error from interceptor
       throw error;
     }
   },

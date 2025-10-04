@@ -3,9 +3,9 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
 } from "react-native";
 import {
   TextInput,
@@ -18,6 +18,7 @@ import {
   useTheme,
   Divider,
   Checkbox,
+  Snackbar,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -40,6 +41,8 @@ const RegisterScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
 
   // Clear errors when component mounts
   useEffect(() => {
@@ -52,10 +55,11 @@ const RegisterScreen = () => {
     return emailRegex.test(email);
   };
 
-  // Validate username format
+  // Validate username format - cho phép tiếng Việt có dấu và khoảng trắng
   const validateUsername = (username) => {
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
-    return usernameRegex.test(username);
+    const trimmed = username.trim();
+    // Cho phép chữ cái (bao gồm tiếng Việt), số, khoảng trắng, tối thiểu 2 ký tự
+    return trimmed.length >= 2;
   };
 
   // Validate password strength
@@ -76,8 +80,7 @@ const RegisterScreen = () => {
     if (!formData.username.trim()) {
       newErrors.username = "Tên người dùng là bắt buộc";
     } else if (!validateUsername(formData.username)) {
-      newErrors.username =
-        "Tên người dùng chỉ chứa chữ cái, số và dấu gạch dưới (3-20 ký tự)";
+      newErrors.username = "Tên người dùng phải có ít nhất 2 ký tự";
     }
 
     // Email validation
@@ -143,22 +146,25 @@ const RegisterScreen = () => {
       const result = await register(userData);
 
       if (result.success) {
-        // Navigation handled by AuthNavigator
-        Alert.alert(
-          "Đăng ký thành công",
-          `Chào mừng ${result.user.username} đến với DeepFocus!`,
-          [{ text: "OK" }]
-        );
+        // Navigation handled by AuthContext
+        console.log("✅ Registration successful, navigating to home");
       } else {
-        Alert.alert(
-          "Đăng ký thất bại",
-          result.error || "Có lỗi xảy ra, vui lòng thử lại",
-          [{ text: "OK" }]
-        );
+        // Handle specific error codes
+        if (result.error && result.error.includes("Email đã tồn tại")) {
+          setSnackbarMessage(
+            "Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
+          );
+        } else {
+          setSnackbarMessage(
+            result.error || "Đăng ký thất bại. Vui lòng thử lại."
+          );
+        }
+        setSnackbarVisible(true);
       }
     } catch (error) {
-      console.error("❌ Register error:", error);
-      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ", [{ text: "OK" }]);
+      // Network error or unexpected error
+      setSnackbarMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+      setSnackbarVisible(true);
     }
   };
 
@@ -326,10 +332,13 @@ const RegisterScreen = () => {
               </HelperText>
 
               {/* Terms Agreement */}
-              <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={styles.checkboxContainer}
+                onPress={() => setAgreeToTerms(!agreeToTerms)}
+                activeOpacity={0.7}
+              >
                 <Checkbox
                   status={agreeToTerms ? "checked" : "unchecked"}
-                  onPress={() => setAgreeToTerms(!agreeToTerms)}
                   color={theme.colors.primary}
                 />
                 <Paragraph style={styles.checkboxText}>
@@ -342,7 +351,7 @@ const RegisterScreen = () => {
                     Chính sách bảo mật
                   </Paragraph>
                 </Paragraph>
-              </View>
+              </TouchableOpacity>
               <HelperText type="error" visible={!!errors.terms}>
                 {errors.terms}
               </HelperText>
@@ -353,7 +362,7 @@ const RegisterScreen = () => {
                 onPress={handleRegister}
                 style={styles.registerButton}
                 contentStyle={styles.buttonContent}
-                disabled={isLoading}
+                disabled={isLoading || !agreeToTerms}
                 loading={isLoading}
               >
                 {isLoading ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
@@ -387,6 +396,20 @@ const RegisterScreen = () => {
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       )}
+
+      {/* Snackbar for errors */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={4000}
+        action={{
+          label: "Đóng",
+          onPress: () => setSnackbarVisible(false),
+        }}
+        style={styles.snackbar}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </SafeAreaView>
   );
 };
@@ -492,6 +515,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.3)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  snackbar: {
+    backgroundColor: "#D32F2F",
   },
 });
 
