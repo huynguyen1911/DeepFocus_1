@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Card, Text, useTheme, Divider, IconButton, Menu } from 'react-native-paper';
 
-import CustomButton from '../components/CustomButton';
-import TimerCard from '../components/TimerCard';
+import Timer from '../components/Timer';
 import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
+import { usePomodoro } from '../contexts/PomodoroContext';
 
 const HomeScreen = () => {
   const theme = useTheme();
   const { user, logout } = useAuth();
+  const { completedPomodoros } = usePomodoro();
   const [greeting] = useState(getGreeting());
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -131,30 +132,10 @@ const HomeScreen = () => {
                 { color: theme.colors.onBackground },
               ]}
             >
-              Timer Pomodoro
+              DeepFocus - Pomodoro Timer
             </Text>
 
-            <TimerCard
-              time="25:00"
-              title="Pomodoro"
-              isActive={true}
-              style={styles.timerCard}
-            />
-
-            <View style={styles.buttonContainer}>
-              <CustomButton
-                title="Bắt đầu"
-                onPress={() => console.log("Start timer")}
-                mode="contained"
-                style={styles.startButton}
-              />
-              <CustomButton
-                title="Tạm dừng"
-                onPress={() => console.log("Pause timer")}
-                mode="outlined"
-                style={styles.pauseButton}
-              />
-            </View>
+            <Timer />
           </View>
 
           {/* User Focus Profile */}
@@ -220,7 +201,7 @@ const HomeScreen = () => {
                     variant="headlineSmall"
                     style={[styles.statNumber, { color: theme.colors.primary }]}
                   >
-                    {user?.focusProfile?.sessionStats?.completedSessions || 0}
+                    {completedPomodoros}
                   </Text>
                   <Text
                     variant="bodyMedium"
@@ -240,7 +221,7 @@ const HomeScreen = () => {
                       { color: theme.colors.secondary },
                     ]}
                   >
-                    {user?.focusProfile?.sessionStats?.totalFocusTime || 0}m
+                    {completedPomodoros * 25}m
                   </Text>
                   <Text
                     variant="bodyMedium"
@@ -318,20 +299,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 16,
     textAlign: "center",
-  },
-  timerCard: {
-    marginBottom: 20,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 16,
-  },
-  startButton: {
-    flex: 1,
-  },
-  pauseButton: {
-    flex: 1,
   },
   profileSection: {
     marginBottom: 32,

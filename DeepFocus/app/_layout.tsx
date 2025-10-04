@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { theme } from '@/src/config/theme';
 import { AuthProvider } from '@/src/contexts/AuthContext';
+import { PomodoroProvider } from '@/src/contexts/PomodoroContext';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -17,36 +18,38 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
         <AuthProvider>
-          <Stack
-            screenOptions={{
-              headerStyle: {
-                backgroundColor: theme.colors.primary,
-              },
-              headerTintColor: theme.colors.onPrimary,
-              headerTitleStyle: {
-                fontWeight: 'bold',
-              },
-              headerTitleAlign: 'center',
-            }}
-          >
-            <Stack.Screen 
-              name="(tabs)" 
-              options={{ 
-                headerShown: false 
-              }} 
-            />
-            <Stack.Screen 
-              name="modal" 
-              options={{ 
-                presentation: 'modal', 
-                title: 'Modal',
+          <PomodoroProvider>
+            <Stack
+              screenOptions={{
                 headerStyle: {
                   backgroundColor: theme.colors.primary,
                 },
-              }} 
-            />
-          </Stack>
-          <StatusBar style="light" />
+                headerTintColor: theme.colors.onPrimary,
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                },
+                headerTitleAlign: 'center',
+              }}
+            >
+              <Stack.Screen 
+                name="(tabs)" 
+                options={{ 
+                  headerShown: false 
+                }} 
+              />
+              <Stack.Screen 
+                name="modal" 
+                options={{ 
+                  presentation: 'modal', 
+                  title: 'Modal',
+                  headerStyle: {
+                    backgroundColor: theme.colors.primary,
+                  },
+                }} 
+              />
+            </Stack>
+            <StatusBar style="light" />
+          </PomodoroProvider>
         </AuthProvider>
       </PaperProvider>
     </SafeAreaProvider>
