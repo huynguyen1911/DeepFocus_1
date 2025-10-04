@@ -8,6 +8,7 @@ dotenv.config();
 
 // Import routes
 const authRoutes = require("./routes/auth");
+const taskRoutes = require("./routes/tasks");
 
 // Create Express app
 const app = express();
@@ -58,6 +59,7 @@ connectDB();
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/tasks", taskRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
