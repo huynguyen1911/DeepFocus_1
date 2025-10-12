@@ -369,7 +369,7 @@ const incrementPomodoro = async (req, res, next) => {
 };
 
 /**
- * @desc    Mark task as completed
+ * @desc    Toggle task completion status (complete/uncomplete)
  * @route   PUT /api/tasks/:id/complete
  * @access  Private
  */
@@ -392,16 +392,26 @@ const completeTask = async (req, res, next) => {
       });
     }
 
-    // Mark as completed
-    task.isCompleted = true;
-    task.completedAt = new Date();
-    await task.save();
+    // Toggle completion status
+    task.isCompleted = !task.isCompleted;
 
-    console.log(`✅ Completed task: ${task.title}`);
+    if (task.isCompleted) {
+      // Mark as completed
+      task.completedAt = new Date();
+      console.log(`✅ Completed task: ${task.title}`);
+    } else {
+      // Mark as uncompleted (clear completedAt)
+      task.completedAt = null;
+      console.log(`↩️ Uncompleted task: ${task.title}`);
+    }
+
+    await task.save();
 
     res.status(200).json({
       success: true,
-      message: "Task đã được đánh dấu hoàn thành",
+      message: task.isCompleted
+        ? "Task đã được đánh dấu hoàn thành"
+        : "Task đã được đánh dấu chưa hoàn thành",
       data: task,
     });
   } catch (error) {
@@ -416,7 +426,7 @@ const completeTask = async (req, res, next) => {
 
     res.status(500).json({
       success: false,
-      message: "Không thể hoàn thành task",
+      message: "Không thể cập nhật trạng thái task",
       error: error.message,
     });
   }

@@ -22,6 +22,8 @@ const POMODORO_ACTIONS = {
   SET_STATE: "SET_STATE",
   COMPLETE_POMODORO: "COMPLETE_POMODORO",
   UPDATE_SETTINGS: "UPDATE_SETTINGS",
+  SET_ACTIVE_TASK: "SET_ACTIVE_TASK",
+  CLEAR_ACTIVE_TASK: "CLEAR_ACTIVE_TASK",
 };
 
 // Default settings
@@ -38,6 +40,7 @@ const initialState = {
   isActive: false,
   completedPomodoros: 0,
   settings: DEFAULT_SETTINGS,
+  activeTask: null, // Currently running task
 };
 
 // Reducer
@@ -98,6 +101,18 @@ const pomodoroReducer = (state, action) => {
         },
       };
 
+    case POMODORO_ACTIONS.SET_ACTIVE_TASK:
+      return {
+        ...state,
+        activeTask: action.payload,
+      };
+
+    case POMODORO_ACTIONS.CLEAR_ACTIVE_TASK:
+      return {
+        ...state,
+        activeTask: null,
+      };
+
     default:
       return state;
   }
@@ -107,7 +122,7 @@ const pomodoroReducer = (state, action) => {
 const PomodoroContext = createContext();
 
 // Provider component
-export const PomodoroProvider = ({ children }) => {
+export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
   const [state, dispatch] = useReducer(pomodoroReducer, initialState);
   const intervalRef = useRef(null);
 
@@ -145,6 +160,14 @@ export const PomodoroProvider = ({ children }) => {
         dispatch({ type: POMODORO_ACTIONS.COMPLETE_POMODORO });
         console.log(`🎉 Pomodoro #${state.completedPomodoros + 1} completed!`);
 
+        // Call callback to update task if provided
+        if (onPomodoroComplete && state.activeTask) {
+          console.log(
+            `📝 Updating task pomodoro count for: ${state.activeTask.title}`
+          );
+          onPomodoroComplete(state.activeTask);
+        }
+
         // Auto-start short break
         if (state.settings.autoStartBreaks) {
           startShortBreak();
@@ -161,10 +184,18 @@ export const PomodoroProvider = ({ children }) => {
             autoStart: false,
           },
         });
+        // Clear active task when returning to idle
+        dispatch({ type: POMODORO_ACTIONS.CLEAR_ACTIVE_TASK });
         console.log("💤 Break completed, returning to idle");
       }
     }
-  }, [state.timeLeft, state.isActive, state.timerState]);
+  }, [
+    state.timeLeft,
+    state.isActive,
+    state.timerState,
+    state.activeTask,
+    onPomodoroComplete,
+  ]);
 
   // Start timer
   const startTimer = () => {
@@ -216,6 +247,29 @@ export const PomodoroProvider = ({ children }) => {
     console.log(`🔥 Starting work session: ${state.settings.workDuration}s`);
   };
 
+  // Start work session with task
+  const startWorkSessionWithTask = (task) => {
+    dispatch({
+      type: POMODORO_ACTIONS.SET_ACTIVE_TASK,
+      payload: task,
+    });
+    dispatch({
+      type: POMODORO_ACTIONS.SET_STATE,
+      payload: {
+        state: TIMER_STATES.WORKING,
+        duration: state.settings.workDuration,
+        autoStart: true,
+      },
+    });
+    console.log(`🔥 Starting work session for task: ${task.title}`);
+  };
+
+  // Clear active task
+  const clearActiveTask = () => {
+    dispatch({ type: POMODORO_ACTIONS.CLEAR_ACTIVE_TASK });
+    console.log("🧹 Active task cleared");
+  };
+
   // Start short break
   const startShortBreak = () => {
     dispatch({
@@ -259,6 +313,7 @@ export const PomodoroProvider = ({ children }) => {
     isActive: state.isActive,
     completedPomodoros: state.completedPomodoros,
     settings: state.settings,
+    activeTask: state.activeTask,
 
     // Functions
     startTimer,
@@ -266,9 +321,11 @@ export const PomodoroProvider = ({ children }) => {
     resetTimer,
     skipTimer,
     startWorkSession,
+    startWorkSessionWithTask,
     startShortBreak,
     updateSettings,
     getInitialDuration,
+    clearActiveTask,
   };
 
   return (

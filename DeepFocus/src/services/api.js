@@ -204,6 +204,93 @@ export const authAPI = {
   },
 };
 
+// Task API functions
+export const taskAPI = {
+  // Get all tasks for authenticated user
+  getTasks: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const url = queryParams ? `/tasks?${queryParams}` : "/tasks";
+      const response = await apiClient.get(url);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get single task by ID
+  getTask: async (taskId) => {
+    try {
+      const response = await apiClient.get(`/tasks/${taskId}`);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Create new task
+  createTask: async (taskData) => {
+    try {
+      const response = await apiClient.post("/tasks", taskData);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update task
+  updateTask: async (taskId, updates) => {
+    try {
+      const response = await apiClient.put(`/tasks/${taskId}`, updates);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete task
+  deleteTask: async (taskId) => {
+    try {
+      const response = await apiClient.delete(`/tasks/${taskId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Increment pomodoro count
+  incrementTaskPomodoro: async (taskId) => {
+    try {
+      const response = await apiClient.post(
+        `/tasks/${taskId}/increment-pomodoro`
+      );
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Complete task
+  completeTask: async (taskId) => {
+    try {
+      const response = await apiClient.put(`/tasks/${taskId}/complete`);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get task statistics
+  getTaskStats: async () => {
+    try {
+      const response = await apiClient.get("/tasks/stats");
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // General API utilities
 export const apiUtils = {
   // Check if user is authenticated

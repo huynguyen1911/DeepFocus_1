@@ -19,6 +19,7 @@ const Timer = () => {
     timeLeft,
     isActive,
     completedPomodoros,
+    activeTask,
     startTimer,
     pauseTimer,
     resetTimer,
@@ -165,6 +166,16 @@ const Timer = () => {
           )}
         </View>
 
+        {/* Active Task Display */}
+        {activeTask && timerState === TIMER_STATES.WORKING && (
+          <View style={styles.taskContainer}>
+            <Text style={styles.taskLabel}>Đang làm việc:</Text>
+            <Text style={styles.taskTitle} numberOfLines={2}>
+              {activeTask.title}
+            </Text>
+          </View>
+        )}
+
         {/* Timer Display */}
         <Text style={[styles.timerText, { color: getStateColor() }]}>
           {formatTime(timeLeft)}
@@ -222,6 +233,27 @@ const styles = StyleSheet.create({
   badge: {
     fontSize: 16,
     fontWeight: "bold",
+  },
+  taskContainer: {
+    width: "100%",
+    backgroundColor: "#FFF3E0",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#FF5252",
+  },
+  taskLabel: {
+    fontSize: 12,
+    color: "#757575",
+    marginBottom: 4,
+    fontWeight: "500",
+  },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#212121",
+    lineHeight: 22,
   },
   timerText: {
     fontSize: 72,
