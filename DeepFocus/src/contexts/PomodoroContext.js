@@ -165,7 +165,11 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
           console.log(
             `📝 Updating task pomodoro count for: ${state.activeTask.title}`
           );
-          onPomodoroComplete(state.activeTask);
+          // Convert work duration from seconds to minutes
+          const durationInMinutes = Math.round(
+            state.settings.workDuration / 60
+          );
+          onPomodoroComplete(state.activeTask, durationInMinutes);
         }
 
         // Auto-start short break

@@ -338,8 +338,11 @@ const incrementPomodoro = async (req, res, next) => {
       });
     }
 
+    // Get duration from request body (default to 25 if not provided)
+    const duration = req.body.duration || 25;
+
     // Use the model method to increment
-    await task.incrementPomodoro();
+    await task.incrementPomodoro(duration);
 
     console.log(
       `🍅 Incremented pomodoro for task: ${task.title} (${task.completedPomodoros}/${task.estimatedPomodoros})`

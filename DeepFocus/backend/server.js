@@ -18,9 +18,9 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL || "http://localhost:8081",
-      "http://192.168.0.242:8081", // Add updated IP address
+      "http://172.16.10.233:8081", // Add updated IP address
       "http://localhost:19006", // Expo web
-      "exp://192.168.0.242:8081", // Expo mobile
+      "exp://172.16.10.233:8081", // Expo mobile
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -109,7 +109,7 @@ app.listen(PORT, HOST, () => {
   console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Network: http://192.168.0.242:${PORT}/api/health`); // Updated IP
+  console.log(`🌐 Network: 172.16.10.233:${PORT}/api/health`); // Updated IP
   console.log(
     `🌍 CORS enabled for: ${
       process.env.FRONTEND_URL || "http://localhost:8081"

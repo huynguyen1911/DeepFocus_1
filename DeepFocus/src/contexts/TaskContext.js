@@ -250,9 +250,9 @@ export const TaskProvider = ({ children }) => {
   };
 
   // Increment pomodoro count
-  const incrementPomodoroCount = async (taskId) => {
+  const incrementPomodoroCount = async (taskId, duration = 25) => {
     try {
-      const updatedTask = await taskAPI.incrementTaskPomodoro(taskId);
+      const updatedTask = await taskAPI.incrementTaskPomodoro(taskId, duration);
       dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: updatedTask });
 
       // Update storage

@@ -680,6 +680,51 @@ const TaskDetailsScreen = () => {
                 style={styles.progressBar}
                 color={formData.isCompleted ? "#4CAF50" : theme.colors.primary}
               />
+
+              {/* Pomodoro History */}
+              {originalTask?.pomodoroSessions &&
+                originalTask.pomodoroSessions.length > 0 && (
+                  <>
+                    <Divider style={styles.metadataDivider} />
+                    <Text style={styles.metadataLabel}>
+                      📜 Lịch sử Pomodoro:
+                    </Text>
+                    <View style={styles.historyContainer}>
+                      {originalTask.pomodoroSessions
+                        .slice()
+                        .reverse()
+                        .slice(0, 5)
+                        .map((session, index) => (
+                          <View key={index} style={styles.historyItem}>
+                            <Text style={styles.historyDate}>
+                              {new Date(session.completedAt).toLocaleString(
+                                "vi-VN",
+                                {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </Text>
+                            <Chip
+                              icon="timer"
+                              compact
+                              style={styles.historyChip}
+                            >
+                              {session.duration} phút
+                            </Chip>
+                          </View>
+                        ))}
+                      {originalTask.pomodoroSessions.length > 5 && (
+                        <Text style={styles.historyMore}>
+                          +{originalTask.pomodoroSessions.length - 5} phiên khác
+                        </Text>
+                      )}
+                    </View>
+                  </>
+                )}
             </Card.Content>
           </Card>
 
@@ -927,6 +972,30 @@ const styles = StyleSheet.create({
     marginTop: 12,
     height: 8,
     borderRadius: 4,
+  },
+  historyContainer: {
+    marginTop: 8,
+    gap: 8,
+  },
+  historyItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  historyDate: {
+    fontSize: 13,
+    color: "#616161",
+  },
+  historyChip: {
+    height: 28,
+  },
+  historyMore: {
+    fontSize: 12,
+    color: "#9E9E9E",
+    fontStyle: "italic",
+    marginTop: 4,
+    textAlign: "center",
   },
   actionButton: {
     marginBottom: 12,

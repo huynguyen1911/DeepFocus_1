@@ -7,10 +7,10 @@ import { useTasks } from "./TaskContext";
  * This allows Pomodoro to update tasks without circular dependency
  */
 export const ConnectedPomodoroProvider = ({ children }) => {
-  const { updateTask } = useTasks();
+  const { incrementPomodoroCount } = useTasks();
 
   // Callback when a pomodoro is completed
-  const handlePomodoroComplete = async (task) => {
+  const handlePomodoroComplete = async (task, duration = 25) => {
     if (!task || !task._id) {
       console.log("⚠️ No task to update");
       return;
@@ -21,12 +21,10 @@ export const ConnectedPomodoroProvider = ({ children }) => {
       console.log(
         `   Current: ${task.completedPomodoros} → New: ${
           task.completedPomodoros + 1
-        }`
+        } (${duration} minutes)`
       );
 
-      const result = await updateTask(task._id, {
-        completedPomodoros: task.completedPomodoros + 1,
-      });
+      const result = await incrementPomodoroCount(task._id, duration);
 
       if (result.success) {
         console.log(`✅ Task pomodoro updated successfully!`);

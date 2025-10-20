@@ -30,6 +30,18 @@ const taskSchema = new mongoose.Schema(
       default: 0,
       min: [0, "Số pomodoro đã hoàn thành không thể âm"],
     },
+    pomodoroSessions: [
+      {
+        completedAt: {
+          type: Date,
+          default: Date.now,
+        },
+        duration: {
+          type: Number, // in minutes
+          default: 25,
+        },
+      },
+    ],
     priority: {
       type: String,
       enum: {
@@ -84,8 +96,14 @@ taskSchema.pre("save", function (next) {
 });
 
 // Method to increment pomodoro count
-taskSchema.methods.incrementPomodoro = function () {
+taskSchema.methods.incrementPomodoro = function (duration = 25) {
   this.completedPomodoros += 1;
+
+  // Add session to history
+  this.pomodoroSessions.push({
+    completedAt: new Date(),
+    duration: duration,
+  });
 
   // Auto-complete if reached estimated pomodoros
   if (this.completedPomodoros >= this.estimatedPomodoros && !this.isCompleted) {
@@ -99,7 +117,7 @@ taskSchema.methods.incrementPomodoro = function () {
 // Static method to get user's task statistics
 taskSchema.statics.getUserStats = async function (userId) {
   const stats = await this.aggregate([
-    { $match: { userId: mongoose.Types.ObjectId(userId) } },
+    { $match: { userId: new mongoose.Types.ObjectId(userId) } },
     {
       $group: {
         _id: null,

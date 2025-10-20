@@ -11,6 +11,7 @@ import { theme } from '@/src/config/theme';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
+import ErrorBoundary from '@/src/components/ErrorBoundary';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -18,12 +19,13 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <PaperProvider theme={theme}>
-          <AuthProvider>
-            <TaskProvider>
-              <ConnectedPomodoroProvider>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <PaperProvider theme={theme}>
+            <AuthProvider>
+              <TaskProvider>
+                <ConnectedPomodoroProvider>
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -79,5 +81,6 @@ export default function RootLayout() {
       </PaperProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

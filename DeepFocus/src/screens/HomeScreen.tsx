@@ -1,7 +1,8 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, StyleSheet, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Card, Text, useTheme, Divider, IconButton, Menu, FAB, Searchbar, SegmentedButtons } from 'react-native-paper';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Timer from '../components/Timer';
 import TaskItem from '../components/TaskItem';
@@ -9,6 +10,7 @@ import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useTasks } from '../contexts/TaskContext';
+import { taskAPI } from '../services/api';
 
 const HomeScreen = () => {
   const theme = useTheme();
@@ -23,6 +25,14 @@ const HomeScreen = () => {
   const [filterMode, setFilterMode] = useState("all");
   const scrollViewRef = useRef<ScrollView>(null);
   const timerSectionRef = useRef<View>(null);
+  const [stats, setStats] = useState({
+    totalTasks: 0,
+    completedTasks: 0,
+    totalPomodoros: 0,
+    pendingTasks: 0,
+  });
+  const [sortBy, setSortBy] = useState("date"); // date, priority, pomodoros, dueDate
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
   // Debounce search query
   useEffect(() => {
@@ -32,6 +42,48 @@ const HomeScreen = () => {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Load stats from API
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await taskAPI.getTaskStats();
+        setStats(data);
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      }
+    };
+
+    loadStats();
+  }, [tasks]); // Reload when tasks change
+
+  // Load sort preference from AsyncStorage
+  useEffect(() => {
+    const loadSortPreference = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('@deepfocus:sortBy');
+        if (saved) {
+          setSortBy(saved);
+        }
+      } catch (error) {
+        console.error('Failed to load sort preference:', error);
+      }
+    };
+
+    loadSortPreference();
+  }, []);
+
+  // Save sort preference to AsyncStorage
+  const handleSortChange = async (newSort: string) => {
+    setSortBy(newSort);
+    setSortMenuVisible(false);
+    
+    try {
+      await AsyncStorage.setItem('@deepfocus:sortBy', newSort);
+    } catch (error) {
+      console.error('Failed to save sort preference:', error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -56,10 +108,19 @@ const HomeScreen = () => {
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadTasks(false);
+    
+    // Reload stats
+    try {
+      const data = await taskAPI.getTaskStats();
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to refresh stats:', error);
+    }
+    
     setRefreshing(false);
   };
 
-  // Memoized filtered tasks với debounced search
+  // Memoized filtered and sorted tasks
   const displayTasks = useMemo(() => {
     let filtered = tasks;
 
@@ -79,20 +140,49 @@ const HomeScreen = () => {
       );
     }
 
-    // Sort: incomplete first, then by creation date
+    // Sort based on sortBy selection
     return filtered.sort((a: any, b: any) => {
+      // Always show incomplete tasks first
       if (a.isCompleted !== b.isCompleted) {
         return a.isCompleted ? 1 : -1;
       }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+      // Then apply selected sort
+      switch (sortBy) {
+        case 'priority':
+          // High → Medium → Low
+          const priorityOrder: any = { high: 0, medium: 1, low: 2 };
+          const priorityDiff = (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
+          if (priorityDiff !== 0) return priorityDiff;
+          // If same priority, sort by date
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+        case 'dueDate':
+          // Soonest due date first (null at end)
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+
+        case 'pomodoros':
+          // Most remaining pomodoros first
+          const aRemaining = a.estimatedPomodoros - a.completedPomodoros;
+          const bRemaining = b.estimatedPomodoros - b.completedPomodoros;
+          const pomoDiff = bRemaining - aRemaining;
+          if (pomoDiff !== 0) return pomoDiff;
+          // If same remaining, sort by date
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+        case 'date':
+        default:
+          // Newest first
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
     });
-  }, [tasks, filterMode, debouncedSearchQuery]);
+  }, [tasks, filterMode, debouncedSearchQuery, sortBy]);
 
   // Handle start timer for a task
   const handleStartTimer = useCallback((task: any) => {
-    console.log('🎯 handleStartTimer called with task:', task?.title);
-    console.log('📋 startWorkSessionWithTask function:', typeof startWorkSessionWithTask);
-    
     Alert.alert(
       'Bắt đầu Pomodoro',
       `Bắt đầu làm việc cho nhiệm vụ: "${task.title}"`,
@@ -100,31 +190,26 @@ const HomeScreen = () => {
         {
           text: 'Hủy',
           style: 'cancel',
-          onPress: () => console.log('❌ User cancelled'),
         },
         {
           text: 'Bắt đầu',
           onPress: () => {
-            console.log('✅ User confirmed, starting timer with task...');
             // Start timer with task
             startWorkSessionWithTask(task);
-            console.log('🔥 Timer started for task');
             
-            // Smooth scroll to timer with optimized animation
+            // Smooth scroll to timer
             requestAnimationFrame(() => {
               timerSectionRef.current?.measureLayout(
                 scrollViewRef.current as any,
                 (x, y) => {
                   const targetY = Math.max(0, y - 20);
-                  
-                  // Use native smooth scroll with short duration
                   scrollViewRef.current?.scrollTo({ 
                     y: targetY,
-                    animated: true // Re-enable animation but will be fast
+                    animated: true
                   });
                 },
                 () => {
-                  // Fallback: smooth scroll to top
+                  // Fallback: scroll to top
                   scrollViewRef.current?.scrollTo({ y: 0, animated: true });
                 }
               );
@@ -184,11 +269,6 @@ const HomeScreen = () => {
         ref={scrollViewRef}
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        decelerationRate={0.99}
-        snapToInterval={undefined}
-        snapToAlignment="start"
-        removeClippedSubviews={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} />
         }
@@ -215,18 +295,32 @@ const HomeScreen = () => {
           </View>
           
           <View style={styles.statsSection}>
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Thống kê hôm nay</Text>
+            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Thống kê của bạn</Text>
             <View style={styles.statsContainer}>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{completedPomodoros}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Pomodoro hoàn thành</Text>
+                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.totalPomodoros}</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tổng Pomodoros</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.secondary }]}>{completedPomodoros * 25}m</Text>
+                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.secondary }]}>{stats.totalPomodoros * 25}m</Text>
                   <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Thời gian tập trung</Text>
+                </Card.Content>
+              </Card>
+            </View>
+            <View style={styles.statsContainer}>
+              <Card style={styles.statCard}>
+                <Card.Content style={styles.statContent}>
+                  <Text variant="headlineSmall" style={[styles.statNumber, { color: '#4CAF50' }]}>{stats.completedTasks}</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tasks hoàn thành</Text>
+                </Card.Content>
+              </Card>
+              <Card style={styles.statCard}>
+                <Card.Content style={styles.statContent}>
+                  <Text variant="headlineSmall" style={[styles.statNumber, { color: '#FF9800' }]}>{stats.pendingTasks}</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tasks đang làm</Text>
                 </Card.Content>
               </Card>
             </View>
@@ -251,16 +345,26 @@ const HomeScreen = () => {
               autoCorrect={false}
               autoCapitalize="none"
             />
-            <SegmentedButtons 
-              value={filterMode} 
-              onValueChange={setFilterMode} 
-              buttons={[
-                { value: "all", label: `Tất cả (${tasks.length})`, icon: "format-list-bulleted" },
-                { value: "active", label: `Đang làm (${tasks.filter((t: any) => !t.isCompleted).length})`, icon: "progress-clock" },
-                { value: "completed", label: `Hoàn thành (${tasks.filter((t: any) => t.isCompleted).length})`, icon: "check-circle" },
-              ]} 
-              style={styles.segmentedButtons} 
-            />
+            
+            <View style={styles.filterRow}>
+              <SegmentedButtons 
+                value={filterMode} 
+                onValueChange={setFilterMode} 
+                buttons={[
+                  { value: "all", label: `Tất cả (${tasks.length})`, icon: "format-list-bulleted" },
+                  { value: "active", label: `Đang làm (${tasks.filter((t: any) => !t.isCompleted).length})`, icon: "progress-clock" },
+                  { value: "completed", label: `Hoàn thành (${tasks.filter((t: any) => t.isCompleted).length})`, icon: "check-circle" },
+                ]} 
+                style={styles.segmentedButtons} 
+              />
+              
+              <IconButton
+                icon="sort"
+                size={24}
+                onPress={() => setSortMenuVisible(!sortMenuVisible)}
+                style={styles.sortButton}
+              />
+            </View>
           </View>
 
           {/* Task List */}
@@ -283,6 +387,46 @@ const HomeScreen = () => {
         </View>
       </ScrollView>
 
+      {/* Sort Menu - Outside ScrollView to avoid z-index issues */}
+      {sortMenuVisible && (
+        <View style={styles.sortMenuBackdrop}>
+          {/* Backdrop - Click to close */}
+          <View 
+            style={styles.backdrop}
+            onTouchEnd={() => setSortMenuVisible(false)}
+          />
+          
+          {/* Menu content */}
+          <View style={styles.sortMenuContainer}>
+            <View style={styles.sortMenu}>
+              <Text style={styles.sortMenuTitle}>Sắp xếp theo</Text>
+              <Divider />
+              
+              <Menu.Item 
+                onPress={() => handleSortChange('date')} 
+                title="Ngày tạo" 
+                leadingIcon={sortBy === 'date' ? 'check' : undefined}
+              />
+              <Menu.Item 
+                onPress={() => handleSortChange('priority')} 
+                title="Độ ưu tiên" 
+                leadingIcon={sortBy === 'priority' ? 'check' : undefined}
+              />
+              <Menu.Item 
+                onPress={() => handleSortChange('dueDate')} 
+                title="Hạn chót" 
+                leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
+              />
+              <Menu.Item 
+                onPress={() => handleSortChange('pomodoros')} 
+                title="Pomodoros còn lại" 
+                leadingIcon={sortBy === 'pomodoros' ? 'check' : undefined}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+      
       <FAB icon="plus" style={styles.fab} onPress={() => router.push('/add-task')} color="#fff" />
     </View>
     </KeyboardAvoidingView>
@@ -291,32 +435,79 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { backgroundColor: '#FF5252', paddingHorizontal: 20, paddingVertical: 16, elevation: 4 },
-  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scrollView: { flex: 1 },
-  homeSection: {
-    padding: 20,
-    paddingBottom: 40, // Space before task section
+  header: { 
+    backgroundColor: '#FF5252', 
+    paddingHorizontal: 20, 
+    paddingVertical: 16, 
+    elevation: 4 
   },
-  welcomeCard: { elevation: 4, borderRadius: 12, marginBottom: 24 },
-  cardContent: { padding: 24, alignItems: "center" },
-  greetingText: { marginBottom: 4, fontWeight: "500" },
-  welcomeText: { textAlign: "center", fontWeight: "bold", marginBottom: 8 },
-  subtitleText: { textAlign: "center", marginBottom: 16, fontWeight: "500" },
-  divider: { width: "50%", marginVertical: 16 },
-  descriptionText: { textAlign: "center", lineHeight: 20 },
+  headerContent: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
+  scrollView: { flex: 1 },
+  homeSection: { padding: 20, paddingBottom: 40 },
+  welcomeCard: { 
+    elevation: 4, 
+    borderRadius: 12, 
+    marginBottom: 24 
+  },
+  cardContent: { 
+    padding: 24, 
+    alignItems: 'center' 
+  },
+  greetingText: { 
+    marginBottom: 4, 
+    fontWeight: '500' 
+  },
+  welcomeText: { 
+    textAlign: 'center', 
+    fontWeight: 'bold', 
+    marginBottom: 8 
+  },
+  subtitleText: { 
+    textAlign: 'center', 
+    marginBottom: 16, 
+    fontWeight: '500' 
+  },
+  divider: { 
+    width: '50%', 
+    marginVertical: 16 
+  },
+  descriptionText: { 
+    textAlign: 'center', 
+    lineHeight: 20 
+  },
   timerSection: { marginBottom: 32 },
-  sectionTitle: { fontWeight: "bold", marginBottom: 16, textAlign: "center" },
+  sectionTitle: { 
+    fontWeight: 'bold', 
+    marginBottom: 16, 
+    textAlign: 'center' 
+  },
   statsSection: { marginBottom: 20 },
-  statsContainer: { flexDirection: "row", gap: 16 },
-  statCard: { flex: 1, elevation: 2, borderRadius: 8 },
-  statContent: { alignItems: "center", padding: 16 },
-  statNumber: { fontWeight: "bold", marginBottom: 4 },
+  statsContainer: { 
+    flexDirection: 'row', 
+    gap: 16 
+  },
+  statCard: { 
+    flex: 1, 
+    elevation: 2, 
+    borderRadius: 8 
+  },
+  statContent: { 
+    alignItems: 'center', 
+    padding: 16 
+  },
+  statNumber: { 
+    fontWeight: 'bold', 
+    marginBottom: 4 
+  },
   taskSection: {
     backgroundColor: '#F5F5F5',
     paddingTop: 20,
-    paddingBottom: 80, // Giảm space cho FAB
-    minHeight: 400, // Đảm bảo có đủ chiều cao để scroll
+    paddingBottom: 80,
+    minHeight: 400,
   },
   taskSectionHeader: {
     backgroundColor: '#fff',
@@ -326,8 +517,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   taskSectionTitle: {
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   searchFilterContainer: { 
     backgroundColor: '#fff', 
@@ -342,10 +533,63 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 12,
   },
-  segmentedButtons: { backgroundColor: "transparent" },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+    minHeight: 48,
+  },
+  sortButton: {
+    marginLeft: 'auto',
+  },
+  sortMenuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  sortMenuContainer: {
+    position: 'absolute',
+    top: 220,
+    right: 16,
+    zIndex: 1000,
+  },
+  sortMenu: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  sortMenuTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#666',
+  },
+  segmentedButtons: { 
+    backgroundColor: 'transparent',
+    flex: 1,
+    maxWidth: '85%',
+  },
   taskListContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 10, // Giảm khoảng trống cuối danh sách
+    paddingBottom: 10,
   },
   emptyContainer: { 
     justifyContent: 'center', 
@@ -353,9 +597,22 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
     minHeight: 200,
   },
-  emptyIcon: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 16, color: '#757575', textAlign: 'center', paddingHorizontal: 32 },
-  fab: { position: 'absolute', right: 16, bottom: 16, backgroundColor: '#FF5252' },
+  emptyIcon: { 
+    fontSize: 64, 
+    marginBottom: 16 
+  },
+  emptyText: { 
+    fontSize: 16, 
+    color: '#757575', 
+    textAlign: 'center', 
+    paddingHorizontal: 32 
+  },
+  fab: { 
+    position: 'absolute', 
+    right: 16, 
+    bottom: 16, 
+    backgroundColor: '#FF5252' 
+  },
 });
 
 export default HomeScreen;

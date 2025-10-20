@@ -259,10 +259,11 @@ export const taskAPI = {
   },
 
   // Increment pomodoro count
-  incrementTaskPomodoro: async (taskId) => {
+  incrementTaskPomodoro: async (taskId, duration = 25) => {
     try {
       const response = await apiClient.post(
-        `/tasks/${taskId}/increment-pomodoro`
+        `/tasks/${taskId}/increment-pomodoro`,
+        { duration }
       );
       return response.data.data;
     } catch (error) {
