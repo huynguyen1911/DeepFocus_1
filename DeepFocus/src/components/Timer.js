@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import {
   Card,
@@ -11,9 +11,11 @@ import {
 } from "react-native-paper";
 import { usePomodoro, TIMER_STATES } from "../contexts/PomodoroContext";
 import { formatTime } from "../utils/helpers";
+import TaskSelector from "./TaskSelector";
 
 const Timer = () => {
   const theme = useTheme();
+  const [showTaskSelector, setShowTaskSelector] = useState(false);
   const {
     timerState,
     timeLeft,
@@ -25,8 +27,29 @@ const Timer = () => {
     resetTimer,
     skipTimer,
     startWorkSession,
+    startWorkSessionWithTask,
     getInitialDuration,
+    clearActiveTask,
   } = usePomodoro();
+
+  // Handle task selection
+  const handleSelectTask = (task) => {
+    if (task) {
+      // Start work session with selected task (replaces current task if any)
+      startWorkSessionWithTask(task);
+    } else {
+      // Clear active task and start without task
+      clearActiveTask();
+      startWorkSession();
+    }
+    setShowTaskSelector(false);
+  };
+
+  // Handle task swap (from idle state with active task)
+  const handleSwapTask = () => {
+    // Don't clear task yet - let user select new one first
+    setShowTaskSelector(true);
+  };
 
   // Get state label
   const getStateLabel = () => {
@@ -72,17 +95,68 @@ const Timer = () => {
   // Render control buttons
   const renderControls = () => {
     if (timerState === TIMER_STATES.IDLE) {
-      // Idle state - show start button
+      // Check if there's an active task from previous session
+      if (activeTask) {
+        // Show continue button for active task
+        return (
+          <View style={styles.buttonColumn}>
+            <Button
+              mode="contained"
+              onPress={() => startWorkSessionWithTask(activeTask)}
+              style={styles.button}
+              contentStyle={styles.buttonContent}
+              icon="play"
+            >
+              Tiếp Tục Nhiệm Vụ
+            </Button>
+            <View style={styles.buttonRow}>
+              <Button
+                mode="outlined"
+                onPress={handleSwapTask}
+                style={[styles.button, styles.buttonHalf]}
+                contentStyle={styles.buttonContent}
+                icon="swap-horizontal"
+              >
+                Đổi Task
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  clearActiveTask();
+                }}
+                style={[styles.button, styles.buttonHalf]}
+                contentStyle={styles.buttonContent}
+                icon="close"
+              >
+                Xóa Task
+              </Button>
+            </View>
+          </View>
+        );
+      }
+
+      // No active task - show task selector button
       return (
-        <Button
-          mode="contained"
-          onPress={startWorkSession}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
-          icon="play"
-        >
-          Bắt Đầu
-        </Button>
+        <View style={styles.buttonColumn}>
+          <Button
+            mode="contained"
+            onPress={() => setShowTaskSelector(true)}
+            style={styles.button}
+            contentStyle={styles.buttonContent}
+            icon="format-list-checks"
+          >
+            Chọn Nhiệm Vụ & Bắt Đầu
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={startWorkSession}
+            style={styles.button}
+            contentStyle={styles.buttonContent}
+            icon="play"
+          >
+            Bắt Đầu Không Nhiệm Vụ
+          </Button>
+        </View>
       );
     }
 
@@ -167,12 +241,41 @@ const Timer = () => {
         </View>
 
         {/* Active Task Display */}
-        {activeTask && timerState === TIMER_STATES.WORKING && (
+        {activeTask && (
           <View style={styles.taskContainer}>
-            <Text style={styles.taskLabel}>Đang làm việc:</Text>
+            <Text style={styles.taskLabel}>
+              {timerState === TIMER_STATES.WORKING
+                ? "Đang làm việc:"
+                : timerState === TIMER_STATES.IDLE
+                ? "Nhiệm vụ hiện tại:"
+                : "Đang nghỉ:"}
+            </Text>
             <Text style={styles.taskTitle} numberOfLines={2}>
               {activeTask.title}
             </Text>
+            {activeTask.estimatedPomodoros > 0 && (
+              <View style={styles.taskProgressContainer}>
+                <Text style={styles.taskProgressText}>
+                  🍅 {activeTask.completedPomodoros}/
+                  {activeTask.estimatedPomodoros} Pomodoros
+                </Text>
+                <ProgressBar
+                  progress={Math.min(
+                    1,
+                    activeTask.completedPomodoros /
+                      activeTask.estimatedPomodoros
+                  )}
+                  color={
+                    activeTask.completedPomodoros /
+                      activeTask.estimatedPomodoros >=
+                    0.75
+                      ? "#4CAF50"
+                      : theme.colors.primary
+                  }
+                  style={styles.taskProgressBar}
+                />
+              </View>
+            )}
           </View>
         )}
 
@@ -204,6 +307,13 @@ const Timer = () => {
           </View>
         )}
       </Card.Content>
+
+      {/* Task Selector Modal */}
+      <TaskSelector
+        visible={showTaskSelector}
+        onClose={() => setShowTaskSelector(false)}
+        onSelectTask={handleSelectTask}
+      />
     </Card>
   );
 };
@@ -254,6 +364,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#212121",
     lineHeight: 22,
+  },
+  taskProgressContainer: {
+    marginTop: 8,
+    gap: 4,
+  },
+  taskProgressText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#424242",
+  },
+  taskProgressBar: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E0E0E0",
   },
   timerText: {
     fontSize: 72,

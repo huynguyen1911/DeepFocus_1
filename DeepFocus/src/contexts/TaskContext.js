@@ -149,15 +149,56 @@ export const TaskProvider = ({ children }) => {
     try {
       dispatch({ type: TASK_ACTIONS.SET_LOADING, payload: true });
 
-      const newTask = await taskAPI.createTask(taskData);
-      dispatch({ type: TASK_ACTIONS.ADD_TASK, payload: newTask });
+      // Create temporary ID for offline mode
+      const tempId = `temp_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
-      // Update storage
-      const updatedTasks = [newTask, ...state.tasks];
+      // Create optimistic task
+      const optimisticTask = {
+        _id: tempId,
+        ...taskData,
+        completedPomodoros: 0,
+        isCompleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        user: user?._id || null,
+      };
+
+      // Add to UI immediately
+      dispatch({ type: TASK_ACTIONS.ADD_TASK, payload: optimisticTask });
+
+      // Save to storage for offline support
+      const updatedTasks = [optimisticTask, ...state.tasks];
       await saveTasksToStorage(updatedTasks);
 
-      console.log(`✅ Added task: ${newTask.title}`);
-      return { success: true, data: newTask };
+      console.log(`✅ Added task (offline): ${optimisticTask.title}`);
+
+      // Try to sync with server
+      try {
+        const serverTask = await taskAPI.createTask(taskData);
+
+        // Replace temp task with server task
+        dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: serverTask });
+
+        // Update storage - replace temp ID with real ID
+        const syncedTasks = state.tasks.map((t) =>
+          t._id === tempId ? serverTask : t
+        );
+        await saveTasksToStorage(syncedTasks);
+
+        console.log(`✅ Synced new task with server: ${serverTask.title}`);
+        return { success: true, data: serverTask };
+      } catch (syncError) {
+        // Network error - but we already saved offline
+        console.log(
+          "⚠️ Could not sync new task with server (offline mode):",
+          syncError.message
+        );
+
+        // Return success with offline data
+        return { success: true, data: optimisticTask, offline: true };
+      }
     } catch (error) {
       const errorMessage = error.message || "Không thể tạo task";
       dispatch({ type: TASK_ACTIONS.SET_ERROR, payload: errorMessage });
@@ -169,31 +210,56 @@ export const TaskProvider = ({ children }) => {
   // Update task
   const updateTask = async (taskId, updates) => {
     try {
-      // Optimistic update
-      const originalTasks = [...state.tasks];
-      const optimisticTask = state.tasks.find((t) => t._id === taskId);
-      if (optimisticTask) {
-        dispatch({
-          type: TASK_ACTIONS.UPDATE_TASK,
-          payload: { ...optimisticTask, ...updates },
-        });
+      // Find current task
+      const currentTask = state.tasks.find((t) => t._id === taskId);
+      if (!currentTask) {
+        throw new Error("Task not found");
       }
 
-      const updatedTask = await taskAPI.updateTask(taskId, updates);
-      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: updatedTask });
+      // Optimistic update - update locally first
+      const optimisticTask = {
+        ...currentTask,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
 
-      // Update storage
+      // Update UI immediately
+      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: optimisticTask });
+
+      // Save to storage for offline support
       const updatedTasks = state.tasks.map((t) =>
-        t._id === taskId ? updatedTask : t
+        t._id === taskId ? optimisticTask : t
       );
       await saveTasksToStorage(updatedTasks);
 
-      console.log(`✅ Updated task: ${updatedTask.title}`);
-      return { success: true, data: updatedTask };
-    } catch (error) {
-      // Rollback on error
-      dispatch({ type: TASK_ACTIONS.SET_TASKS, payload: originalTasks });
+      console.log(`✅ Updated task (offline): ${optimisticTask.title}`);
 
+      // Try to sync with server
+      try {
+        const serverTask = await taskAPI.updateTask(taskId, updates);
+
+        // Update with server response
+        dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: serverTask });
+
+        // Update storage with server data
+        const syncedTasks = state.tasks.map((t) =>
+          t._id === taskId ? serverTask : t
+        );
+        await saveTasksToStorage(syncedTasks);
+
+        console.log(`✅ Synced update with server: ${serverTask.title}`);
+        return { success: true, data: serverTask };
+      } catch (syncError) {
+        // Network error - but we already updated offline
+        console.log(
+          "⚠️ Could not sync update with server (offline mode):",
+          syncError.message
+        );
+
+        // Return success with offline data
+        return { success: true, data: optimisticTask, offline: true };
+      }
+    } catch (error) {
       const errorMessage = error.message || "Không thể cập nhật task";
       dispatch({ type: TASK_ACTIONS.SET_ERROR, payload: errorMessage });
       console.error("❌ Update task error:", errorMessage);
@@ -204,22 +270,37 @@ export const TaskProvider = ({ children }) => {
   // Delete task
   const deleteTask = async (taskId) => {
     try {
-      // Optimistic delete
-      const originalTasks = [...state.tasks];
+      // Find task to delete
+      const taskToDelete = state.tasks.find((t) => t._id === taskId);
+      if (!taskToDelete) {
+        throw new Error("Task not found");
+      }
+
+      // Optimistic delete - remove from UI immediately
       dispatch({ type: TASK_ACTIONS.DELETE_TASK, payload: taskId });
 
-      await taskAPI.deleteTask(taskId);
-
-      // Update storage
+      // Save to storage for offline support
       const updatedTasks = state.tasks.filter((t) => t._id !== taskId);
       await saveTasksToStorage(updatedTasks);
 
-      console.log(`✅ Deleted task: ${taskId}`);
-      return { success: true };
-    } catch (error) {
-      // Rollback on error
-      dispatch({ type: TASK_ACTIONS.SET_TASKS, payload: originalTasks });
+      console.log(`✅ Deleted task (offline): ${taskToDelete.title}`);
 
+      // Try to sync with server
+      try {
+        await taskAPI.deleteTask(taskId);
+        console.log(`✅ Synced deletion with server`);
+        return { success: true };
+      } catch (syncError) {
+        // Network error - but we already deleted offline
+        console.log(
+          "⚠️ Could not sync deletion with server (offline mode):",
+          syncError.message
+        );
+
+        // Return success - deletion is saved locally
+        return { success: true, offline: true };
+      }
+    } catch (error) {
       const errorMessage = error.message || "Không thể xóa task";
       dispatch({ type: TASK_ACTIONS.SET_ERROR, payload: errorMessage });
       console.error("❌ Delete task error:", errorMessage);
@@ -230,17 +311,56 @@ export const TaskProvider = ({ children }) => {
   // Complete task
   const completeTask = async (taskId) => {
     try {
-      const updatedTask = await taskAPI.completeTask(taskId);
-      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: updatedTask });
+      // Find current task
+      const currentTask = state.tasks.find((t) => t._id === taskId);
+      if (!currentTask) {
+        throw new Error("Task not found");
+      }
 
-      // Update storage
+      // Optimistic update - mark as completed locally first
+      const optimisticTask = {
+        ...currentTask,
+        isCompleted: true,
+        completedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Update UI immediately
+      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: optimisticTask });
+
+      // Save to storage for offline support
       const updatedTasks = state.tasks.map((t) =>
-        t._id === taskId ? updatedTask : t
+        t._id === taskId ? optimisticTask : t
       );
       await saveTasksToStorage(updatedTasks);
 
-      console.log(`✅ Completed task: ${updatedTask.title}`);
-      return { success: true, data: updatedTask };
+      console.log(`✅ Completed task (offline): ${optimisticTask.title}`);
+
+      // Try to sync with server
+      try {
+        const serverTask = await taskAPI.completeTask(taskId);
+
+        // Update with server response
+        dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: serverTask });
+
+        // Update storage with server data
+        const syncedTasks = state.tasks.map((t) =>
+          t._id === taskId ? serverTask : t
+        );
+        await saveTasksToStorage(syncedTasks);
+
+        console.log(`✅ Synced completion with server: ${serverTask.title}`);
+        return { success: true, data: serverTask };
+      } catch (syncError) {
+        // Network error - but we already updated offline
+        console.log(
+          "⚠️ Could not sync completion with server (offline mode):",
+          syncError.message
+        );
+
+        // Return success with offline data
+        return { success: true, data: optimisticTask, offline: true };
+      }
     } catch (error) {
       const errorMessage = error.message || "Không thể đánh dấu hoàn thành";
       dispatch({ type: TASK_ACTIONS.SET_ERROR, payload: errorMessage });
@@ -252,19 +372,84 @@ export const TaskProvider = ({ children }) => {
   // Increment pomodoro count
   const incrementPomodoroCount = async (taskId, duration = 25) => {
     try {
-      const updatedTask = await taskAPI.incrementTaskPomodoro(taskId, duration);
-      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: updatedTask });
+      // Find current task
+      const currentTask = state.tasks.find((t) => t._id === taskId);
+      if (!currentTask) {
+        throw new Error("Task not found");
+      }
 
-      // Update storage
+      // Optimistic update - increment locally first
+      const optimisticTask = {
+        ...currentTask,
+        completedPomodoros: currentTask.completedPomodoros + 1,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Update UI immediately
+      dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: optimisticTask });
+
+      // Save to storage for offline support
       const updatedTasks = state.tasks.map((t) =>
-        t._id === taskId ? updatedTask : t
+        t._id === taskId ? optimisticTask : t
       );
       await saveTasksToStorage(updatedTasks);
 
       console.log(
-        `🍅 Incremented pomodoro: ${updatedTask.title} (${updatedTask.completedPomodoros}/${updatedTask.estimatedPomodoros})`
+        `🍅 Incremented pomodoro (offline): ${optimisticTask.title} (${optimisticTask.completedPomodoros}/${optimisticTask.estimatedPomodoros})`
       );
-      return { success: true, data: updatedTask };
+
+      // Try to sync with server
+      try {
+        const serverTask = await taskAPI.incrementTaskPomodoro(
+          taskId,
+          duration
+        );
+
+        // Update with server response
+        dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: serverTask });
+
+        // Update storage with server data
+        const syncedTasks = state.tasks.map((t) =>
+          t._id === taskId ? serverTask : t
+        );
+        await saveTasksToStorage(syncedTasks);
+
+        console.log(`✅ Synced with server: ${serverTask.title}`);
+
+        // Auto-complete task if goal reached
+        if (
+          !serverTask.isCompleted &&
+          serverTask.completedPomodoros >= serverTask.estimatedPomodoros &&
+          serverTask.estimatedPomodoros > 0
+        ) {
+          console.log(`🎉 Task reached pomodoro goal! Auto-completing...`);
+          await completeTask(taskId);
+        }
+
+        return { success: true, data: serverTask };
+      } catch (syncError) {
+        // Network error - but we already updated offline
+        console.log(
+          "⚠️ Could not sync with server (offline mode):",
+          syncError.message
+        );
+
+        // Check goal with optimistic data
+        if (
+          !optimisticTask.isCompleted &&
+          optimisticTask.completedPomodoros >=
+            optimisticTask.estimatedPomodoros &&
+          optimisticTask.estimatedPomodoros > 0
+        ) {
+          console.log(
+            `🎉 Task reached pomodoro goal (offline)! Auto-completing...`
+          );
+          await completeTask(taskId);
+        }
+
+        // Return success with offline data
+        return { success: true, data: optimisticTask, offline: true };
+      }
     } catch (error) {
       const errorMessage = error.message || "Không thể cập nhật pomodoro";
       dispatch({ type: TASK_ACTIONS.SET_ERROR, payload: errorMessage });

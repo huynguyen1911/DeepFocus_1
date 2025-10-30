@@ -1,6 +1,17 @@
 import React from "react";
-import { PomodoroProvider } from "./PomodoroContext";
+import { PomodoroProvider, usePomodoro } from "./PomodoroContext";
 import { useTasks } from "./TaskContext";
+
+/**
+ * Inner component that has access to both contexts
+ */
+const PomodoroTaskBridge = ({ children, onPomodoroComplete }) => {
+  return (
+    <PomodoroProvider onPomodoroComplete={onPomodoroComplete}>
+      {children}
+    </PomodoroProvider>
+  );
+};
 
 /**
  * Wrapper for PomodoroProvider that connects to TaskContext
@@ -28,18 +39,28 @@ export const ConnectedPomodoroProvider = ({ children }) => {
 
       if (result.success) {
         console.log(`✅ Task pomodoro updated successfully!`);
+
+        // Check if task was auto-completed (reached goal)
+        const updatedTask = result.data;
+        if (updatedTask && updatedTask.isCompleted) {
+          console.log(`🎉 Task auto-completed! It will be cleared from timer.`);
+          // Return a flag to indicate task should be cleared
+          return { taskCompleted: true };
+        }
       } else {
         console.error(`❌ Failed to update task: ${result.error}`);
       }
     } catch (error) {
       console.error("❌ Error updating task pomodoro:", error);
     }
+
+    return { taskCompleted: false };
   };
 
   return (
-    <PomodoroProvider onPomodoroComplete={handlePomodoroComplete}>
+    <PomodoroTaskBridge onPomodoroComplete={handlePomodoroComplete}>
       {children}
-    </PomodoroProvider>
+    </PomodoroTaskBridge>
   );
 };
 

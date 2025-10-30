@@ -120,10 +120,17 @@ export const AuthProvider = ({ children }) => {
           });
           console.log("✅ Auto-login successful:", currentUser.username);
         } catch (error) {
-          // Token invalid, clear storage
+          // Token invalid or expired - silently clear and logout
+          // Don't throw error to avoid console warnings during auto-verify
           await apiUtils.clearAuthData();
           dispatch({ type: AUTH_ACTIONS.LOGOUT });
-          console.log("🔒 Token invalid, logged out");
+
+          // Only log if it's not a token expiration (those are normal)
+          if (error.message !== "Token has expired") {
+            console.log("🔒 Token invalid, logged out:", error.message);
+          } else {
+            console.log("🔒 Token expired, please login again");
+          }
         }
       } else {
         dispatch({ type: AUTH_ACTIONS.LOGOUT });

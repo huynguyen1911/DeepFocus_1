@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
@@ -20,6 +20,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
   const theme = useTheme();
   const { deleteTask, completeTask } = useTasks();
   const [modalVisible, setModalVisible] = useState(false);
+  const swipeableRef = useRef(null);
 
   // Get priority color
   const getPriorityColor = () => {
@@ -93,6 +94,11 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
     console.log("📝 Task:", task.title);
     console.log("🔗 onStartTimer prop exists?", !!onStartTimer);
 
+    // Close swipeable first
+    if (swipeableRef.current) {
+      swipeableRef.current.close();
+    }
+
     closeModal();
 
     if (onStartTimer) {
@@ -105,6 +111,11 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
 
   // Handle delete
   const handleDelete = () => {
+    // Close swipeable first
+    if (swipeableRef.current) {
+      swipeableRef.current.close();
+    }
+
     closeModal();
     Alert.alert("Xóa nhiệm vụ", `Bạn có chắc chắn muốn xóa "${task.title}"?`, [
       {
@@ -172,6 +183,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
   return (
     <>
       <Swipeable
+        ref={swipeableRef}
         renderRightActions={renderRightActions}
         overshootRight={false}
         friction={2}
@@ -243,7 +255,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
                 </View>
                 <ProgressBar
                   progress={getProgress()}
-                  color={getPriorityColor()}
+                  color={getProgress() >= 0.75 ? "#4CAF50" : getPriorityColor()}
                   style={styles.progressBar}
                 />
               </View>
@@ -251,40 +263,58 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
 
             {/* Footer Row */}
             <View style={styles.footerRow}>
-              <Chip
-                mode="outlined"
-                style={[
-                  styles.priorityChip,
-                  { borderColor: getPriorityColor() },
-                ]}
-                textStyle={[styles.chipText, { color: getPriorityColor() }]}
-              >
-                {getPriorityLabel()}
-              </Chip>
-
-              {task.dueDate && (
+              <View style={styles.footerLeft}>
                 <Chip
                   mode="outlined"
-                  icon={isOverdue() ? "alert-circle" : "calendar"}
-                  style={[styles.dateChip, isOverdue() && styles.overdueChip]}
-                  textStyle={[
-                    styles.chipText,
-                    isOverdue() && styles.overdueText,
+                  style={[
+                    styles.priorityChip,
+                    { borderColor: getPriorityColor() },
                   ]}
+                  textStyle={[styles.chipText, { color: getPriorityColor() }]}
+                  compact={false}
                 >
-                  {formatDate(task.dueDate)}
+                  {getPriorityLabel()}
                 </Chip>
-              )}
 
-              {task.isCompleted && task.completedAt && (
-                <Chip
-                  icon="check-circle"
-                  mode="flat"
-                  style={styles.completedChip}
-                  textStyle={styles.completedChipText}
-                >
-                  Hoàn thành
-                </Chip>
+                {task.dueDate && (
+                  <Chip
+                    mode="outlined"
+                    icon={isOverdue() ? "alert-circle" : "calendar"}
+                    style={[styles.dateChip, isOverdue() && styles.overdueChip]}
+                    textStyle={[
+                      styles.chipText,
+                      isOverdue() && styles.overdueText,
+                    ]}
+                    compact={false}
+                  >
+                    {formatDate(task.dueDate)}
+                  </Chip>
+                )}
+
+                {task.isCompleted && task.completedAt && (
+                  <Chip
+                    icon="check-circle"
+                    mode="flat"
+                    style={styles.completedChip}
+                    textStyle={styles.completedChipText}
+                  >
+                    Hoàn thành
+                  </Chip>
+                )}
+              </View>
+
+              {/* Quick Timer Button - Only for incomplete tasks */}
+              {!task.isCompleted && onStartTimer && (
+                <IconButton
+                  icon="timer"
+                  size={20}
+                  iconColor={theme.colors.primary}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleStartTimer();
+                  }}
+                  style={styles.timerButton}
+                />
               )}
             </View>
           </Card.Content>
@@ -442,18 +472,27 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "flex-start",
-    flexWrap: "wrap",
-    gap: 8,
+    justifyContent: "space-between",
     marginTop: 12,
     marginLeft: 36,
   },
+  footerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+    flex: 1,
+  },
+  timerButton: {
+    margin: 0,
+    marginRight: -8,
+  },
   priorityChip: {
-    height: 28,
+    height: 32,
     backgroundColor: "transparent",
   },
   dateChip: {
-    height: 28,
+    height: 32,
     backgroundColor: "transparent",
     borderColor: "#9E9E9E",
   },
@@ -462,8 +501,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFEBEE",
   },
   chipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "500",
+    marginHorizontal: 4,
   },
   overdueText: {
     color: "#FF5252",

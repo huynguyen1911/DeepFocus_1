@@ -173,7 +173,8 @@ export const authAPI = {
       const response = await apiClient.get("/auth/verify");
       return response.data.data.user;
     } catch (error) {
-      console.error("❌ Token verification failed:", error.message);
+      // Don't log error here - this is a silent check during auto-login
+      // AuthContext will handle the error gracefully
       throw error;
     }
   },

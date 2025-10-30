@@ -152,47 +152,66 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
 
   // Handle timer completion
   useEffect(() => {
-    if (state.timeLeft === 0 && state.isActive) {
-      console.log(`✅ ${state.timerState} session completed!`);
+    const handleCompletion = async () => {
+      if (state.timeLeft === 0 && state.isActive) {
+        console.log(`✅ ${state.timerState} session completed!`);
 
-      if (state.timerState === TIMER_STATES.WORKING) {
-        // Work session completed
-        dispatch({ type: POMODORO_ACTIONS.COMPLETE_POMODORO });
-        console.log(`🎉 Pomodoro #${state.completedPomodoros + 1} completed!`);
-
-        // Call callback to update task if provided
-        if (onPomodoroComplete && state.activeTask) {
+        if (state.timerState === TIMER_STATES.WORKING) {
+          // Work session completed
+          dispatch({ type: POMODORO_ACTIONS.COMPLETE_POMODORO });
           console.log(
-            `📝 Updating task pomodoro count for: ${state.activeTask.title}`
+            `🎉 Pomodoro #${state.completedPomodoros + 1} completed!`
           );
-          // Convert work duration from seconds to minutes
-          const durationInMinutes = Math.round(
-            state.settings.workDuration / 60
-          );
-          onPomodoroComplete(state.activeTask, durationInMinutes);
-        }
 
-        // Auto-start short break
-        if (state.settings.autoStartBreaks) {
-          startShortBreak();
-        } else {
-          dispatch({ type: POMODORO_ACTIONS.PAUSE_TIMER });
+          // Call callback to update task if provided
+          if (onPomodoroComplete && state.activeTask) {
+            console.log(
+              `📝 Updating task pomodoro count for: ${state.activeTask.title}`
+            );
+            // Convert work duration from seconds to minutes
+            const durationInMinutes = Math.round(
+              state.settings.workDuration / 60
+            );
+
+            // Call callback and check if task was completed
+            const result = await onPomodoroComplete(
+              state.activeTask,
+              durationInMinutes
+            );
+
+            // If task reached its goal and was auto-completed, clear it from timer
+            if (result && result.taskCompleted) {
+              console.log(
+                "🧹 Task reached goal and completed, clearing from timer"
+              );
+              dispatch({ type: POMODORO_ACTIONS.CLEAR_ACTIVE_TASK });
+            }
+          }
+
+          // Auto-start short break
+          if (state.settings.autoStartBreaks) {
+            startShortBreak();
+          } else {
+            dispatch({ type: POMODORO_ACTIONS.PAUSE_TIMER });
+          }
+        } else if (state.timerState === TIMER_STATES.SHORT_BREAK) {
+          // Short break completed - return to idle
+          // Keep the active task so user can continue working on it
+          dispatch({
+            type: POMODORO_ACTIONS.SET_STATE,
+            payload: {
+              state: TIMER_STATES.IDLE,
+              duration: 0,
+              autoStart: false,
+            },
+          });
+          // Don't clear active task - let user continue or manually clear
+          console.log("💤 Break completed, returning to idle (task preserved)");
         }
-      } else if (state.timerState === TIMER_STATES.SHORT_BREAK) {
-        // Short break completed - return to idle
-        dispatch({
-          type: POMODORO_ACTIONS.SET_STATE,
-          payload: {
-            state: TIMER_STATES.IDLE,
-            duration: 0,
-            autoStart: false,
-          },
-        });
-        // Clear active task when returning to idle
-        dispatch({ type: POMODORO_ACTIONS.CLEAR_ACTIVE_TASK });
-        console.log("💤 Break completed, returning to idle");
       }
-    }
+    };
+
+    handleCompletion();
   }, [
     state.timeLeft,
     state.isActive,
@@ -218,7 +237,9 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
   // Reset timer
   const resetTimer = () => {
     dispatch({ type: POMODORO_ACTIONS.RESET_TIMER });
-    console.log(`🔄 Timer reset to ${state.timerState}`);
+    // Clear active task when user manually resets
+    dispatch({ type: POMODORO_ACTIONS.CLEAR_ACTIVE_TASK });
+    console.log(`🔄 Timer reset to ${state.timerState}, task cleared`);
   };
 
   // Skip current timer

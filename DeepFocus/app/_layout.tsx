@@ -12,6 +12,7 @@ import { AuthProvider } from '@/src/contexts/AuthContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
+import OfflineIndicator from '@/src/components/OfflineIndicator';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -75,6 +76,7 @@ export default function RootLayout() {
                 />
               </Stack>
               <StatusBar style="light" />
+              <OfflineIndicator />
             </ConnectedPomodoroProvider>
           </TaskProvider>
         </AuthProvider>
