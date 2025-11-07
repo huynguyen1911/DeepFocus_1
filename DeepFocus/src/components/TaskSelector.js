@@ -7,7 +7,6 @@ import {
   Modal,
 } from "react-native";
 import {
-  Portal,
   Text,
   Searchbar,
   Divider,
@@ -157,96 +156,94 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
   };
 
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        transparent={false}
-        onRequestClose={onClose}
-      >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>Chọn Nhiệm Vụ</Text>
-              <IconButton icon="close" size={24} onPress={onClose} />
-            </View>
-
-            {/* Search Bar */}
-            <Searchbar
-              placeholder="Tìm kiếm nhiệm vụ..."
-              onChangeText={setSearchQuery}
-              value={searchQuery}
-              style={styles.searchBar}
-              autoCorrect={false}
-              autoCapitalize="none"
-            />
-
-            {/* Sort Buttons */}
-            <View style={styles.sortContainer}>
-              <Text style={styles.sortLabel}>Sắp xếp:</Text>
-              <View style={styles.sortButtons}>
-                <Chip
-                  mode={sortMode === "priority" ? "flat" : "outlined"}
-                  selected={sortMode === "priority"}
-                  onPress={() => setSortMode("priority")}
-                  style={styles.sortChip}
-                >
-                  Độ ưu tiên
-                </Chip>
-                <Chip
-                  mode={sortMode === "dueDate" ? "flat" : "outlined"}
-                  selected={sortMode === "dueDate"}
-                  onPress={() => setSortMode("dueDate")}
-                  style={styles.sortChip}
-                >
-                  Hạn chót
-                </Chip>
-              </View>
-            </View>
-
-            <Divider />
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={onClose}
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle}>Chọn Nhiệm Vụ</Text>
+            <IconButton icon="close" size={24} onPress={onClose} />
           </View>
 
-          {/* Task List */}
-          {filteredTasks.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📋</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery.trim()
-                  ? `Không tìm thấy "${searchQuery}"`
-                  : "Không có nhiệm vụ nào"}
-              </Text>
-              <Text style={styles.emptySubtext}>
-                Tạo nhiệm vụ mới để bắt đầu sử dụng Pomodoro Timer
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredTasks}
-              renderItem={renderTaskItem}
-              keyExtractor={(item) => item._id || item.id}
-              contentContainerStyle={styles.listContent}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
+          {/* Search Bar */}
+          <Searchbar
+            placeholder="Tìm kiếm nhiệm vụ..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
 
-          {/* Bottom Actions */}
-          <View style={styles.bottomActions}>
-            <TouchableOpacity
-              style={styles.noTaskButton}
-              onPress={() => onSelectTask(null)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.noTaskText}>
-                ⏭️ Bắt đầu mà không chọn nhiệm vụ
-              </Text>
-            </TouchableOpacity>
+          {/* Sort Buttons */}
+          <View style={styles.sortContainer}>
+            <Text style={styles.sortLabel}>Sắp xếp:</Text>
+            <View style={styles.sortButtons}>
+              <Chip
+                mode={sortMode === "priority" ? "flat" : "outlined"}
+                selected={sortMode === "priority"}
+                onPress={() => setSortMode("priority")}
+                style={styles.sortChip}
+              >
+                Độ ưu tiên
+              </Chip>
+              <Chip
+                mode={sortMode === "dueDate" ? "flat" : "outlined"}
+                selected={sortMode === "dueDate"}
+                onPress={() => setSortMode("dueDate")}
+                style={styles.sortChip}
+              >
+                Hạn chót
+              </Chip>
+            </View>
           </View>
+
+          <Divider />
         </View>
-      </Modal>
-    </Portal>
+
+        {/* Task List */}
+        {filteredTasks.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>📋</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery.trim()
+                ? `Không tìm thấy "${searchQuery}"`
+                : "Không có nhiệm vụ nào"}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Tạo nhiệm vụ mới để bắt đầu sử dụng Pomodoro Timer
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredTasks}
+            renderItem={renderTaskItem}
+            keyExtractor={(item) => item._id || item.id}
+            contentContainerStyle={styles.listContent}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        {/* Bottom Actions */}
+        <View style={styles.bottomActions}>
+          <TouchableOpacity
+            style={styles.noTaskButton}
+            onPress={() => onSelectTask(null)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.noTaskText}>
+              ⏭️ Bắt đầu mà không chọn nhiệm vụ
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 };
 

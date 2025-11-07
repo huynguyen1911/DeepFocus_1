@@ -4,17 +4,19 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: "#FF5252",
+    primary: "#FF5252", // Work - Đỏ
     primaryContainer: "#FFCDD2",
-    secondary: "#F44336",
-    secondaryContainer: "#FFEBEE",
-    tertiary: "#E57373",
+    secondary: "#66BB6A", // Short Break - Xanh lá
+    secondaryContainer: "#C8E6C9",
+    tertiary: "#5C6BC0", // Long Break - Xanh dương/Tím
+    tertiaryContainer: "#C5CAE9",
     surface: "#FFFFFF",
     surfaceVariant: "#FAFAFA",
     background: "#FFFFFF",
     error: "#B71C1C",
     onPrimary: "#FFFFFF",
     onSecondary: "#FFFFFF",
+    onTertiary: "#FFFFFF",
     onSurface: "#212121",
     onBackground: "#212121",
   },

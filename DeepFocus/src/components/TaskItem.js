@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Alert, Modal } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { router } from "expo-router";
 import {
@@ -9,8 +9,6 @@ import {
   IconButton,
   Chip,
   useTheme,
-  Portal,
-  Modal,
   Button,
   Divider,
 } from "react-native-paper";
@@ -322,82 +320,99 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
       </Swipeable>
 
       {/* Long Press Modal - Action Sheet */}
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          onDismiss={closeModal}
-          contentContainerStyle={styles.modalContainer}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeModal}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeModal}
         >
-          <Card style={styles.actionSheet}>
-            <Card.Content style={styles.actionSheetContent}>
-              <Text variant="titleMedium" style={styles.actionSheetTitle}>
-                {task.title}
-              </Text>
-              <Divider style={styles.actionDivider} />
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Card style={styles.actionSheet}>
+              <Card.Content style={styles.actionSheetContent}>
+                <Text variant="titleMedium" style={styles.actionSheetTitle}>
+                  {task.title}
+                </Text>
+                <Divider style={styles.actionDivider} />
 
-              {/* View Details Action */}
-              <Button
-                mode="text"
-                icon="eye"
-                onPress={handleViewDetails}
-                style={styles.actionButton}
-                contentStyle={styles.actionButtonContent}
-                labelStyle={styles.actionButtonLabel}
-              >
-                Xem chi tiết
-              </Button>
-
-              {/* Start Timer Action - Only for incomplete tasks */}
-              {!task.isCompleted && onStartTimer && (
+                {/* View Details Action */}
                 <Button
                   mode="text"
-                  icon="timer"
-                  onPress={() => {
-                    console.log("🔵 Long press timer button pressed!");
-                    handleStartTimer();
-                  }}
+                  icon="eye"
+                  onPress={handleViewDetails}
                   style={styles.actionButton}
                   contentStyle={styles.actionButtonContent}
                   labelStyle={styles.actionButtonLabel}
                 >
-                  Bắt đầu timer
+                  Xem chi tiết
                 </Button>
-              )}
 
-              {/* Delete Action */}
-              <Button
-                mode="text"
-                icon="delete"
-                onPress={handleDelete}
-                style={styles.actionButton}
-                contentStyle={styles.actionButtonContent}
-                labelStyle={[
-                  styles.actionButtonLabel,
-                  styles.deleteButtonLabel,
-                ]}
-              >
-                Xóa nhiệm vụ
-              </Button>
+                {/* Start Timer Action - Only for incomplete tasks */}
+                {!task.isCompleted && onStartTimer && (
+                  <Button
+                    mode="text"
+                    icon="timer"
+                    onPress={() => {
+                      console.log("🔵 Long press timer button pressed!");
+                      handleStartTimer();
+                    }}
+                    style={styles.actionButton}
+                    contentStyle={styles.actionButtonContent}
+                    labelStyle={styles.actionButtonLabel}
+                  >
+                    Bắt đầu timer
+                  </Button>
+                )}
 
-              <Divider style={styles.actionDivider} />
+                {/* Delete Action */}
+                <Button
+                  mode="text"
+                  icon="delete"
+                  onPress={handleDelete}
+                  style={styles.actionButton}
+                  contentStyle={styles.actionButtonContent}
+                  labelStyle={[
+                    styles.actionButtonLabel,
+                    styles.deleteButtonLabel,
+                  ]}
+                >
+                  Xóa nhiệm vụ
+                </Button>
 
-              {/* Cancel Button */}
-              <Button
-                mode="contained"
-                onPress={closeModal}
-                style={styles.cancelButton}
-              >
-                Đóng
-              </Button>
-            </Card.Content>
-          </Card>
-        </Modal>
-      </Portal>
+                <Divider style={styles.actionDivider} />
+
+                {/* Cancel Button */}
+                <Button
+                  mode="contained"
+                  onPress={closeModal}
+                  style={styles.cancelButton}
+                >
+                  Đóng
+                </Button>
+              </Card.Content>
+            </Card>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 };
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
   card: {
     marginHorizontal: 16,
     marginVertical: 6,

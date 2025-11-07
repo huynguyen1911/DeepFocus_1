@@ -12,6 +12,7 @@ import {
 import { usePomodoro, TIMER_STATES } from "../contexts/PomodoroContext";
 import { formatTime } from "../utils/helpers";
 import TaskSelector from "./TaskSelector";
+import PomodoroCompletionModal from "./PomodoroCompletionModal";
 
 const Timer = () => {
   const theme = useTheme();
@@ -22,6 +23,8 @@ const Timer = () => {
     isActive,
     completedPomodoros,
     activeTask,
+    showCompletionModal,
+    pendingBreakType,
     startTimer,
     pauseTimer,
     resetTimer,
@@ -30,6 +33,8 @@ const Timer = () => {
     startWorkSessionWithTask,
     getInitialDuration,
     clearActiveTask,
+    handleStartBreakFromModal,
+    handleCloseCompletionModal,
   } = usePomodoro();
 
   // Handle task selection
@@ -58,6 +63,8 @@ const Timer = () => {
         return "Tập Trung";
       case TIMER_STATES.SHORT_BREAK:
         return "Nghỉ Ngắn";
+      case TIMER_STATES.LONG_BREAK:
+        return "Nghỉ Dài";
       default:
         return "Sẵn Sàng";
     }
@@ -70,6 +77,8 @@ const Timer = () => {
         return "#FF5252";
       case TIMER_STATES.SHORT_BREAK:
         return "#66BB6A";
+      case TIMER_STATES.LONG_BREAK:
+        return "#5C6BC0";
       default:
         return "#9E9E9E";
     }
@@ -281,8 +290,17 @@ const Timer = () => {
 
         {/* Timer Display */}
         <Text style={[styles.timerText, { color: getStateColor() }]}>
-          {formatTime(timeLeft)}
+          {timerState === TIMER_STATES.IDLE
+            ? formatTime(getInitialDuration()) // Show initial duration when idle
+            : formatTime(timeLeft)}
         </Text>
+
+        {/* Total Duration Display */}
+        {timerState !== TIMER_STATES.IDLE && (
+          <Text style={styles.durationText}>
+            / {formatTime(getInitialDuration())}
+          </Text>
+        )}
 
         {/* Progress Bar */}
         {timerState !== TIMER_STATES.IDLE && (
@@ -313,6 +331,15 @@ const Timer = () => {
         visible={showTaskSelector}
         onClose={() => setShowTaskSelector(false)}
         onSelectTask={handleSelectTask}
+      />
+
+      {/* Pomodoro Completion Modal */}
+      <PomodoroCompletionModal
+        visible={showCompletionModal}
+        onStartBreak={handleStartBreakFromModal}
+        onClose={handleCloseCompletionModal}
+        isLongBreak={pendingBreakType === "long"}
+        completedPomodoros={completedPomodoros}
       />
     </Card>
   );
@@ -384,6 +411,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     marginVertical: 24,
+    fontVariant: ["tabular-nums"],
+  },
+  durationText: {
+    fontSize: 24,
+    fontWeight: "600",
+    textAlign: "center",
+    color: "#757575",
+    marginTop: -20,
+    marginBottom: 12,
     fontVariant: ["tabular-nums"],
   },
   progressContainer: {

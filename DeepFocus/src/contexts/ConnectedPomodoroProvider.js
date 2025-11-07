@@ -40,13 +40,18 @@ export const ConnectedPomodoroProvider = ({ children }) => {
       if (result.success) {
         console.log(`✅ Task pomodoro updated successfully!`);
 
-        // Check if task was auto-completed (reached goal)
+        // Get the updated task data
         const updatedTask = result.data;
+
+        // Return the updated task to sync with PomodoroContext
         if (updatedTask && updatedTask.isCompleted) {
           console.log(`🎉 Task auto-completed! It will be cleared from timer.`);
           // Return a flag to indicate task should be cleared
-          return { taskCompleted: true };
+          return { taskCompleted: true, updatedTask };
         }
+
+        // Return updated task for syncing
+        return { taskCompleted: false, updatedTask };
       } else {
         console.error(`❌ Failed to update task: ${result.error}`);
       }
