@@ -1,24 +1,29 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, StyleSheet, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Card, Text, useTheme, Divider, IconButton, Menu, FAB, Searchbar, SegmentedButtons } from 'react-native-paper';
+import { View, StyleSheet, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity, Pressable } from 'react-native';
+import { Card, Text, useTheme, Divider, IconButton, Menu, FAB, Searchbar, SegmentedButtons, Portal, List } from 'react-native-paper';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Timer from '../components/Timer';
 import TaskItem from '../components/TaskItem';
+import DailyPomodoroProgress from '../components/DailyPomodoroProgress';
 import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useTasks } from '../contexts/TaskContext';
-import { taskAPI } from '../services/api';
+import { taskAPI, statsAPI } from '../services/api';
 
 const HomeScreen = () => {
   const theme = useTheme();
   const { user, logout } = useAuth();
-  const { completedPomodoros, startWorkSessionWithTask } = usePomodoro();
+  const { completedPomodoros, startWorkSessionWithTask, settings } = usePomodoro();
   const { tasks, isLoading, loadTasks, updateTask } = useTasks();
   const [greeting] = useState(getGreeting());
   const [menuVisible, setMenuVisible] = useState(false);
+  const [menuKey, setMenuKey] = useState(0); // Force remount menu to fix stuck state
+  const [pendingAction, setPendingAction] = useState<'profile' | 'settings' | 'logout' | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0 });
+  const iconButtonRef = useRef<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -31,6 +36,8 @@ const HomeScreen = () => {
     totalPomodoros: 0,
     pendingTasks: 0,
   });
+  const [todayPomodoros, setTodayPomodoros] = useState(0);
+  const [todayWorkTime, setTodayWorkTime] = useState(0); // Total work time today in minutes
   const [sortBy, setSortBy] = useState("date"); // date, priority, pomodoros, dueDate
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
@@ -56,6 +63,37 @@ const HomeScreen = () => {
 
     loadStats();
   }, [tasks]); // Reload when tasks change
+
+  // Load today's pomodoro count from stats API
+  useEffect(() => {
+    const loadTodayStats = async () => {
+      try {
+        // Small delay to ensure backend has processed the sync
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const statsData = await statsAPI.getStats();
+        
+        // Find today's stats from last30Days
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        const todayStats = statsData.last30Days?.find((day: any) => {
+          const dayStr = new Date(day.date).toISOString().split('T')[0];
+          return dayStr === todayStr;
+        });
+
+        const newCount = todayStats?.completedPomodoros || 0;
+        const newWorkTime = todayStats?.totalWorkTime || 0;
+        setTodayPomodoros(newCount);
+        setTodayWorkTime(newWorkTime);
+      } catch (error) {
+        console.error('❌ Failed to load today stats:', error);
+        setTodayPomodoros(0);
+      }
+    };
+
+    loadTodayStats();
+  }, [completedPomodoros]); // Reload when pomodoros complete
 
   // Load sort preference from AsyncStorage
   useEffect(() => {
@@ -85,25 +123,68 @@ const HomeScreen = () => {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc chắn muốn đăng xuất không?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel',
-        },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-          },
-        },
-      ]
-    );
+  const handleProfilePress = () => {
+    setPendingAction('profile');
+    setMenuVisible(false);
   };
+
+  const handleSettingsPress = () => {
+    setPendingAction('settings');
+    setMenuVisible(false);
+  };
+
+  const handleLogout = () => {
+    setPendingAction('logout');
+    setMenuVisible(false);
+  };
+
+  // Execute pending action after menu is dismissed
+  useEffect(() => {
+    if (!menuVisible && pendingAction) {
+      // Clear pending action immediately to prevent re-execution
+      const action = pendingAction;
+      setPendingAction(null);
+      
+      // Small delay to ensure menu is fully dismissed
+      setTimeout(() => {
+        switch (action) {
+          case 'profile':
+            Alert.alert('Hồ sơ', 'Tính năng hồ sơ đang được phát triển');
+            // Remount menu after Alert to fix stuck state
+            setTimeout(() => setMenuKey(prev => prev + 1), 200);
+            break;
+          case 'settings':
+            router.push('/settings');
+            // Remount menu after navigation
+            setTimeout(() => setMenuKey(prev => prev + 1), 200);
+            break;
+          case 'logout':
+            Alert.alert(
+              'Đăng xuất',
+              'Bạn có chắc chắn muốn đăng xuất không?',
+              [
+                { 
+                  text: 'Hủy', 
+                  style: 'cancel',
+                  onPress: () => {
+                    // Remount menu when cancel
+                    setTimeout(() => setMenuKey(prev => prev + 1), 200);
+                  }
+                },
+                {
+                  text: 'Đăng xuất',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await logout();
+                  },
+                },
+              ]
+            );
+            break;
+        }
+      }, 150);
+    }
+  }, [menuVisible, pendingAction, logout]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -246,24 +327,14 @@ const HomeScreen = () => {
                 Xin chào, {user?.username || 'User'}!
               </Text>
             </View>
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchor={
-                <IconButton
-                  icon="account-circle"
-                  iconColor={theme.colors.onPrimary}
-                  size={28}
-                  onPress={() => setMenuVisible(true)}
-                />
-              }
-            >
-            <Menu.Item onPress={() => { setMenuVisible(false); }} title="Hồ sơ" leadingIcon="account" />
-            <Menu.Item onPress={() => { setMenuVisible(false); }} title="Cài đặt" leadingIcon="cog" />
-            <Menu.Item onPress={() => { setMenuVisible(false); handleLogout(); }} title="Đăng xuất" leadingIcon="logout" />
-          </Menu>
+            <IconButton
+              icon="account-circle"
+              iconColor={theme.colors.onPrimary}
+              size={28}
+              onPress={() => setMenuVisible(true)}
+            />
+          </View>
         </View>
-      </View>
       
       <ScrollView 
         ref={scrollViewRef}
@@ -296,6 +367,14 @@ const HomeScreen = () => {
           
           <View style={styles.statsSection}>
             <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Thống kê của bạn</Text>
+            
+            {/* Daily Progress */}
+            <DailyPomodoroProgress 
+              completedToday={todayPomodoros} 
+              goal={settings?.dailyGoal || 8} 
+              totalWorkTime={todayWorkTime}
+            />
+            
             <View style={styles.statsContainer}>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
@@ -428,6 +507,44 @@ const HomeScreen = () => {
       )}
       
       <FAB icon="plus" style={styles.fab} onPress={() => router.push('/add-task')} color="#fff" />
+      
+      {/* Custom Menu Modal - more reliable than React Native Paper Menu */}
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <Pressable 
+          style={styles.menuOverlay} 
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={styles.menuContainer}>
+            <Card style={styles.menuCard}>
+              <List.Item
+                title="Hồ sơ"
+                left={props => <List.Icon {...props} icon="account" />}
+                onPress={handleProfilePress}
+                style={styles.menuItem}
+              />
+              <Divider />
+              <List.Item
+                title="Cài đặt"
+                left={props => <List.Icon {...props} icon="cog" />}
+                onPress={handleSettingsPress}
+                style={styles.menuItem}
+              />
+              <Divider />
+              <List.Item
+                title="Đăng xuất"
+                left={props => <List.Icon {...props} icon="logout" />}
+                onPress={handleLogout}
+                style={styles.menuItem}
+              />
+            </Card>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
     </KeyboardAvoidingView>
   );
@@ -612,6 +729,23 @@ const styles = StyleSheet.create({
     right: 16, 
     bottom: 16, 
     backgroundColor: '#FF5252' 
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+  },
+  menuContainer: {
+    marginTop: 60,
+    marginRight: 16,
+  },
+  menuCard: {
+    minWidth: 200,
+    elevation: 8,
+  },
+  menuItem: {
+    paddingVertical: 4,
   },
 });
 

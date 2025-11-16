@@ -6,6 +6,9 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { statsAPI } from "../services/api";
+import { useAuth } from "./AuthContext";
 
 // Timer states
 export const TIMER_STATES = {
@@ -34,12 +37,13 @@ const POMODORO_ACTIONS = {
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  workDuration: 10, //1500, // 25 minutes in seconds
-  shortBreakDuration: 5, //300, // 5 minutes in seconds
-  longBreakDuration: 10, //600, // 10 minutes in seconds
+  workDuration: 1500, // 25 minutes in seconds
+  shortBreakDuration: 300, // 5 minutes in seconds
+  longBreakDuration: 900, // 15 minutes in seconds
   pomodorosUntilLongBreak: 4,
   autoStartBreaks: true,
   autoStartPomodoros: false,
+  dailyGoal: 8, // Daily pomodoro goal for achievement tracking
 };
 
 // Initial state
@@ -116,12 +120,23 @@ const pomodoroReducer = (state, action) => {
       };
 
     case POMODORO_ACTIONS.UPDATE_SETTINGS:
+      console.log("🔧 Reducer UPDATE_SETTINGS:", {
+        oldDailyGoal: state.settings.dailyGoal,
+        oldDailyGoalType: typeof state.settings.dailyGoal,
+        newDailyGoal: action.payload.dailyGoal,
+        newDailyGoalType: typeof action.payload.dailyGoal,
+      });
+      const updatedSettings = {
+        ...state.settings,
+        ...action.payload,
+      };
+      console.log("🔧 After merge:", {
+        dailyGoal: updatedSettings.dailyGoal,
+        dailyGoalType: typeof updatedSettings.dailyGoal,
+      });
       return {
         ...state,
-        settings: {
-          ...state.settings,
-          ...action.payload,
-        },
+        settings: updatedSettings,
       };
 
     case POMODORO_ACTIONS.SET_ACTIVE_TASK:
@@ -160,11 +175,15 @@ const pomodoroReducer = (state, action) => {
   }
 };
 
+// Storage key
+const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
+
 // Create context
 const PomodoroContext = createContext();
 
 // Provider component
 export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
+  const { user } = useAuth();
   const [state, dispatch] = useReducer(pomodoroReducer, initialState);
   const intervalRef = useRef(null);
 
@@ -180,6 +199,39 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
   useEffect(() => {
     onPomodoroCompleteRef.current = onPomodoroComplete;
   }, [onPomodoroComplete]);
+
+  // Load settings from AsyncStorage on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const userId = user?.id || user?._id || "default";
+        const USER_SETTINGS_KEY = `${SETTINGS_STORAGE_KEY}_${userId}`;
+        const savedSettings = await AsyncStorage.getItem(USER_SETTINGS_KEY);
+
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          console.log(
+            "⚙️ PomodoroContext: Loading settings from AsyncStorage:",
+            parsed
+          );
+
+          // Update settings in state
+          dispatch({
+            type: POMODORO_ACTIONS.UPDATE_SETTINGS,
+            payload: parsed,
+          });
+        } else {
+          console.log("⚙️ PomodoroContext: No saved settings, using defaults");
+        }
+      } catch (error) {
+        console.error("❌ PomodoroContext: Error loading settings:", error);
+      }
+    };
+
+    if (user) {
+      loadSettings();
+    }
+  }, [user]);
 
   // Define helper functions with useCallback
   const startWorkSession = useCallback(() => {
@@ -271,14 +323,27 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
           // Update completed count
           dispatch({ type: POMODORO_ACTIONS.COMPLETE_POMODORO });
 
+          // Sync stats with backend
+          // Ensure minimum 1 minute to avoid backend validation error
+          const durationInMinutes = Math.max(
+            1,
+            Math.round(currentState.settings.workDuration / 60)
+          );
+          try {
+            await statsAPI.syncStats(
+              durationInMinutes,
+              currentState.activeTask?._id || null
+            );
+            console.log("📊 Stats synced successfully with backend");
+          } catch (error) {
+            console.error("❌ Failed to sync stats:", error.message);
+            // Continue even if sync fails - user can retry later
+          }
+
           // Call callback to update task if provided
           if (onPomodoroCompleteRef.current && currentState.activeTask) {
             console.log(
               `📝 Updating task pomodoro count for: ${currentState.activeTask.title}`
-            );
-            // Convert work duration from seconds to minutes
-            const durationInMinutes = Math.round(
-              currentState.settings.workDuration / 60
             );
 
             // Call callback and check if task was completed
@@ -511,6 +576,11 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
     console.log(`  🚀 autoStartBreaks: ${newSettings.autoStartBreaks}`);
     console.log(`  🔄 autoStartPomodoros: ${newSettings.autoStartPomodoros}`);
     console.log(`  🔔 notifications: ${newSettings.notifications}`);
+    console.log(
+      `  🎯 dailyGoal: ${
+        newSettings.dailyGoal
+      } (type: ${typeof newSettings.dailyGoal})`
+    );
 
     dispatch({
       type: POMODORO_ACTIONS.UPDATE_SETTINGS,

@@ -293,6 +293,84 @@ export const taskAPI = {
   },
 };
 
+// Stats API functions
+export const statsAPI = {
+  // Get overall user stats
+  getStats: async () => {
+    try {
+      const response = await apiClient.get("/stats");
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Sync pomodoro completion
+  syncStats: async (duration, taskId = null) => {
+    try {
+      const response = await apiClient.post("/stats/sync", {
+        duration,
+        taskId,
+      });
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get daily stats for specific date
+  getDailyStats: async (date) => {
+    try {
+      const dateStr =
+        typeof date === "string" ? date : date.toISOString().split("T")[0];
+      const response = await apiClient.get(`/stats/daily/${dateStr}`);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get weekly stats
+  getWeeklyStats: async (year, week) => {
+    try {
+      const response = await apiClient.get(`/stats/weekly/${year}/${week}`);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get monthly stats
+  getMonthlyStats: async (year, month) => {
+    try {
+      const response = await apiClient.get(`/stats/monthly/${year}/${month}`);
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get all achievements with progress
+  getAchievements: async () => {
+    try {
+      const response = await apiClient.get("/stats/achievements");
+      return response.data.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Reset stats (for testing)
+  resetStats: async () => {
+    try {
+      const response = await apiClient.delete("/stats/reset");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // General API utilities
 export const apiUtils = {
   // Check if user is authenticated

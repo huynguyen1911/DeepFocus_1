@@ -10,6 +10,7 @@ export const theme = {
     secondaryContainer: "#C8E6C9",
     tertiary: "#5C6BC0", // Long Break - Xanh dương/Tím
     tertiaryContainer: "#C5CAE9",
+    accent: "#FF9800", // Accent - Cam
     surface: "#FFFFFF",
     surfaceVariant: "#FAFAFA",
     background: "#FFFFFF",

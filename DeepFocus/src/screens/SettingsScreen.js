@@ -12,6 +12,7 @@ import {
 import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePomodoro } from "../contexts/PomodoroContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
@@ -19,7 +20,12 @@ const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
 const SettingsScreen = () => {
   const theme = useTheme();
   const { settings, updateSettings } = usePomodoro();
+  const { user } = useAuth();
   const navigation = useNavigation();
+
+  // Create user-specific storage key
+  const userId = user?.id || user?._id || "default";
+  const USER_SETTINGS_KEY = `${SETTINGS_STORAGE_KEY}_${userId}`;
 
   // State for settings (in minutes for display)
   const [workDuration, setWorkDuration] = useState(25);
@@ -29,13 +35,15 @@ const SettingsScreen = () => {
   const [autoStartBreaks, setAutoStartBreaks] = useState(true);
   const [autoStartPomodoros, setAutoStartPomodoros] = useState(false);
   const [notifications, setNotifications] = useState(true);
-  const [testMode, setTestMode] = useState(false); // ← TEST MODE TOGGLE
+  const [dailyGoal, setDailyGoal] = useState(8); // ← DAILY GOAL SETTING
+  const [testMode, setTestMode] = useState(false); // ← TEST MODE TOGGLE (default OFF for production)
 
   // UI State
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false); // Track if settings loaded from storage
   const justSavedRef = useRef(false); // Prevent re-detection immediately after save
   const skipUntilTimestampRef = useRef(0); // Skip detection until this timestamp
   const lastSavedTestModeRef = useRef(false); // Track testMode value after save
@@ -49,7 +57,8 @@ const SettingsScreen = () => {
     autoStartBreaks: true,
     autoStartPomodoros: false,
     notifications: true,
-    testMode: false,
+    dailyGoal: 8,
+    testMode: false, // Match useState default for testMode
   });
 
   // Load settings on mount
@@ -119,7 +128,7 @@ const SettingsScreen = () => {
                     };
 
                 AsyncStorage.setItem(
-                  SETTINGS_STORAGE_KEY,
+                  USER_SETTINGS_KEY,
                   JSON.stringify(newSettings)
                 )
                   .then(() => {
@@ -160,13 +169,46 @@ const SettingsScreen = () => {
   );
 
   // Handle tab switch - intercept when user tries to leave Settings
+  // Use ref to track unsaved changes without causing re-renders
+  const hasUnsavedChangesRef = useRef(false);
+
+  // Store current values in ref to avoid stale closure in Alert callbacks
+  const currentValuesRef = useRef({});
+
+  // Sync ref with state
+  useEffect(() => {
+    hasUnsavedChangesRef.current = hasUnsavedChanges;
+    currentValuesRef.current = {
+      workDuration,
+      shortBreakDuration,
+      longBreakDuration,
+      pomodorosUntilLongBreak,
+      autoStartBreaks,
+      autoStartPomodoros,
+      notifications,
+      dailyGoal,
+      testMode,
+    };
+  }, [
+    hasUnsavedChanges,
+    workDuration,
+    shortBreakDuration,
+    longBreakDuration,
+    pomodorosUntilLongBreak,
+    autoStartBreaks,
+    autoStartPomodoros,
+    notifications,
+    dailyGoal,
+    testMode,
+  ]);
+
   useFocusEffect(
     useCallback(() => {
       // This cleanup runs when screen is about to blur (lose focus)
       return () => {
         console.log(
           "🌀 Screen losing focus, hasUnsavedChanges:",
-          hasUnsavedChanges,
+          hasUnsavedChangesRef.current,
           "justSavedRef:",
           justSavedRef.current
         );
@@ -177,7 +219,7 @@ const SettingsScreen = () => {
           return;
         }
 
-        if (hasUnsavedChanges) {
+        if (hasUnsavedChangesRef.current) {
           console.log("⚠️ Has unsaved changes, showing alert");
 
           // Use setTimeout to show Alert after blur completes
@@ -208,6 +250,7 @@ const SettingsScreen = () => {
                     setAutoStartBreaks(originalValues.autoStartBreaks);
                     setAutoStartPomodoros(originalValues.autoStartPomodoros);
                     setNotifications(originalValues.notifications);
+                    setDailyGoal(originalValues.dailyGoal || 8);
                     setTestMode(originalValues.testMode);
                     setHasUnsavedChanges(false);
                     console.log("✅ Changes discarded");
@@ -216,9 +259,73 @@ const SettingsScreen = () => {
                 {
                   text: "Lưu Thay Đổi",
                   onPress: async () => {
-                    // Save settings
-                    await handleSaveSettings();
-                    console.log("✅ Changes saved");
+                    // Save directly from ref values (to avoid stale state)
+                    const vals = currentValuesRef.current;
+                    console.log("📌 Saving from ref values:", vals);
+
+                    // Save directly without updating state first
+                    try {
+                      setIsSaving(true);
+
+                      const newSettings = vals.testMode
+                        ? {
+                            workDuration: 10,
+                            shortBreakDuration: 5,
+                            longBreakDuration: 10,
+                            pomodorosUntilLongBreak:
+                              vals.pomodorosUntilLongBreak,
+                            autoStartBreaks: vals.autoStartBreaks,
+                            autoStartPomodoros: vals.autoStartPomodoros,
+                            notifications: vals.notifications,
+                            dailyGoal: vals.dailyGoal,
+                            testMode: true,
+                          }
+                        : {
+                            workDuration: Math.max(1, vals.workDuration) * 60,
+                            shortBreakDuration:
+                              Math.max(1, vals.shortBreakDuration) * 60,
+                            longBreakDuration:
+                              Math.max(1, vals.longBreakDuration) * 60,
+                            pomodorosUntilLongBreak:
+                              vals.pomodorosUntilLongBreak,
+                            autoStartBreaks: vals.autoStartBreaks,
+                            autoStartPomodoros: vals.autoStartPomodoros,
+                            notifications: vals.notifications,
+                            dailyGoal: vals.dailyGoal,
+                            testMode: false,
+                          };
+
+                      await AsyncStorage.setItem(
+                        USER_SETTINGS_KEY,
+                        JSON.stringify(newSettings)
+                      );
+
+                      updateSettings(newSettings);
+
+                      const newOriginalValues = {
+                        workDuration: vals.workDuration,
+                        shortBreakDuration: vals.shortBreakDuration,
+                        longBreakDuration: vals.longBreakDuration,
+                        pomodorosUntilLongBreak: vals.pomodorosUntilLongBreak,
+                        autoStartBreaks: vals.autoStartBreaks,
+                        autoStartPomodoros: vals.autoStartPomodoros,
+                        notifications: vals.notifications,
+                        dailyGoal: vals.dailyGoal,
+                        testMode: vals.testMode,
+                      };
+
+                      justSavedRef.current = true;
+                      lastSavedTestModeRef.current = vals.testMode;
+
+                      setOriginalValues(newOriginalValues);
+                      setHasUnsavedChanges(false);
+
+                      console.log("✅ Changes saved from ref");
+                      setIsSaving(false);
+                    } catch (error) {
+                      console.error("❌ Error saving from ref:", error);
+                      setIsSaving(false);
+                    }
                   },
                 },
               ],
@@ -227,7 +334,7 @@ const SettingsScreen = () => {
           }, 100);
         }
       };
-    }, [hasUnsavedChanges, originalValues, navigation])
+    }, [originalValues, navigation])
   );
 
   // Handle navigation away (tab switch, etc.)
@@ -291,29 +398,37 @@ const SettingsScreen = () => {
           {
             text: "Lưu & Thoát",
             onPress: () => {
-              // Save first
-              const newSettings = testMode
+              // Save from ref to avoid stale state
+              const vals = currentValuesRef.current;
+              console.log("💾 Saving from ref (beforeRemove):", vals);
+
+              const newSettings = vals.testMode
                 ? {
                     workDuration: 10,
                     shortBreakDuration: 5,
                     longBreakDuration: 10,
-                    pomodorosUntilLongBreak,
-                    autoStartBreaks,
-                    autoStartPomodoros,
-                    notifications,
+                    pomodorosUntilLongBreak: vals.pomodorosUntilLongBreak,
+                    autoStartBreaks: vals.autoStartBreaks,
+                    autoStartPomodoros: vals.autoStartPomodoros,
+                    notifications: vals.notifications,
+                    dailyGoal: vals.dailyGoal,
+                    testMode: true,
                   }
                 : {
-                    workDuration: Math.max(1, workDuration) * 60,
-                    shortBreakDuration: Math.max(1, shortBreakDuration) * 60,
-                    longBreakDuration: Math.max(1, longBreakDuration) * 60,
-                    pomodorosUntilLongBreak,
-                    autoStartBreaks,
-                    autoStartPomodoros,
-                    notifications,
+                    workDuration: Math.max(1, vals.workDuration) * 60,
+                    shortBreakDuration:
+                      Math.max(1, vals.shortBreakDuration) * 60,
+                    longBreakDuration: Math.max(1, vals.longBreakDuration) * 60,
+                    pomodorosUntilLongBreak: vals.pomodorosUntilLongBreak,
+                    autoStartBreaks: vals.autoStartBreaks,
+                    autoStartPomodoros: vals.autoStartPomodoros,
+                    notifications: vals.notifications,
+                    dailyGoal: vals.dailyGoal,
+                    testMode: false,
                   };
 
               AsyncStorage.setItem(
-                SETTINGS_STORAGE_KEY,
+                USER_SETTINGS_KEY,
                 JSON.stringify(newSettings)
               )
                 .then(() => {
@@ -374,16 +489,27 @@ const SettingsScreen = () => {
         autoStartBreaks: settings.autoStartBreaks ?? true,
         autoStartPomodoros: settings.autoStartPomodoros ?? false,
         notifications: settings.notifications ?? true,
-        testMode: false,
+        dailyGoal: settings.dailyGoal ?? 8,
+        testMode: settings.testMode ?? false,
       });
     }
   }, [settings]);
 
   const loadSettings = async () => {
     try {
-      const savedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+      const savedSettings = await AsyncStorage.getItem(USER_SETTINGS_KEY);
+      console.log("📂 Loading settings from AsyncStorage:", savedSettings);
+
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
+        console.log("📋 Parsed settings:", {
+          dailyGoal: parsed.dailyGoal,
+          dailyGoalType: typeof parsed.dailyGoal,
+          testMode: parsed.testMode,
+          testModeType: typeof parsed.testMode,
+          fullSettings: parsed,
+        });
+
         // Ensure minimum of 1 minute when converting from seconds
         const workMin = Math.max(1, Math.round(parsed.workDuration / 60));
         const shortMin = Math.max(
@@ -392,6 +518,9 @@ const SettingsScreen = () => {
         );
         const longMin = Math.max(1, Math.round(parsed.longBreakDuration / 60));
 
+        // Load testMode from storage
+        const loadedTestMode = parsed.testMode ?? false;
+
         setWorkDuration(workMin);
         setShortBreakDuration(shortMin);
         setLongBreakDuration(longMin);
@@ -399,9 +528,19 @@ const SettingsScreen = () => {
         setAutoStartBreaks(parsed.autoStartBreaks ?? true);
         setAutoStartPomodoros(parsed.autoStartPomodoros ?? false);
         setNotifications(parsed.notifications ?? true);
+        setDailyGoal(parsed.dailyGoal ?? 8);
+        setTestMode(loadedTestMode);
+
+        // Update ref to match loaded testMode (prevent false positive change detection)
+        lastSavedTestModeRef.current = loadedTestMode;
+
+        console.log("✅ Loaded into state:", {
+          dailyGoal: parsed.dailyGoal ?? 8,
+          testMode: loadedTestMode,
+        });
 
         // Store original values
-        setOriginalValues({
+        const originalValuesToSet = {
           workDuration: workMin,
           shortBreakDuration: shortMin,
           longBreakDuration: longMin,
@@ -409,16 +548,92 @@ const SettingsScreen = () => {
           autoStartBreaks: parsed.autoStartBreaks ?? true,
           autoStartPomodoros: parsed.autoStartPomodoros ?? false,
           notifications: parsed.notifications ?? true,
-          testMode: false,
+          dailyGoal: parsed.dailyGoal ?? 8,
+          testMode: loadedTestMode,
+        };
+        console.log("📝 Setting originalValues:", originalValuesToSet);
+        setOriginalValues(originalValuesToSet);
+
+        // 🔄 Sync loaded settings to Context (so HomeScreen gets correct values)
+        const settingsForContext = {
+          workDuration: parsed.workDuration,
+          shortBreakDuration: parsed.shortBreakDuration,
+          longBreakDuration: parsed.longBreakDuration,
+          pomodorosUntilLongBreak: parsed.pomodorosUntilLongBreak || 4,
+          autoStartBreaks: parsed.autoStartBreaks ?? true,
+          autoStartPomodoros: parsed.autoStartPomodoros ?? false,
+          notifications: parsed.notifications ?? true,
+          dailyGoal: parsed.dailyGoal ?? 8,
+          testMode: loadedTestMode,
+        };
+        console.log("🔄 Syncing settings to Context:", settingsForContext);
+        updateSettings(settingsForContext);
+
+        // Mark settings as loaded
+        setIsSettingsLoaded(true);
+      } else {
+        // No saved settings, use defaults
+        console.log("📝 No saved settings, using defaults");
+
+        // Set default originalValues (UI already has default state from useState)
+        setOriginalValues({
+          workDuration: 25,
+          shortBreakDuration: 5,
+          longBreakDuration: 15,
+          pomodorosUntilLongBreak: 4,
+          autoStartBreaks: true,
+          autoStartPomodoros: false,
+          notifications: true,
+          dailyGoal: 8,
+          testMode: false, // Match useState default
         });
+
+        // Update ref to match default testMode
+        lastSavedTestModeRef.current = false;
+
+        // Sync defaults to Context (Production Mode → use 25/5/15 minutes)
+        const defaultSettingsForContext = {
+          workDuration: 25 * 60, // Production mode: 25 minutes
+          shortBreakDuration: 5 * 60, // Production mode: 5 minutes
+          longBreakDuration: 15 * 60, // Production mode: 15 minutes
+          pomodorosUntilLongBreak: 4,
+          autoStartBreaks: true,
+          autoStartPomodoros: false,
+          notifications: true,
+          dailyGoal: 8,
+          testMode: false,
+        };
+        console.log("🔄 Created default settings:", {
+          dailyGoal: defaultSettingsForContext.dailyGoal,
+          dailyGoalType: typeof defaultSettingsForContext.dailyGoal,
+          fullObject: defaultSettingsForContext,
+        });
+        console.log(
+          "🔄 Syncing default settings to Context:",
+          defaultSettingsForContext
+        );
+        console.log("🔄 Before updateSettings call:", {
+          dailyGoal: defaultSettingsForContext.dailyGoal,
+          dailyGoalType: typeof defaultSettingsForContext.dailyGoal,
+        });
+        updateSettings(defaultSettingsForContext);
+
+        setIsSettingsLoaded(true);
       }
     } catch (error) {
       console.error("Error loading settings:", error);
+      setIsSettingsLoaded(true);
     }
   };
 
   // Detect changes and show warning
   useEffect(() => {
+    // Skip detection until settings are loaded from storage
+    if (!isSettingsLoaded) {
+      console.log("⏳ Waiting for settings to load...");
+      return;
+    }
+
     // Skip the first immediate run after justSavedRef is set
     if (justSavedRef.current) {
       console.log("⏭️ Skipping change detection (just saved)");
@@ -492,7 +707,8 @@ const SettingsScreen = () => {
         pomodorosUntilLongBreak !== originalValues.pomodorosUntilLongBreak ||
         autoStartBreaks !== originalValues.autoStartBreaks ||
         autoStartPomodoros !== originalValues.autoStartPomodoros ||
-        notifications !== originalValues.notifications;
+        notifications !== originalValues.notifications ||
+        dailyGoal !== originalValues.dailyGoal;
     } else {
       // NOT in Test Mode: Check all settings including durations
       hasChanges =
@@ -502,7 +718,8 @@ const SettingsScreen = () => {
         pomodorosUntilLongBreak !== originalValues.pomodorosUntilLongBreak ||
         autoStartBreaks !== originalValues.autoStartBreaks ||
         autoStartPomodoros !== originalValues.autoStartPomodoros ||
-        notifications !== originalValues.notifications;
+        notifications !== originalValues.notifications ||
+        dailyGoal !== originalValues.dailyGoal;
     }
 
     console.log("🔍 Change detection:", {
@@ -511,6 +728,18 @@ const SettingsScreen = () => {
       testMode,
       originalTestMode: originalValues.testMode,
       testModeChanged,
+      current: {
+        workDuration,
+        shortBreakDuration,
+        longBreakDuration,
+        dailyGoal,
+      },
+      original: {
+        workDuration: originalValues.workDuration,
+        shortBreakDuration: originalValues.shortBreakDuration,
+        longBreakDuration: originalValues.longBreakDuration,
+        dailyGoal: originalValues.dailyGoal,
+      },
     });
 
     // Track unsaved changes silently (don't show banner)
@@ -527,9 +756,11 @@ const SettingsScreen = () => {
     autoStartBreaks,
     autoStartPomodoros,
     notifications,
+    dailyGoal,
     testMode,
     originalValues,
     hasUnsavedChanges,
+    isSettingsLoaded,
   ]);
 
   const handleSaveSettings = async () => {
@@ -548,6 +779,8 @@ const SettingsScreen = () => {
             autoStartBreaks,
             autoStartPomodoros,
             notifications,
+            dailyGoal,
+            testMode, // Save current test mode state
           }
         : {
             // Production mode: minutes to seconds with validation
@@ -558,11 +791,22 @@ const SettingsScreen = () => {
             autoStartBreaks,
             autoStartPomodoros,
             notifications,
+            dailyGoal,
+            testMode: false, // Save test mode state
           };
+
+      // 🔍 DEBUG: Log newSettings BEFORE saving
+      console.log("🔍 newSettings created:", {
+        dailyGoal: newSettings.dailyGoal,
+        dailyGoalType: typeof newSettings.dailyGoal,
+        dailyGoalState: dailyGoal,
+        dailyGoalStateType: typeof dailyGoal,
+        fullSettings: newSettings,
+      });
 
       // Save to AsyncStorage
       await AsyncStorage.setItem(
-        SETTINGS_STORAGE_KEY,
+        USER_SETTINGS_KEY,
         JSON.stringify(newSettings)
       );
 
@@ -579,10 +823,17 @@ const SettingsScreen = () => {
         autoStartBreaks: autoStartBreaks,
         autoStartPomodoros: autoStartPomodoros,
         notifications: notifications,
+        dailyGoal: dailyGoal,
         testMode: testMode,
       };
 
       console.log("💾 Updating originalValues to:", newOriginalValues);
+      console.log("🔍 dailyGoal type check:", {
+        value: dailyGoal,
+        type: typeof dailyGoal,
+        newSettingsValue: newSettings.dailyGoal,
+        newSettingsType: typeof newSettings.dailyGoal,
+      });
 
       // CRITICAL: Prevent useEffect from re-detecting changes immediately after save
       justSavedRef.current = true; // Flag to skip next change detection
@@ -824,6 +1075,37 @@ const SettingsScreen = () => {
                 step={1}
                 value={pomodorosUntilLongBreak}
                 onValueChange={setPomodorosUntilLongBreak}
+                minimumTrackTintColor={theme.colors.primary}
+                maximumTrackTintColor="#E0E0E0"
+                thumbTintColor={theme.colors.primary}
+              />
+
+              <Divider style={styles.divider} />
+
+              {/* Daily Goal Setting */}
+              <View style={styles.settingRow}>
+                <View style={styles.labelContainer}>
+                  <Text variant="bodyLarge" style={styles.label}>
+                    🎯 Mục tiêu hàng ngày
+                  </Text>
+                  <Text variant="bodySmall" style={styles.helpText}>
+                    Số pomodoro mục tiêu mỗi ngày
+                  </Text>
+                </View>
+                <Text
+                  variant="titleMedium"
+                  style={[styles.value, { color: theme.colors.primary }]}
+                >
+                  {dailyGoal}
+                </Text>
+              </View>
+              <Slider
+                style={styles.slider}
+                minimumValue={1}
+                maximumValue={20}
+                step={1}
+                value={dailyGoal}
+                onValueChange={(value) => setDailyGoal(Math.round(value))}
                 minimumTrackTintColor={theme.colors.primary}
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor={theme.colors.primary}

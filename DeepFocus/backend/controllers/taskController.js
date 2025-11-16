@@ -1,4 +1,5 @@
 const Task = require("../models/Task");
+const Stats = require("../models/Stats");
 const mongoose = require("mongoose");
 
 /**
@@ -341,12 +342,26 @@ const incrementPomodoro = async (req, res, next) => {
     // Get duration from request body (default to 25 if not provided)
     const duration = req.body.duration || 25;
 
+    // Check if task will be auto-completed after this pomodoro
+    const wasCompleted = task.isCompleted;
+    const willBeCompleted =
+      !wasCompleted && task.completedPomodoros + 1 >= task.estimatedPomodoros;
+
     // Use the model method to increment
     await task.incrementPomodoro(duration);
 
     console.log(
       `🍅 Incremented pomodoro for task: ${task.title} (${task.completedPomodoros}/${task.estimatedPomodoros})`
     );
+
+    // If task was just auto-completed, update stats
+    if (willBeCompleted && task.isCompleted) {
+      const stats = await Stats.getOrCreate(req.user._id);
+      await stats.incrementCompletedTasks();
+      console.log(
+        `📊 Task auto-completed! Stats updated: totalCompletedTasks = ${stats.totalCompletedTasks}`
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -396,16 +411,50 @@ const completeTask = async (req, res, next) => {
     }
 
     // Toggle completion status
+    const wasCompleted = task.isCompleted;
     task.isCompleted = !task.isCompleted;
 
     if (task.isCompleted) {
       // Mark as completed
       task.completedAt = new Date();
       console.log(`✅ Completed task: ${task.title}`);
+
+      // Update stats: increment completed tasks count
+      const stats = await Stats.getOrCreate(req.user._id);
+      await stats.incrementCompletedTasks();
+      console.log(
+        `📊 Stats updated: totalCompletedTasks = ${stats.totalCompletedTasks}`
+      );
     } else {
       // Mark as uncompleted (clear completedAt)
       task.completedAt = null;
       console.log(`↩️ Uncompleted task: ${task.title}`);
+
+      // Update stats: decrement completed tasks count (if it was previously completed)
+      if (wasCompleted) {
+        const stats = await Stats.getOrCreate(req.user._id);
+        if (stats.totalCompletedTasks > 0) {
+          stats.totalCompletedTasks -= 1;
+
+          // Also decrement from today's stats
+          const today = new Date(
+            Date.UTC(
+              new Date().getUTCFullYear(),
+              new Date().getUTCMonth(),
+              new Date().getUTCDate()
+            )
+          );
+          const dailyStat = stats.getStatsForDate(today);
+          if (dailyStat && dailyStat.completedTasks > 0) {
+            dailyStat.completedTasks -= 1;
+          }
+
+          await stats.save();
+          console.log(
+            `📊 Stats updated: totalCompletedTasks = ${stats.totalCompletedTasks}`
+          );
+        }
+      }
     }
 
     await task.save();

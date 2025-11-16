@@ -178,13 +178,15 @@ export const TaskProvider = ({ children }) => {
       try {
         const serverTask = await taskAPI.createTask(taskData);
 
-        // Replace temp task with server task
-        dispatch({ type: TASK_ACTIONS.UPDATE_TASK, payload: serverTask });
-
-        // Update storage - replace temp ID with real ID
-        const syncedTasks = state.tasks.map((t) =>
+        // Replace temp task with server task in state
+        // Use SET_TASKS to replace the entire array since temp ID != real ID
+        // IMPORTANT: Use updatedTasks (not state.tasks) because state hasn't updated yet!
+        const syncedTasks = updatedTasks.map((t) =>
           t._id === tempId ? serverTask : t
         );
+        dispatch({ type: TASK_ACTIONS.SET_TASKS, payload: syncedTasks });
+
+        // Update storage - replace temp ID with real ID
         await saveTasksToStorage(syncedTasks);
 
         console.log(`✅ Synced new task with server: ${serverTask.title}`);
