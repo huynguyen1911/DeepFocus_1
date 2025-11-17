@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { View, StyleSheet, ScrollView, Alert, BackHandler } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  BackHandler,
+  Linking,
+} from "react-native";
 import {
   Card,
   Text,
@@ -8,6 +15,8 @@ import {
   Snackbar,
   Divider,
   useTheme,
+  Avatar,
+  List,
 } from "react-native-paper";
 import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,7 +29,7 @@ const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
 const SettingsScreen = () => {
   const theme = useTheme();
   const { settings, updateSettings } = usePomodoro();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigation = useNavigation();
 
   // Create user-specific storage key
@@ -35,6 +44,8 @@ const SettingsScreen = () => {
   const [autoStartBreaks, setAutoStartBreaks] = useState(true);
   const [autoStartPomodoros, setAutoStartPomodoros] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [sound, setSound] = useState(true);
+  const [vibration, setVibration] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(8); // ← DAILY GOAL SETTING
   const [testMode, setTestMode] = useState(false); // ← TEST MODE TOGGLE (default OFF for production)
 
@@ -57,6 +68,8 @@ const SettingsScreen = () => {
     autoStartBreaks: true,
     autoStartPomodoros: false,
     notifications: true,
+    sound: true,
+    vibration: true,
     dailyGoal: 8,
     testMode: false, // Match useState default for testMode
   });
@@ -97,6 +110,8 @@ const SettingsScreen = () => {
                 setAutoStartBreaks(originalValues.autoStartBreaks);
                 setAutoStartPomodoros(originalValues.autoStartPomodoros);
                 setNotifications(originalValues.notifications);
+                setSound(originalValues.sound);
+                setVibration(originalValues.vibration);
                 setTestMode(originalValues.testMode);
                 setHasUnsavedChanges(false);
                 // Let back action proceed naturally
@@ -186,6 +201,8 @@ const SettingsScreen = () => {
       autoStartBreaks,
       autoStartPomodoros,
       notifications,
+      sound,
+      vibration,
       dailyGoal,
       testMode,
     };
@@ -198,6 +215,8 @@ const SettingsScreen = () => {
     autoStartBreaks,
     autoStartPomodoros,
     notifications,
+    sound,
+    vibration,
     dailyGoal,
     testMode,
   ]);
@@ -250,6 +269,8 @@ const SettingsScreen = () => {
                     setAutoStartBreaks(originalValues.autoStartBreaks);
                     setAutoStartPomodoros(originalValues.autoStartPomodoros);
                     setNotifications(originalValues.notifications);
+                    setSound(originalValues.sound);
+                    setVibration(originalValues.vibration);
                     setDailyGoal(originalValues.dailyGoal || 8);
                     setTestMode(originalValues.testMode);
                     setHasUnsavedChanges(false);
@@ -277,6 +298,8 @@ const SettingsScreen = () => {
                             autoStartBreaks: vals.autoStartBreaks,
                             autoStartPomodoros: vals.autoStartPomodoros,
                             notifications: vals.notifications,
+                            sound: vals.sound,
+                            vibration: vals.vibration,
                             dailyGoal: vals.dailyGoal,
                             testMode: true,
                           }
@@ -291,6 +314,8 @@ const SettingsScreen = () => {
                             autoStartBreaks: vals.autoStartBreaks,
                             autoStartPomodoros: vals.autoStartPomodoros,
                             notifications: vals.notifications,
+                            sound: vals.sound,
+                            vibration: vals.vibration,
                             dailyGoal: vals.dailyGoal,
                             testMode: false,
                           };
@@ -310,6 +335,8 @@ const SettingsScreen = () => {
                         autoStartBreaks: vals.autoStartBreaks,
                         autoStartPomodoros: vals.autoStartPomodoros,
                         notifications: vals.notifications,
+                        sound: vals.sound,
+                        vibration: vals.vibration,
                         dailyGoal: vals.dailyGoal,
                         testMode: vals.testMode,
                       };
@@ -389,6 +416,8 @@ const SettingsScreen = () => {
               setAutoStartBreaks(originalValues.autoStartBreaks);
               setAutoStartPomodoros(originalValues.autoStartPomodoros);
               setNotifications(originalValues.notifications);
+              setSound(originalValues.sound);
+              setVibration(originalValues.vibration);
               setTestMode(originalValues.testMode);
               setHasUnsavedChanges(false);
               // Continue with navigation
@@ -411,6 +440,8 @@ const SettingsScreen = () => {
                     autoStartBreaks: vals.autoStartBreaks,
                     autoStartPomodoros: vals.autoStartPomodoros,
                     notifications: vals.notifications,
+                    sound: vals.sound,
+                    vibration: vals.vibration,
                     dailyGoal: vals.dailyGoal,
                     testMode: true,
                   }
@@ -423,6 +454,8 @@ const SettingsScreen = () => {
                     autoStartBreaks: vals.autoStartBreaks,
                     autoStartPomodoros: vals.autoStartPomodoros,
                     notifications: vals.notifications,
+                    sound: vals.sound,
+                    vibration: vals.vibration,
                     dailyGoal: vals.dailyGoal,
                     testMode: false,
                   };
@@ -459,41 +492,10 @@ const SettingsScreen = () => {
     autoStartBreaks,
     autoStartPomodoros,
     notifications,
+    sound,
+    vibration,
     updateSettings,
   ]);
-
-  // Sync with context settings
-  useEffect(() => {
-    if (settings) {
-      // Ensure minimum of 1 minute when converting from seconds
-      const workMin = Math.max(1, Math.round(settings.workDuration / 60));
-      const shortMin = Math.max(
-        1,
-        Math.round(settings.shortBreakDuration / 60)
-      );
-      const longMin = Math.max(1, Math.round(settings.longBreakDuration / 60));
-
-      setWorkDuration(workMin);
-      setShortBreakDuration(shortMin);
-      setLongBreakDuration(longMin);
-      setPomodorosUntilLongBreak(settings.pomodorosUntilLongBreak || 4);
-      setAutoStartBreaks(settings.autoStartBreaks ?? true);
-      setAutoStartPomodoros(settings.autoStartPomodoros ?? false);
-
-      // Update original values when settings are loaded
-      setOriginalValues({
-        workDuration: workMin,
-        shortBreakDuration: shortMin,
-        longBreakDuration: longMin,
-        pomodorosUntilLongBreak: settings.pomodorosUntilLongBreak || 4,
-        autoStartBreaks: settings.autoStartBreaks ?? true,
-        autoStartPomodoros: settings.autoStartPomodoros ?? false,
-        notifications: settings.notifications ?? true,
-        dailyGoal: settings.dailyGoal ?? 8,
-        testMode: settings.testMode ?? false,
-      });
-    }
-  }, [settings]);
 
   const loadSettings = async () => {
     try {
@@ -528,6 +530,8 @@ const SettingsScreen = () => {
         setAutoStartBreaks(parsed.autoStartBreaks ?? true);
         setAutoStartPomodoros(parsed.autoStartPomodoros ?? false);
         setNotifications(parsed.notifications ?? true);
+        setSound(parsed.sound ?? true);
+        setVibration(parsed.vibration ?? true);
         setDailyGoal(parsed.dailyGoal ?? 8);
         setTestMode(loadedTestMode);
 
@@ -548,6 +552,8 @@ const SettingsScreen = () => {
           autoStartBreaks: parsed.autoStartBreaks ?? true,
           autoStartPomodoros: parsed.autoStartPomodoros ?? false,
           notifications: parsed.notifications ?? true,
+          sound: parsed.sound ?? true,
+          vibration: parsed.vibration ?? true,
           dailyGoal: parsed.dailyGoal ?? 8,
           testMode: loadedTestMode,
         };
@@ -563,6 +569,8 @@ const SettingsScreen = () => {
           autoStartBreaks: parsed.autoStartBreaks ?? true,
           autoStartPomodoros: parsed.autoStartPomodoros ?? false,
           notifications: parsed.notifications ?? true,
+          sound: parsed.sound ?? true,
+          vibration: parsed.vibration ?? true,
           dailyGoal: parsed.dailyGoal ?? 8,
           testMode: loadedTestMode,
         };
@@ -708,6 +716,8 @@ const SettingsScreen = () => {
         autoStartBreaks !== originalValues.autoStartBreaks ||
         autoStartPomodoros !== originalValues.autoStartPomodoros ||
         notifications !== originalValues.notifications ||
+        sound !== originalValues.sound ||
+        vibration !== originalValues.vibration ||
         dailyGoal !== originalValues.dailyGoal;
     } else {
       // NOT in Test Mode: Check all settings including durations
@@ -719,6 +729,8 @@ const SettingsScreen = () => {
         autoStartBreaks !== originalValues.autoStartBreaks ||
         autoStartPomodoros !== originalValues.autoStartPomodoros ||
         notifications !== originalValues.notifications ||
+        sound !== originalValues.sound ||
+        vibration !== originalValues.vibration ||
         dailyGoal !== originalValues.dailyGoal;
     }
 
@@ -756,6 +768,8 @@ const SettingsScreen = () => {
     autoStartBreaks,
     autoStartPomodoros,
     notifications,
+    sound,
+    vibration,
     dailyGoal,
     testMode,
     originalValues,
@@ -779,6 +793,8 @@ const SettingsScreen = () => {
             autoStartBreaks,
             autoStartPomodoros,
             notifications,
+            sound,
+            vibration,
             dailyGoal,
             testMode, // Save current test mode state
           }
@@ -791,6 +807,8 @@ const SettingsScreen = () => {
             autoStartBreaks,
             autoStartPomodoros,
             notifications,
+            sound,
+            vibration,
             dailyGoal,
             testMode: false, // Save test mode state
           };
@@ -823,6 +841,8 @@ const SettingsScreen = () => {
         autoStartBreaks: autoStartBreaks,
         autoStartPomodoros: autoStartPomodoros,
         notifications: notifications,
+        sound: sound,
+        vibration: vibration,
         dailyGoal: dailyGoal,
         testMode: testMode,
       };
@@ -870,6 +890,9 @@ const SettingsScreen = () => {
     setAutoStartBreaks(true);
     setAutoStartPomodoros(false);
     setNotifications(true);
+    setSound(true);
+    setVibration(true);
+    setDailyGoal(8);
 
     setSnackbarMessage("🔄 Đã khôi phục cài đặt mặc định");
     setSnackbarVisible(true);
@@ -886,6 +909,8 @@ const SettingsScreen = () => {
     setAutoStartBreaks(originalValues.autoStartBreaks);
     setAutoStartPomodoros(originalValues.autoStartPomodoros);
     setNotifications(originalValues.notifications);
+    setSound(originalValues.sound);
+    setVibration(originalValues.vibration);
     setTestMode(originalValues.testMode);
 
     setHasUnsavedChanges(false);
@@ -900,6 +925,8 @@ const SettingsScreen = () => {
     setAutoStartBreaks(originalValues.autoStartBreaks);
     setAutoStartPomodoros(originalValues.autoStartPomodoros);
     setNotifications(originalValues.notifications);
+    setSound(originalValues.sound);
+    setVibration(originalValues.vibration);
     setTestMode(originalValues.testMode);
 
     setHasUnsavedChanges(false);
@@ -1174,6 +1201,44 @@ const SettingsScreen = () => {
                   color={theme.colors.primary}
                 />
               </View>
+
+              <Divider style={styles.divider} />
+
+              <View style={styles.switchRow}>
+                <View style={styles.labelContainer}>
+                  <Text variant="bodyLarge" style={styles.label}>
+                    🔊 Âm thanh thông báo
+                  </Text>
+                  <Text variant="bodySmall" style={styles.helpText}>
+                    Phát âm thanh khi timer hoàn thành
+                  </Text>
+                </View>
+                <Switch
+                  value={sound}
+                  onValueChange={setSound}
+                  color={theme.colors.primary}
+                  disabled={!notifications}
+                />
+              </View>
+
+              <Divider style={styles.divider} />
+
+              <View style={styles.switchRow}>
+                <View style={styles.labelContainer}>
+                  <Text variant="bodyLarge" style={styles.label}>
+                    📳 Rung
+                  </Text>
+                  <Text variant="bodySmall" style={styles.helpText}>
+                    Rung khi timer hoàn thành
+                  </Text>
+                </View>
+                <Switch
+                  value={vibration}
+                  onValueChange={setVibration}
+                  color={theme.colors.primary}
+                  disabled={!notifications}
+                />
+              </View>
             </Card.Content>
           </Card>
 
@@ -1206,6 +1271,84 @@ const SettingsScreen = () => {
               Khôi Phục Mặc Định
             </Button>
           </View>
+
+          {/* Account Section */}
+          <Card style={styles.card}>
+            <Card.Title title="👤 Tài Khoản" titleStyle={styles.cardTitle} />
+            <Card.Content>
+              <View style={styles.accountInfo}>
+                <Avatar.Text
+                  size={56}
+                  label={user?.username?.charAt(0).toUpperCase() || "U"}
+                  style={{ backgroundColor: theme.colors.primary }}
+                />
+                <View style={styles.accountText}>
+                  <Text variant="titleMedium" style={styles.accountName}>
+                    {user?.username || "User"}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.accountEmail}>
+                    {user?.email || ""}
+                  </Text>
+                </View>
+              </View>
+
+              <Divider style={styles.divider} />
+
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  Alert.alert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", [
+                    { text: "Hủy", style: "cancel" },
+                    {
+                      text: "Đăng xuất",
+                      style: "destructive",
+                      onPress: async () => {
+                        await logout();
+                        // Navigation will automatically redirect to Login
+                      },
+                    },
+                  ]);
+                }}
+                icon="logout"
+                textColor="#EF5350"
+                style={styles.logoutButton}
+              >
+                Đăng Xuất
+              </Button>
+            </Card.Content>
+          </Card>
+
+          {/* App Info Section */}
+          <Card style={styles.card}>
+            <Card.Title
+              title="ℹ️ Thông Tin Ứng Dụng"
+              titleStyle={styles.cardTitle}
+            />
+            <Card.Content>
+              <List.Item
+                title="Phiên bản"
+                description="1.0.0"
+                left={(props) => <List.Icon {...props} icon="information" />}
+              />
+              <List.Item
+                title="Về DeepFocus"
+                description="Ứng dụng Pomodoro Timer giúp tăng năng suất"
+                left={(props) => <List.Icon {...props} icon="heart" />}
+              />
+              <List.Item
+                title="Chính sách bảo mật"
+                description="Xem chính sách bảo mật"
+                left={(props) => <List.Icon {...props} icon="shield-check" />}
+                onPress={() => Linking.openURL("https://deepfocus.app/privacy")}
+              />
+              <List.Item
+                title="Điều khoản dịch vụ"
+                description="Xem điều khoản dịch vụ"
+                left={(props) => <List.Icon {...props} icon="file-document" />}
+                onPress={() => Linking.openURL("https://deepfocus.app/terms")}
+              />
+            </Card.Content>
+          </Card>
 
           {/* Info Card */}
           <Card style={[styles.card, styles.infoCard]}>
@@ -1357,6 +1500,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  accountInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  accountText: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  accountName: {
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  accountEmail: {
+    color: "#757575",
+  },
+  logoutButton: {
+    marginTop: 12,
+    borderColor: "#EF5350",
   },
 });
 
