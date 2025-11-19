@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Modal } from "react-native";
 import { Card, Button, Text, useTheme } from "react-native-paper";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const PomodoroCompletionModal = ({
   visible,
@@ -10,17 +11,22 @@ const PomodoroCompletionModal = ({
   completedPomodoros,
 }) => {
   const theme = useTheme();
-  const breakDuration = isLongBreak ? "10 phút" : "5 phút";
-  const breakType = isLongBreak ? "nghỉ dài" : "nghỉ ngắn";
+  const { t } = useLanguage();
+  const breakDuration = isLongBreak
+    ? t("completion.longBreakDuration")
+    : t("completion.shortBreakDuration");
+  const breakType = isLongBreak
+    ? t("completion.longBreak")
+    : t("completion.shortBreak");
   const breakEmoji = isLongBreak ? "🌟" : "☕";
 
   // Motivational quotes
   const quotes = [
-    "Mỗi Pomodoro là một bước tiến!",
-    "Bạn đang làm rất tốt!",
-    "Tiếp tục phát huy nhé!",
-    "Tập trung tuyệt vời!",
-    "Hãy tự hào về bản thân!",
+    t("completion.quote1"),
+    t("completion.quote2"),
+    t("completion.quote3"),
+    t("completion.quote4"),
+    t("completion.quote5"),
   ];
   const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
@@ -45,12 +51,12 @@ const PomodoroCompletionModal = ({
                 style={[styles.title, { color: theme.colors.primary }]}
                 variant="headlineMedium"
               >
-                Xuất sắc!
+                {t("completion.excellent")}
               </Text>
 
               {/* Subtitle */}
               <Text style={styles.subtitle} variant="titleMedium">
-                Bạn đã hoàn thành 1 Pomodoro
+                {t("completion.pomodoroComplete")}
               </Text>
 
               {/* Stats Container */}
@@ -61,7 +67,7 @@ const PomodoroCompletionModal = ({
                 ]}
               >
                 <Text style={styles.statsLabel} variant="bodyMedium">
-                  Tổng cộng hôm nay
+                  {t("completion.totalToday")}
                 </Text>
                 <View style={styles.statsRow}>
                   <Text style={styles.statsNumber} variant="displaySmall">
@@ -87,7 +93,7 @@ const PomodoroCompletionModal = ({
               >
                 <Text style={styles.breakEmoji}>{breakEmoji}</Text>
                 <Text style={styles.breakInfo} variant="titleMedium">
-                  Đã đến lúc {breakType}
+                  {t("completion.timeForBreak")} {breakType}
                 </Text>
                 <Text style={styles.breakDuration} variant="bodyLarge">
                   ({breakDuration})
@@ -107,7 +113,7 @@ const PomodoroCompletionModal = ({
                   labelStyle={styles.buttonLabel}
                   icon={isLongBreak ? "star" : "coffee"}
                 >
-                  Bắt Đầu Nghỉ
+                  {t("completion.startBreak")}
                 </Button>
                 <Button
                   mode="text"
@@ -119,7 +125,7 @@ const PomodoroCompletionModal = ({
                     { color: theme.colors.onSurfaceVariant },
                   ]}
                 >
-                  Bỏ Qua
+                  {t("completion.skipBreak")}
                 </Button>
               </View>
             </Card.Content>

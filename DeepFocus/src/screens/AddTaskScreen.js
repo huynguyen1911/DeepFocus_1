@@ -20,10 +20,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTasks } from "../contexts/TaskContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const AddTaskScreen = () => {
   const theme = useTheme();
+  const { t, language } = useLanguage();
   const { addTask, updateTask, tasks } = useTasks();
   const params = useLocalSearchParams();
 
@@ -91,12 +93,12 @@ const AddTaskScreen = () => {
     const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = "Tiêu đề là bắt buộc";
+      newErrors.title = t("addTask.titleRequired");
     }
 
     const pomodoros = parseInt(formData.estimatedPomodoros);
     if (isNaN(pomodoros) || pomodoros < 1) {
-      newErrors.estimatedPomodoros = "Số pomodoro phải ít nhất là 1";
+      newErrors.estimatedPomodoros = t("addTask.pomodorosMinimum");
     }
 
     setErrors(newErrors);
@@ -119,8 +121,8 @@ const AddTaskScreen = () => {
 
   // Format date for display
   const formatDate = (date) => {
-    if (!date) return "Chọn ngày hết hạn";
-    return date.toLocaleDateString("vi-VN", {
+    if (!date) return t("addTask.selectDueDate");
+    return date.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -151,7 +153,7 @@ const AddTaskScreen = () => {
         result = await updateTask(taskId, taskData);
 
         if (result.success) {
-          setSnackbarMessage("✅ Đã cập nhật nhiệm vụ thành công!");
+          setSnackbarMessage(t("addTask.updateSuccess"));
           setSnackbarVisible(true);
 
           // Navigate back after short delay
@@ -159,7 +161,7 @@ const AddTaskScreen = () => {
             router.back();
           }, 1000);
         } else {
-          setSnackbarMessage(result.error || "Không thể cập nhật nhiệm vụ");
+          setSnackbarMessage(result.error || t("addTask.updateError"));
           setSnackbarVisible(true);
         }
       } else {
@@ -167,7 +169,7 @@ const AddTaskScreen = () => {
         result = await addTask(taskData);
 
         if (result.success) {
-          setSnackbarMessage("✅ Đã tạo nhiệm vụ thành công!");
+          setSnackbarMessage(t("addTask.createSuccess"));
           setSnackbarVisible(true);
 
           // Navigate back after short delay
@@ -175,12 +177,12 @@ const AddTaskScreen = () => {
             router.back();
           }, 1000);
         } else {
-          setSnackbarMessage(result.error || "Không thể tạo nhiệm vụ");
+          setSnackbarMessage(result.error || t("addTask.createError"));
           setSnackbarVisible(true);
         }
       }
     } catch (error) {
-      setSnackbarMessage("Đã xảy ra lỗi. Vui lòng thử lại.");
+      setSnackbarMessage(t("errors.generic"));
       setSnackbarVisible(true);
     } finally {
       setIsLoading(false);
@@ -209,18 +211,18 @@ const AddTaskScreen = () => {
           {isLoadingTask ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" />
-              <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+              <Text style={styles.loadingText}>{t("general.loading")}</Text>
             </View>
           ) : (
             <Card style={styles.card}>
               <Card.Content style={styles.cardContent}>
                 <Text variant="headlineSmall" style={styles.formTitle}>
-                  {isEditMode ? "Chỉnh Sửa Nhiệm Vụ" : "Tạo Nhiệm Vụ Mới"}
+                  {isEditMode ? t("addTask.editTask") : t("addTask.createTask")}
                 </Text>
 
                 {/* Title Input */}
                 <TextInput
-                  label="Tiêu đề *"
+                  label={t("addTask.titleLabel")}
                   value={formData.title}
                   onChangeText={(value) => handleInputChange("title", value)}
                   mode="outlined"
@@ -235,7 +237,7 @@ const AddTaskScreen = () => {
 
                 {/* Description Input */}
                 <TextInput
-                  label="Mô tả (tùy chọn)"
+                  label={t("addTask.descriptionLabel")}
                   value={formData.description}
                   onChangeText={(value) =>
                     handleInputChange("description", value)
@@ -250,7 +252,7 @@ const AddTaskScreen = () => {
 
                 {/* Estimated Pomodoros */}
                 <TextInput
-                  label="Số Pomodoro dự kiến *"
+                  label={t("addTask.pomodorosLabel")}
                   value={formData.estimatedPomodoros}
                   onChangeText={(value) =>
                     handleInputChange("estimatedPomodoros", value)
@@ -270,7 +272,7 @@ const AddTaskScreen = () => {
 
                 {/* Priority Selection */}
                 <Text variant="titleSmall" style={styles.sectionTitle}>
-                  Độ ưu tiên
+                  {t("tasks.priority")}
                 </Text>
                 <SegmentedButtons
                   value={formData.priority}
@@ -280,7 +282,7 @@ const AddTaskScreen = () => {
                   buttons={[
                     {
                       value: "low",
-                      label: "Thấp",
+                      label: t("tasks.priorityLow"),
                       icon: "arrow-down",
                       style:
                         formData.priority === "low"
@@ -289,7 +291,7 @@ const AddTaskScreen = () => {
                     },
                     {
                       value: "medium",
-                      label: "Trung bình",
+                      label: t("tasks.priorityMedium"),
                       icon: "minus",
                       style:
                         formData.priority === "medium"
@@ -298,7 +300,7 @@ const AddTaskScreen = () => {
                     },
                     {
                       value: "high",
-                      label: "Cao",
+                      label: t("tasks.priorityHigh"),
                       icon: "arrow-up",
                       style:
                         formData.priority === "high"
@@ -312,7 +314,7 @@ const AddTaskScreen = () => {
 
                 {/* Due Date Picker */}
                 <Text variant="titleSmall" style={styles.sectionTitle}>
-                  Ngày hết hạn (tùy chọn)
+                  {t("addTask.dueDateSection")}
                 </Text>
                 <Button
                   mode="outlined"
@@ -333,7 +335,7 @@ const AddTaskScreen = () => {
                     style={styles.clearDateButton}
                     disabled={isLoading}
                   >
-                    Xóa ngày hết hạn
+                    {t("addTask.clearDueDate")}
                   </Button>
                 )}
 
@@ -355,7 +357,7 @@ const AddTaskScreen = () => {
                     style={styles.cancelButton}
                     disabled={isLoading}
                   >
-                    Hủy
+                    {t("tasks.cancel")}
                   </Button>
                   <Button
                     mode="contained"
@@ -364,7 +366,7 @@ const AddTaskScreen = () => {
                     loading={isLoading}
                     disabled={isLoading}
                   >
-                    {isEditMode ? "Cập Nhật" : "Lưu"}
+                    {isEditMode ? t("addTask.update") : t("tasks.save")}
                   </Button>
                 </View>
               </Card.Content>
@@ -379,7 +381,7 @@ const AddTaskScreen = () => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         action={{
-          label: "Đóng",
+          label: t("general.close"),
           onPress: () => setSnackbarVisible(false),
         }}
       >

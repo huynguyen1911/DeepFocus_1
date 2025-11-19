@@ -16,9 +16,11 @@ import {
   ProgressBar,
 } from "react-native-paper";
 import { useTasks } from "../contexts/TaskContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const TaskSelector = ({ visible, onClose, onSelectTask }) => {
   const theme = useTheme();
+  const { t, language } = useLanguage();
   const { tasks } = useTasks();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState("priority"); // 'priority' or 'dueDate'
@@ -77,13 +79,13 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
   const getPriorityLabel = (priority) => {
     switch (priority) {
       case "high":
-        return "Cao";
+        return t("tasks.priorityHigh");
       case "medium":
-        return "Trung bình";
+        return t("tasks.priorityMedium");
       case "low":
-        return "Thấp";
+        return t("tasks.priorityLow");
       default:
-        return "Không xác định";
+        return t("tasks.priorityUnknown");
     }
   };
 
@@ -147,7 +149,10 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
 
           {item.dueDate && (
             <Text style={styles.dueDateText}>
-              📅 {new Date(item.dueDate).toLocaleDateString("vi-VN")}
+              📅{" "}
+              {new Date(item.dueDate).toLocaleDateString(
+                language === "vi" ? "vi-VN" : "en-US"
+              )}
             </Text>
           )}
         </View>
@@ -166,13 +171,15 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Chọn Nhiệm Vụ</Text>
+            <Text style={styles.headerTitle}>
+              {t("taskSelector.selectTask")}
+            </Text>
             <IconButton icon="close" size={24} onPress={onClose} />
           </View>
 
           {/* Search Bar */}
           <Searchbar
-            placeholder="Tìm kiếm nhiệm vụ..."
+            placeholder={t("tasks.searchTasks")}
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchBar}
@@ -182,7 +189,7 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
 
           {/* Sort Buttons */}
           <View style={styles.sortContainer}>
-            <Text style={styles.sortLabel}>Sắp xếp:</Text>
+            <Text style={styles.sortLabel}>{t("taskSelector.sortBy")}:</Text>
             <View style={styles.sortButtons}>
               <Chip
                 mode={sortMode === "priority" ? "flat" : "outlined"}
@@ -190,7 +197,7 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
                 onPress={() => setSortMode("priority")}
                 style={styles.sortChip}
               >
-                Độ ưu tiên
+                {t("tasks.priority")}
               </Chip>
               <Chip
                 mode={sortMode === "dueDate" ? "flat" : "outlined"}
@@ -198,7 +205,7 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
                 onPress={() => setSortMode("dueDate")}
                 style={styles.sortChip}
               >
-                Hạn chót
+                {t("tasks.dueDate")}
               </Chip>
             </View>
           </View>
@@ -212,11 +219,11 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
             <Text style={styles.emptyIcon}>📋</Text>
             <Text style={styles.emptyText}>
               {searchQuery.trim()
-                ? `Không tìm thấy "${searchQuery}"`
-                : "Không có nhiệm vụ nào"}
+                ? t("tasks.noSearchResults", { query: searchQuery })
+                : t("taskSelector.noTasks")}
             </Text>
             <Text style={styles.emptySubtext}>
-              Tạo nhiệm vụ mới để bắt đầu sử dụng Pomodoro Timer
+              {t("taskSelector.createTaskHint")}
             </Text>
           </View>
         ) : (
@@ -238,7 +245,7 @@ const TaskSelector = ({ visible, onClose, onSelectTask }) => {
             activeOpacity={0.7}
           >
             <Text style={styles.noTaskText}>
-              ⏭️ Bắt đầu mà không chọn nhiệm vụ
+              ⏭️ {t("taskSelector.startWithoutTask")}
             </Text>
           </TouchableOpacity>
         </View>

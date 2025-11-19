@@ -19,6 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { theme } from "../config/theme";
 import { statsAPI } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { formatWorkTime } from "../utils/statsUtils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -26,6 +27,7 @@ const CHART_WIDTH = SCREEN_WIDTH - 32;
 
 export default function StatisticsScreen() {
   const { isAuthenticated } = useAuth();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
@@ -34,6 +36,23 @@ export default function StatisticsScreen() {
   const [customStartDate, setCustomStartDate] = useState(() => new Date());
   const [customEndDate, setCustomEndDate] = useState(() => new Date());
   const [datePickerMode, setDatePickerMode] = useState("start"); // start or end
+
+  // Helper function to translate Vietnamese day names to current language
+  const translateDayName = (vietnameseDay) => {
+    if (!vietnameseDay) return "";
+
+    const dayMap = {
+      "Chủ Nhật": language === "vi" ? "Chủ Nhật" : "Sunday",
+      "Thứ Hai": language === "vi" ? "Thứ Hai" : "Monday",
+      "Thứ Ba": language === "vi" ? "Thứ Ba" : "Tuesday",
+      "Thứ Tư": language === "vi" ? "Thứ Tư" : "Wednesday",
+      "Thứ Năm": language === "vi" ? "Thứ Năm" : "Thursday",
+      "Thứ Sáu": language === "vi" ? "Thứ Sáu" : "Friday",
+      "Thứ Bảy": language === "vi" ? "Thứ Bảy" : "Saturday",
+    };
+
+    return dayMap[vietnameseDay] || vietnameseDay;
+  };
 
   // Load stats from API
   const loadStats = async (showLoading = true) => {
@@ -57,9 +76,7 @@ export default function StatisticsScreen() {
       setStats(data);
     } catch (error) {
       console.error("❌ Failed to load stats:", error.message);
-      Alert.alert("Lỗi", "Không thể tải thống kê. Vui lòng thử lại sau.", [
-        { text: "OK" },
-      ]);
+      Alert.alert(t("general.error"), t("stats.loadError"), [{ text: "OK" }]);
     } finally {
       if (showLoading) {
         setLoading(false);
@@ -211,17 +228,17 @@ export default function StatisticsScreen() {
   const getChartTitle = () => {
     switch (dateRange) {
       case "today":
-        return "📈 Hôm Nay";
+        return `📈 ${t("stats.today")}`;
       case "7days":
-        return "📈 7 Ngày Gần Đây";
+        return `📈 ${t("stats.last7Days")}`;
       case "30days":
-        return "📈 30 Ngày Gần Đây";
+        return `📈 ${t("stats.last30Days")}`;
       case "custom":
         const start = customStartDate.toLocaleDateString("vi-VN");
         const end = customEndDate.toLocaleDateString("vi-VN");
         return `📈 ${start} - ${end}`;
       default:
-        return "📈 7 Ngày Gần Đây";
+        return `📈 ${t("stats.last7Days")}`;
     }
   };
 
@@ -301,19 +318,19 @@ export default function StatisticsScreen() {
 
   // Get motivational message based on current streak
   const getStreakMessage = () => {
-    if (!stats || !stats.overall) return "Bắt đầu chuỗi ngày làm việc của bạn!";
+    if (!stats || !stats.overall) return t("stats.startStreak");
 
     const streak = stats.overall.currentStreak;
     if (streak === 0) {
-      return "Hoàn thành pomodoro hôm nay để bắt đầu chuỗi!";
+      return t("stats.completeToday");
     } else if (streak === 1) {
-      return "Tuyệt vời! Tiếp tục để xây dựng chuỗi!";
+      return t("stats.keepGoing");
     } else if (streak < 7) {
-      return `Tuyệt vời! ${streak} ngày liên tiếp! Tiếp tục phát huy! 🔥`;
+      return t("stats.streakShort", { streak });
     } else if (streak < 30) {
-      return `Xuất sắc! ${streak} ngày liên tiếp! Bạn đang rất tốt! ⭐`;
+      return t("stats.streakMedium", { streak });
     } else {
-      return `Phi thường! ${streak} ngày liên tiếp! Bạn là huyền thoại! 👑`;
+      return t("stats.streakLong", { streak });
     }
   };
 
@@ -327,7 +344,7 @@ export default function StatisticsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Đang tải thống kê...</Text>
+          <Text style={styles.loadingText}>{t("general.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -337,9 +354,7 @@ export default function StatisticsScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.messageContainer}>
-          <Text style={styles.messageText}>
-            Vui lòng đăng nhập để xem thống kê
-          </Text>
+          <Text style={styles.messageText}>{t("stats.loginPrompt")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -360,20 +375,19 @@ export default function StatisticsScreen() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>📊 Thống Kê</Text>
-            <Text style={styles.subtitle}>Theo dõi tiến độ của bạn</Text>
+            <Text style={styles.title}>📊 {t("stats.statistics")}</Text>
+            <Text style={styles.subtitle}>{t("stats.trackProgress")}</Text>
           </View>
 
           {/* Empty State */}
           <View style={styles.emptyStateContainer}>
             <Text style={styles.emptyStateIcon}>🌱</Text>
-            <Text style={styles.emptyStateTitle}>Chưa có dữ liệu thống kê</Text>
+            <Text style={styles.emptyStateTitle}>{t("stats.noData")}</Text>
             <Text style={styles.emptyStateMessage}>
-              Hãy bắt đầu Pomodoro đầu tiên của bạn!
+              {t("stats.noDataDescription")}
             </Text>
             <Text style={styles.emptyStateDescription}>
-              Hoàn thành các phiên Pomodoro để xem thống kê tiến độ, biểu đồ và
-              thành tựu của bạn.
+              {t("stats.emptyStateHint")}
             </Text>
           </View>
 
@@ -381,32 +395,32 @@ export default function StatisticsScreen() {
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, styles.primaryCard]}>
               <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Pomodoros</Text>
+              <Text style={styles.statLabel}>{t("stats.pomodoros")}</Text>
             </View>
 
             <View style={[styles.statCard, styles.successCard]}>
               <Text style={styles.statValue}>0 🔥</Text>
-              <Text style={styles.statLabel}>Chuỗi ngày</Text>
+              <Text style={styles.statLabel}>{t("stats.streak")}</Text>
             </View>
 
             <View style={[styles.statCard, styles.infoCard]}>
               <Text style={styles.statValue}>0h 0m</Text>
-              <Text style={styles.statLabel}>Thời gian</Text>
+              <Text style={styles.statLabel}>{t("stats.focusTime")}</Text>
             </View>
 
             <View style={[styles.statCard, styles.warningCard]}>
               <Text style={styles.statValue}>0</Text>
-              <Text style={styles.statLabel}>Tasks hoàn thành</Text>
+              <Text style={styles.statLabel}>{t("tasks.completed")}</Text>
             </View>
           </View>
 
           {/* Empty Chart Placeholder */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📈 Biểu Đồ</Text>
+            <Text style={styles.sectionTitle}>📈 {t("stats.chart")}</Text>
             <View style={styles.emptyChartContainer}>
               <Text style={styles.emptyChartIcon}>📊</Text>
               <Text style={styles.emptyChartText}>
-                Biểu đồ sẽ hiển thị sau khi bạn hoàn thành Pomodoro
+                {t("stats.chartAvailableAfter")}
               </Text>
             </View>
           </View>
@@ -425,8 +439,8 @@ export default function StatisticsScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>📊 Thống Kê</Text>
-          <Text style={styles.subtitle}>Theo dõi tiến độ của bạn</Text>
+          <Text style={styles.title}>📊 {t("stats.statistics")}</Text>
+          <Text style={styles.subtitle}>{t("stats.trackProgress")}</Text>
         </View>
 
         {/* Date Range Selector */}
@@ -437,22 +451,22 @@ export default function StatisticsScreen() {
             buttons={[
               {
                 value: "today",
-                label: "Hôm nay",
+                label: t("stats.today"),
                 style: styles.segmentButton,
               },
               {
                 value: "7days",
-                label: "7 ngày",
+                label: t("stats.last7Days"),
                 style: styles.segmentButton,
               },
               {
                 value: "30days",
-                label: "30 ngày",
+                label: t("stats.last30Days"),
                 style: styles.segmentButton,
               },
               {
                 value: "custom",
-                label: "Tùy chỉnh",
+                label: t("stats.custom"),
                 style: styles.segmentButton,
               },
             ]}
@@ -473,21 +487,21 @@ export default function StatisticsScreen() {
             <Text style={styles.statValue}>
               {stats?.overall?.currentStreak || 0} 🔥
             </Text>
-            <Text style={styles.statLabel}>Chuỗi ngày</Text>
+            <Text style={styles.statLabel}>{t("stats.streak")}</Text>
           </View>
 
           <View style={[styles.statCard, styles.infoCard]}>
             <Text style={styles.statValue}>
               {formatWorkTime(getFilteredStats().totalWorkTime)}
             </Text>
-            <Text style={styles.statLabel}>Thời gian</Text>
+            <Text style={styles.statLabel}>{t("stats.focusTime")}</Text>
           </View>
 
           <View style={[styles.statCard, styles.warningCard]}>
             <Text style={styles.statValue}>
               {getFilteredStats().totalTasks}
             </Text>
-            <Text style={styles.statLabel}>Tasks hoàn thành</Text>
+            <Text style={styles.statLabel}>{t("tasks.completed")}</Text>
           </View>
         </View>
 
@@ -496,7 +510,8 @@ export default function StatisticsScreen() {
           <Text style={styles.streakEmoji}>🔥</Text>
           <Text style={styles.streakMessage}>{getStreakMessage()}</Text>
           <Text style={styles.longestStreak}>
-            Kỷ lục: {stats?.overall?.longestStreak || 0} ngày
+            {t("stats.longestStreak")}: {stats?.overall?.longestStreak || 0}{" "}
+            {t("stats.days")}
           </Text>
         </View>
 
@@ -533,31 +548,37 @@ export default function StatisticsScreen() {
         {/* Weekly Stats */}
         {stats?.weekly && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📅 Tuần Này</Text>
+            <Text style={styles.sectionTitle}>📅 {t("stats.thisWeek")}</Text>
             <View style={styles.weeklyCard}>
               <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>Tổng Pomodoros:</Text>
+                <Text style={styles.weeklyLabel}>
+                  {t("stats.totalPomodoros")}:
+                </Text>
                 <Text style={styles.weeklyValue}>
                   {stats.weekly.totalPomodoros}
                 </Text>
               </View>
               <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>Trung bình/ngày:</Text>
+                <Text style={styles.weeklyLabel}>
+                  {t("stats.averagePerDay")}:
+                </Text>
                 <Text style={styles.weeklyValue}>
                   {Math.round(stats.weekly.averageDailyPomodoros * 10) / 10}
                 </Text>
               </View>
               <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>Thời gian làm việc:</Text>
+                <Text style={styles.weeklyLabel}>{t("stats.workTime")}:</Text>
                 <Text style={styles.weeklyValue}>
                   {formatWorkTime(stats.weekly.totalWorkTime)}
                 </Text>
               </View>
               {stats.weekly.mostProductiveDay && (
                 <View style={styles.weeklyRow}>
-                  <Text style={styles.weeklyLabel}>Ngày hiệu quả nhất:</Text>
+                  <Text style={styles.weeklyLabel}>
+                    {t("stats.mostProductiveDay")}:
+                  </Text>
                   <Text style={styles.weeklyValue}>
-                    {stats.weekly.mostProductiveDay}
+                    {translateDayName(stats.weekly.mostProductiveDay)}
                   </Text>
                 </View>
               )}
@@ -568,28 +589,32 @@ export default function StatisticsScreen() {
         {/* Monthly Stats */}
         {stats?.monthly && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📆 Tháng Này</Text>
+            <Text style={styles.sectionTitle}>📆 {t("stats.thisMonth")}</Text>
             <View style={styles.monthlyCard}>
               <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>Tổng Pomodoros:</Text>
+                <Text style={styles.monthlyLabel}>
+                  {t("stats.totalPomodoros")}:
+                </Text>
                 <Text style={styles.monthlyValue}>
                   {stats.monthly.totalPomodoros}
                 </Text>
               </View>
               <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>Thời gian làm việc:</Text>
+                <Text style={styles.monthlyLabel}>{t("stats.workTime")}:</Text>
                 <Text style={styles.monthlyValue}>
                   {formatWorkTime(stats.monthly.totalWorkTime)}
                 </Text>
               </View>
               <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>Tasks hoàn thành:</Text>
+                <Text style={styles.monthlyLabel}>{t("tasks.completed")}:</Text>
                 <Text style={styles.monthlyValue}>
                   {stats.monthly.completedTasks}
                 </Text>
               </View>
               <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>Trung bình/ngày:</Text>
+                <Text style={styles.monthlyLabel}>
+                  {t("stats.averagePerDay")}:
+                </Text>
                 <Text style={styles.monthlyValue}>
                   {Math.round(stats.monthly.averageDailyPomodoros * 10) / 10}
                 </Text>
@@ -600,13 +625,16 @@ export default function StatisticsScreen() {
 
         {/* Achievements Preview */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🏆 Thành Tựu</Text>
+          <Text style={styles.sectionTitle}>🏆 {t("stats.achievements")}</Text>
           <View style={styles.achievementCard}>
             <Text style={styles.achievementText}>
-              Đã mở khóa: {getAchievementCount()}/10 thành tựu
+              {t("stats.unlockedCount", {
+                count: getAchievementCount(),
+                total: 10,
+              })}
             </Text>
             <Text style={styles.achievementHint}>
-              (Xem chi tiết trong phần Thành Tựu)
+              {t("stats.achievementsHint")}
             </Text>
           </View>
         </View>
@@ -632,8 +660,8 @@ export default function StatisticsScreen() {
               <View style={styles.datePickerHeader}>
                 <Text style={styles.datePickerTitle}>
                   {datePickerMode === "start"
-                    ? "Chọn ngày bắt đầu"
-                    : "Chọn ngày kết thúc"}
+                    ? t("stats.selectStartDate")
+                    : t("stats.selectEndDate")}
                 </Text>
                 <Pressable onPress={closeDatePicker}>
                   <Text style={styles.datePickerClose}>✕</Text>
@@ -661,7 +689,9 @@ export default function StatisticsScreen() {
                   onPress={handleIOSDatePickerDone}
                   style={styles.datePickerButton}
                 >
-                  {datePickerMode === "start" ? "Tiếp tục" : "Xong"}
+                  {datePickerMode === "start"
+                    ? t("general.continue")
+                    : t("general.done")}
                 </Button>
               </View>
             </View>

@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { theme } from "../config/theme";
+import { useLanguage } from "../contexts/LanguageContext";
 
 /**
  * DailyPomodoroProgress Component
@@ -11,6 +12,8 @@ export default function DailyPomodoroProgress({
   goal = 8,
   totalWorkTime = 0, // Total work time in minutes
 }) {
+  const { t } = useLanguage();
+
   // Calculate progress percentage
   const progress = Math.min((completedToday / goal) * 100, 100);
 
@@ -19,37 +22,37 @@ export default function DailyPomodoroProgress({
     if (completedToday === 0) {
       return {
         emoji: "🌱",
-        message: "Hãy bắt đầu ngày mới!",
+        message: t("motivation.start"),
         color: "#94A3B8",
       };
     } else if (progress < 25) {
       return {
         emoji: "🔥",
-        message: "Khởi đầu tốt! Tiếp tục nào!",
+        message: t("motivation.goodStart"),
         color: "#3B82F6",
       };
     } else if (progress < 50) {
       return {
         emoji: "💪",
-        message: "Bạn đang làm rất tốt!",
+        message: t("motivation.keepGoing"),
         color: "#8B5CF6",
       };
     } else if (progress < 75) {
       return {
         emoji: "⚡",
-        message: "Xuất sắc! Gần đến mục tiêu rồi!",
+        message: t("motivation.almostThere"),
         color: "#F59E0B",
       };
     } else if (progress < 100) {
       return {
         emoji: "🌟",
-        message: "Tuyệt vời! Chỉ còn một chút nữa!",
+        message: t("motivation.halfWay"),
         color: "#10B981",
       };
     } else {
       return {
         emoji: "🎉",
-        message: "Hoàn thành mục tiêu hôm nay!",
+        message: t("motivation.goalAchieved"),
         color: "#EF4444",
       };
     }
@@ -63,7 +66,7 @@ export default function DailyPomodoroProgress({
       <View style={styles.header}>
         <Text style={styles.emoji}>{emoji}</Text>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Hôm Nay</Text>
+          <Text style={styles.title}>{t("stats.today")}</Text>
           <Text style={[styles.message, { color }]}>{message}</Text>
         </View>
       </View>
@@ -72,7 +75,10 @@ export default function DailyPomodoroProgress({
       <View style={styles.statsRow}>
         <Text style={styles.completedText}>
           <Text style={styles.completedNumber}>{completedToday}</Text>
-          <Text style={styles.goalText}> / {goal} pomodoros</Text>
+          <Text style={styles.goalText}>
+            {" "}
+            / {goal} {t("stats.pomodoros").toLowerCase()}
+          </Text>
         </Text>
         <Text style={styles.percentageText}>{Math.round(progress)}%</Text>
       </View>
@@ -92,7 +98,8 @@ export default function DailyPomodoroProgress({
 
       {/* Time Estimate */}
       <Text style={styles.timeEstimate}>
-        ⏱️ Thời gian: {Math.floor(totalWorkTime / 60)}h {totalWorkTime % 60}m
+        ⏱️ {t("stats.workTime")}: {Math.floor(totalWorkTime / 60)}h{" "}
+        {totalWorkTime % 60}m
       </Text>
     </View>
   );

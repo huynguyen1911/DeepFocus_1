@@ -13,10 +13,12 @@ import {
   Divider,
 } from "react-native-paper";
 import { useTasks } from "../contexts/TaskContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const TaskItem = ({ task, onPress, onStartTimer }) => {
   const theme = useTheme();
   const { deleteTask, completeTask } = useTasks();
+  const { t, language } = useLanguage();
   const [modalVisible, setModalVisible] = useState(false);
   const swipeableRef = useRef(null);
 
@@ -38,11 +40,11 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
   const getPriorityLabel = () => {
     switch (task.priority) {
       case "high":
-        return "Cao";
+        return t("tasks.priorityHigh");
       case "medium":
-        return "Trung bình";
+        return t("tasks.priorityMedium");
       case "low":
-        return "Thấp";
+        return t("tasks.priorityLow");
       default:
         return "N/A";
     }
@@ -58,7 +60,8 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
   const formatDate = (dateString) => {
     if (!dateString) return null;
     const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
+    const locale = language === "vi" ? "vi-VN" : "en-US";
+    return date.toLocaleDateString(locale, {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -115,29 +118,33 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
     }
 
     closeModal();
-    Alert.alert("Xóa nhiệm vụ", `Bạn có chắc chắn muốn xóa "${task.title}"?`, [
-      {
-        text: "Hủy",
-        style: "cancel",
-      },
-      {
-        text: "Xóa",
-        style: "destructive",
-        onPress: async () => {
-          const result = await deleteTask(task._id);
-          if (!result.success) {
-            Alert.alert("Lỗi", result.error);
-          }
+    Alert.alert(
+      t("tasks.deleteTask"),
+      t("tasks.deleteConfirm", { title: task.title }),
+      [
+        {
+          text: t("general.cancel"),
+          style: "cancel",
         },
-      },
-    ]);
+        {
+          text: t("tasks.delete"),
+          style: "destructive",
+          onPress: async () => {
+            const result = await deleteTask(task._id);
+            if (!result.success) {
+              Alert.alert(t("general.error"), result.error);
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Handle complete toggle
   const handleToggleComplete = async () => {
     const result = await completeTask(task._id);
     if (!result.success) {
-      Alert.alert("Lỗi", result.error);
+      Alert.alert(t("general.error"), result.error);
     }
   };
 
@@ -149,7 +156,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
         <View style={styles.swipeActions}>
           <TouchableOpacity onPress={handleDelete} style={styles.deleteAction}>
             <IconButton icon="delete" iconColor="white" size={24} />
-            <Text style={styles.swipeActionText}>Xóa</Text>
+            <Text style={styles.swipeActionText}>{t("tasks.delete")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -296,7 +303,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
                     style={styles.completedChip}
                     textStyle={styles.completedChipText}
                   >
-                    Hoàn thành
+                    {t("tasks.completed")}
                   </Chip>
                 )}
               </View>
@@ -351,7 +358,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
                   contentStyle={styles.actionButtonContent}
                   labelStyle={styles.actionButtonLabel}
                 >
-                  Xem chi tiết
+                  {t("tasks.viewDetails")}
                 </Button>
 
                 {/* Start Timer Action - Only for incomplete tasks */}
@@ -367,7 +374,7 @@ const TaskItem = ({ task, onPress, onStartTimer }) => {
                     contentStyle={styles.actionButtonContent}
                     labelStyle={styles.actionButtonLabel}
                   >
-                    Bắt đầu timer
+                    {t("timer.start")}
                   </Button>
                 )}
 

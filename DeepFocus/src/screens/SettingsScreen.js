@@ -7,6 +7,7 @@ import {
   BackHandler,
   Linking,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import {
   Card,
   Text,
@@ -22,6 +23,7 @@ import Slider from "@react-native-community/slider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePomodoro } from "../contexts/PomodoroContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
@@ -30,6 +32,8 @@ const SettingsScreen = () => {
   const theme = useTheme();
   const { settings, updateSettings } = usePomodoro();
   const { user, logout } = useAuth();
+  const { t, language, changeLanguage, setPreviewLanguage, resetLanguage } =
+    useLanguage();
   const navigation = useNavigation();
 
   // Create user-specific storage key
@@ -48,6 +52,7 @@ const SettingsScreen = () => {
   const [vibration, setVibration] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(8); // ← DAILY GOAL SETTING
   const [testMode, setTestMode] = useState(false); // ← TEST MODE TOGGLE (default OFF for production)
+  const [selectedLanguage, setSelectedLanguage] = useState(language); // ← Preview language selection
 
   // UI State
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -72,7 +77,13 @@ const SettingsScreen = () => {
     vibration: true,
     dailyGoal: 8,
     testMode: false, // Match useState default for testMode
+    language: "vi", // Track original language
   });
+
+  // Haptic feedback helper
+  const triggerHapticFeedback = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
 
   // Load settings on mount
   useEffect(() => {
@@ -89,15 +100,15 @@ const SettingsScreen = () => {
 
         // Show confirmation Alert
         Alert.alert(
-          "⚠️ Thay Đổi Chưa Lưu",
-          "Bạn có thay đổi chưa được lưu. Bạn muốn:",
+          `⚠️ ${t("settings.unsavedChanges")}`,
+          t("settings.unsavedChangesMessage"),
           [
             {
-              text: "Ở Lại",
+              text: t("settings.stayHere"),
               style: "cancel",
             },
             {
-              text: "Bỏ Thay Đổi",
+              text: t("settings.discardChanges"),
               style: "destructive",
               onPress: () => {
                 // Reset to original values
@@ -113,12 +124,14 @@ const SettingsScreen = () => {
                 setSound(originalValues.sound);
                 setVibration(originalValues.vibration);
                 setTestMode(originalValues.testMode);
+                setSelectedLanguage(originalValues.language);
+                setPreviewLanguage(originalValues.language);
                 setHasUnsavedChanges(false);
                 // Let back action proceed naturally
               },
             },
             {
-              text: "Lưu & Thoát",
+              text: t("settings.saveAndExit"),
               onPress: () => {
                 // Save and let navigation proceed
                 setIsSaving(true);
@@ -245,18 +258,18 @@ const SettingsScreen = () => {
           // This ensures Alert shows on the new screen
           setTimeout(() => {
             Alert.alert(
-              "⚠️ Thay Đổi Chưa Lưu",
-              "Bạn có thay đổi chưa được lưu. Bạn muốn:",
+              `⚠️ ${t("settings.unsavedChanges")}`,
+              t("settings.unsavedChangesMessage"),
               [
                 {
-                  text: "Quay Lại Settings",
+                  text: t("settings.backToSettings"),
                   onPress: () => {
                     // Navigate back to settings
                     navigation.navigate("settings");
                   },
                 },
                 {
-                  text: "Bỏ Thay Đổi",
+                  text: t("settings.discardChanges"),
                   style: "destructive",
                   onPress: () => {
                     // Reset to original values
@@ -273,12 +286,14 @@ const SettingsScreen = () => {
                     setVibration(originalValues.vibration);
                     setDailyGoal(originalValues.dailyGoal || 8);
                     setTestMode(originalValues.testMode);
+                    setSelectedLanguage(originalValues.language);
+                    setPreviewLanguage(originalValues.language);
                     setHasUnsavedChanges(false);
                     console.log("✅ Changes discarded");
                   },
                 },
                 {
-                  text: "Lưu Thay Đổi",
+                  text: t("settings.saveChanges"),
                   onPress: async () => {
                     // Save directly from ref values (to avoid stale state)
                     const vals = currentValuesRef.current;
@@ -395,15 +410,15 @@ const SettingsScreen = () => {
 
       // Show confirmation Alert
       Alert.alert(
-        "⚠️ Thay Đổi Chưa Lưu",
-        "Bạn có thay đổi chưa được lưu. Bạn muốn:",
+        `⚠️ ${t("settings.unsavedChanges")}`,
+        t("settings.unsavedChangesMessage"),
         [
           {
-            text: "Ở Lại",
+            text: t("settings.stayHere"),
             style: "cancel",
           },
           {
-            text: "Bỏ Thay Đổi",
+            text: t("settings.discardChanges"),
             style: "destructive",
             onPress: () => {
               // Reset to original values
@@ -425,7 +440,7 @@ const SettingsScreen = () => {
             },
           },
           {
-            text: "Lưu & Thoát",
+            text: t("settings.saveAndExit"),
             onPress: () => {
               // Save from ref to avoid stale state
               const vals = currentValuesRef.current;
@@ -543,7 +558,7 @@ const SettingsScreen = () => {
           testMode: loadedTestMode,
         });
 
-        // Store original values
+        // Store original values (including current language)
         const originalValuesToSet = {
           workDuration: workMin,
           shortBreakDuration: shortMin,
@@ -556,9 +571,11 @@ const SettingsScreen = () => {
           vibration: parsed.vibration ?? true,
           dailyGoal: parsed.dailyGoal ?? 8,
           testMode: loadedTestMode,
+          language: language, // Store current language from context
         };
         console.log("📝 Setting originalValues:", originalValuesToSet);
         setOriginalValues(originalValuesToSet);
+        setSelectedLanguage(language); // Initialize preview language
 
         // 🔄 Sync loaded settings to Context (so HomeScreen gets correct values)
         const settingsForContext = {
@@ -592,9 +609,13 @@ const SettingsScreen = () => {
           autoStartBreaks: true,
           autoStartPomodoros: false,
           notifications: true,
+          sound: true,
+          vibration: true,
           dailyGoal: 8,
-          testMode: false, // Match useState default
+          testMode: false,
+          language: language, // Store current language from context
         });
+        setSelectedLanguage(language); // Initialize preview language
 
         // Update ref to match default testMode
         lastSavedTestModeRef.current = false;
@@ -718,7 +739,8 @@ const SettingsScreen = () => {
         notifications !== originalValues.notifications ||
         sound !== originalValues.sound ||
         vibration !== originalValues.vibration ||
-        dailyGoal !== originalValues.dailyGoal;
+        dailyGoal !== originalValues.dailyGoal ||
+        selectedLanguage !== originalValues.language; // Check language change
     } else {
       // NOT in Test Mode: Check all settings including durations
       hasChanges =
@@ -731,7 +753,8 @@ const SettingsScreen = () => {
         notifications !== originalValues.notifications ||
         sound !== originalValues.sound ||
         vibration !== originalValues.vibration ||
-        dailyGoal !== originalValues.dailyGoal;
+        dailyGoal !== originalValues.dailyGoal ||
+        selectedLanguage !== originalValues.language; // Check language change
     }
 
     console.log("🔍 Change detection:", {
@@ -772,6 +795,7 @@ const SettingsScreen = () => {
     vibration,
     dailyGoal,
     testMode,
+    selectedLanguage,
     originalValues,
     hasUnsavedChanges,
     isSettingsLoaded,
@@ -831,6 +855,9 @@ const SettingsScreen = () => {
       // Update context
       updateSettings(newSettings);
 
+      // Save language permanently
+      await changeLanguage(selectedLanguage);
+
       // Update original values to current UI values (reset change tracking)
       // Always use UI values, regardless of Test Mode
       const newOriginalValues = {
@@ -845,6 +872,7 @@ const SettingsScreen = () => {
         vibration: vibration,
         dailyGoal: dailyGoal,
         testMode: testMode,
+        language: selectedLanguage,
       };
 
       console.log("💾 Updating originalValues to:", newOriginalValues);
@@ -866,8 +894,8 @@ const SettingsScreen = () => {
 
       setSnackbarMessage(
         testMode
-          ? "🧪 Test Mode: 10/5/10 giây"
-          : "✅ Đã lưu cài đặt thành công!"
+          ? `🧪 ${t("settings.testModeActive")}`
+          : `✅ ${t("settings.savedSuccessfully")}`
       );
       setSnackbarVisible(true);
 
@@ -875,7 +903,7 @@ const SettingsScreen = () => {
       console.log("📌 Forced hasUnsavedChanges = false, justSavedRef = true");
     } catch (error) {
       console.error("❌ Error saving settings:", error);
-      setSnackbarMessage("❌ Không thể lưu cài đặt");
+      setSnackbarMessage(`❌ ${t("general.error")}`);
       setSnackbarVisible(true);
     } finally {
       setIsSaving(false);
@@ -883,19 +911,35 @@ const SettingsScreen = () => {
   };
 
   const handleResetSettings = () => {
-    setWorkDuration(25);
-    setShortBreakDuration(5);
-    setLongBreakDuration(15);
-    setPomodorosUntilLongBreak(4);
-    setAutoStartBreaks(true);
-    setAutoStartPomodoros(false);
-    setNotifications(true);
-    setSound(true);
-    setVibration(true);
-    setDailyGoal(8);
+    Alert.alert(
+      t("alerts.resetSettings.title"),
+      t("alerts.resetSettings.message"),
+      [
+        {
+          text: t("alerts.resetSettings.cancel"),
+          style: "cancel",
+        },
+        {
+          text: t("alerts.resetSettings.confirm"),
+          style: "destructive",
+          onPress: () => {
+            setWorkDuration(25);
+            setShortBreakDuration(5);
+            setLongBreakDuration(15);
+            setPomodorosUntilLongBreak(4);
+            setAutoStartBreaks(true);
+            setAutoStartPomodoros(false);
+            setNotifications(true);
+            setSound(true);
+            setVibration(true);
+            setDailyGoal(8);
 
-    setSnackbarMessage("🔄 Đã khôi phục cài đặt mặc định");
-    setSnackbarVisible(true);
+            setSnackbarMessage(`🔄 ${t("settings.settingsReset")}`);
+            setSnackbarVisible(true);
+          },
+        },
+      ]
+    );
   };
 
   const handleDismissBanner = useCallback(() => {
@@ -946,10 +990,10 @@ const SettingsScreen = () => {
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.testModeLabel}>
-                    🧪 Test Mode (10/5/10 giây)
+                    🧪 {t("settings.testMode")} (10/5/10 {t("stats.seconds")})
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Bật để test nhanh với timer 10 giây
+                    {t("settings.testModeDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -961,8 +1005,7 @@ const SettingsScreen = () => {
               {testMode && (
                 <View style={styles.testModeWarning}>
                   <Text variant="bodySmall" style={styles.warningText}>
-                    ⚠️ Sliders sẽ bị vô hiệu hóa. Timer: 10s work / 5s short /
-                    10s long
+                    ⚠️ {t("settings.testModeWarning")}
                   </Text>
                 </View>
               )}
@@ -971,7 +1014,10 @@ const SettingsScreen = () => {
 
           {/* Timer Durations Section */}
           <Card style={styles.card}>
-            <Card.Title title="⏱️ Thời Gian" titleStyle={styles.cardTitle} />
+            <Card.Title
+              title={`⏱️ ${t("settings.timerSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
             <Card.Content>
               {/* Work Duration */}
               <View style={styles.settingRow}>
@@ -979,7 +1025,7 @@ const SettingsScreen = () => {
                   variant="bodyLarge"
                   style={[styles.label, testMode && styles.disabledText]}
                 >
-                  Thời gian làm việc
+                  {t("settings.workDuration")}
                 </Text>
                 <Text
                   variant="titleMedium"
@@ -989,7 +1035,9 @@ const SettingsScreen = () => {
                     testMode && styles.disabledText,
                   ]}
                 >
-                  {testMode ? "10 giây" : `${workDuration} phút`}
+                  {testMode
+                    ? `10 ${t("stats.seconds")}`
+                    : `${workDuration} ${t("settings.minutes")}`}
                 </Text>
               </View>
               <Slider
@@ -998,7 +1046,10 @@ const SettingsScreen = () => {
                 maximumValue={45}
                 step={5}
                 value={workDuration}
-                onValueChange={setWorkDuration}
+                onValueChange={(value) => {
+                  triggerHapticFeedback();
+                  setWorkDuration(value);
+                }}
                 minimumTrackTintColor={theme.colors.primary}
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor={theme.colors.primary}
@@ -1013,7 +1064,7 @@ const SettingsScreen = () => {
                   variant="bodyLarge"
                   style={[styles.label, testMode && styles.disabledText]}
                 >
-                  Nghỉ ngắn
+                  {t("settings.shortBreakDuration")}
                 </Text>
                 <Text
                   variant="titleMedium"
@@ -1023,7 +1074,9 @@ const SettingsScreen = () => {
                     testMode && styles.disabledText,
                   ]}
                 >
-                  {testMode ? "5 giây" : `${shortBreakDuration} phút`}
+                  {testMode
+                    ? `5 ${t("stats.seconds")}`
+                    : `${shortBreakDuration} ${t("settings.minutes")}`}
                 </Text>
               </View>
               <Slider
@@ -1032,7 +1085,10 @@ const SettingsScreen = () => {
                 maximumValue={10}
                 step={1}
                 value={shortBreakDuration}
-                onValueChange={setShortBreakDuration}
+                onValueChange={(value) => {
+                  triggerHapticFeedback();
+                  setShortBreakDuration(value);
+                }}
                 minimumTrackTintColor="#66BB6A"
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor="#66BB6A"
@@ -1047,7 +1103,7 @@ const SettingsScreen = () => {
                   variant="bodyLarge"
                   style={[styles.label, testMode && styles.disabledText]}
                 >
-                  Nghỉ dài
+                  {t("settings.longBreakDuration")}
                 </Text>
                 <Text
                   variant="titleMedium"
@@ -1057,7 +1113,9 @@ const SettingsScreen = () => {
                     testMode && styles.disabledText,
                   ]}
                 >
-                  {testMode ? "10 giây" : `${longBreakDuration} phút`}
+                  {testMode
+                    ? `10 ${t("stats.seconds")}`
+                    : `${longBreakDuration} ${t("settings.minutes")}`}
                 </Text>
               </View>
               <Slider
@@ -1066,7 +1124,10 @@ const SettingsScreen = () => {
                 maximumValue={30}
                 step={5}
                 value={longBreakDuration}
-                onValueChange={setLongBreakDuration}
+                onValueChange={(value) => {
+                  triggerHapticFeedback();
+                  setLongBreakDuration(value);
+                }}
                 minimumTrackTintColor="#5C6BC0"
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor="#5C6BC0"
@@ -1077,15 +1138,20 @@ const SettingsScreen = () => {
 
           {/* Break Interval Section */}
           <Card style={styles.card}>
-            <Card.Title title="🔄 Chu Kỳ Nghỉ" titleStyle={styles.cardTitle} />
+            <Card.Title
+              title={`🔄 ${t("settings.behaviorSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
             <Card.Content>
               <View style={styles.settingRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    Số Pomodoro trước khi nghỉ dài
+                    {t("settings.pomodorosUntilLongBreak")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Sau {pomodorosUntilLongBreak} pomodoro sẽ có nghỉ dài
+                    {t("settings.pomodorosUntilLongBreakDesc", {
+                      count: pomodorosUntilLongBreak,
+                    })}
                   </Text>
                 </View>
                 <Text
@@ -1101,7 +1167,10 @@ const SettingsScreen = () => {
                 maximumValue={8}
                 step={1}
                 value={pomodorosUntilLongBreak}
-                onValueChange={setPomodorosUntilLongBreak}
+                onValueChange={(value) => {
+                  triggerHapticFeedback();
+                  setPomodorosUntilLongBreak(value);
+                }}
                 minimumTrackTintColor={theme.colors.primary}
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor={theme.colors.primary}
@@ -1113,10 +1182,10 @@ const SettingsScreen = () => {
               <View style={styles.settingRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    🎯 Mục tiêu hàng ngày
+                    🎯 {t("settings.dailyGoalLabel")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Số pomodoro mục tiêu mỗi ngày
+                    {t("settings.dailyGoalDesc")}
                   </Text>
                 </View>
                 <Text
@@ -1132,7 +1201,10 @@ const SettingsScreen = () => {
                 maximumValue={20}
                 step={1}
                 value={dailyGoal}
-                onValueChange={(value) => setDailyGoal(Math.round(value))}
+                onValueChange={(value) => {
+                  triggerHapticFeedback();
+                  setDailyGoal(Math.round(value));
+                }}
                 minimumTrackTintColor={theme.colors.primary}
                 maximumTrackTintColor="#E0E0E0"
                 thumbTintColor={theme.colors.primary}
@@ -1142,16 +1214,19 @@ const SettingsScreen = () => {
 
           {/* Auto-Start Section */}
           <Card style={styles.card}>
-            <Card.Title title="🚀 Tự Động" titleStyle={styles.cardTitle} />
+            <Card.Title
+              title={`🚀 ${t("settings.behaviorSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
             <Card.Content>
               {/* Auto Start Breaks */}
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    Tự động bắt đầu nghỉ
+                    {t("settings.autoStartBreaks")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Bắt đầu break ngay sau khi hoàn thành pomodoro
+                    {t("settings.autoStartBreaksDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -1167,10 +1242,10 @@ const SettingsScreen = () => {
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    Tự động bắt đầu pomodoro
+                    {t("settings.autoStartPomodoros")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Bắt đầu pomodoro mới sau khi hoàn thành break
+                    {t("settings.autoStartPomodorosDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -1184,15 +1259,18 @@ const SettingsScreen = () => {
 
           {/* Notifications Section */}
           <Card style={styles.card}>
-            <Card.Title title="🔔 Thông Báo" titleStyle={styles.cardTitle} />
+            <Card.Title
+              title={`🔔 ${t("settings.notificationSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
             <Card.Content>
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    Bật thông báo
+                    {t("settings.enableNotifications")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Nhận thông báo khi hoàn thành pomodoro/break
+                    {t("settings.enableNotificationsDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -1207,10 +1285,10 @@ const SettingsScreen = () => {
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    🔊 Âm thanh thông báo
+                    🔊 {t("settings.soundEnabled")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Phát âm thanh khi timer hoàn thành
+                    {t("settings.soundEnabledDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -1226,10 +1304,10 @@ const SettingsScreen = () => {
               <View style={styles.switchRow}>
                 <View style={styles.labelContainer}>
                   <Text variant="bodyLarge" style={styles.label}>
-                    📳 Rung
+                    📳 {t("settings.vibrationEnabled")}
                   </Text>
                   <Text variant="bodySmall" style={styles.helpText}>
-                    Rung khi timer hoàn thành
+                    {t("settings.vibrationEnabledDesc")}
                   </Text>
                 </View>
                 <Switch
@@ -1257,7 +1335,9 @@ const SettingsScreen = () => {
               icon="content-save"
               buttonColor={hasUnsavedChanges ? "#FF9800" : undefined}
             >
-              {hasUnsavedChanges ? "💾 Lưu Thay Đổi" : "Lưu Cài Đặt"}
+              {hasUnsavedChanges
+                ? `💾 ${t("settings.saveChanges")}`
+                : t("settings.saveSettings")}
             </Button>
 
             <Button
@@ -1268,13 +1348,16 @@ const SettingsScreen = () => {
               contentStyle={styles.buttonContent}
               icon="restore"
             >
-              Khôi Phục Mặc Định
+              {t("settings.resetDefault")}
             </Button>
           </View>
 
           {/* Account Section */}
           <Card style={styles.card}>
-            <Card.Title title="👤 Tài Khoản" titleStyle={styles.cardTitle} />
+            <Card.Title
+              title={`👤 ${t("settings.accountSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
             <Card.Content>
               <View style={styles.accountInfo}>
                 <Avatar.Text
@@ -1297,23 +1380,28 @@ const SettingsScreen = () => {
               <Button
                 mode="outlined"
                 onPress={() => {
-                  Alert.alert("Đăng xuất", "Bạn có chắc muốn đăng xuất?", [
-                    { text: "Hủy", style: "cancel" },
-                    {
-                      text: "Đăng xuất",
-                      style: "destructive",
-                      onPress: async () => {
-                        await logout();
-                        // Navigation will automatically redirect to Login
+                  Alert.alert(
+                    t("alerts.logout.title"),
+                    t("alerts.logout.message"),
+                    [
+                      { text: t("alerts.logout.cancel"), style: "cancel" },
+                      {
+                        text: t("alerts.logout.confirm"),
+                        style: "destructive",
+                        onPress: async () => {
+                          resetLanguage(); // Reset to Vietnamese before logout
+                          await logout();
+                          // Navigation will automatically redirect to Login
+                        },
                       },
-                    },
-                  ]);
+                    ]
+                  );
                 }}
                 icon="logout"
                 textColor="#EF5350"
                 style={styles.logoutButton}
               >
-                Đăng Xuất
+                {t("settings.logout")}
               </Button>
             </Card.Content>
           </Card>
@@ -1321,31 +1409,70 @@ const SettingsScreen = () => {
           {/* App Info Section */}
           <Card style={styles.card}>
             <Card.Title
-              title="ℹ️ Thông Tin Ứng Dụng"
+              title={`ℹ️ ${t("settings.appInfo")}`}
               titleStyle={styles.cardTitle}
             />
             <Card.Content>
               <List.Item
-                title="Phiên bản"
+                title={t("settings.version")}
                 description="1.0.0"
                 left={(props) => <List.Icon {...props} icon="information" />}
               />
               <List.Item
-                title="Về DeepFocus"
-                description="Ứng dụng Pomodoro Timer giúp tăng năng suất"
+                title={t("settings.aboutApp")}
+                description={t("settings.aboutDescription")}
                 left={(props) => <List.Icon {...props} icon="heart" />}
               />
               <List.Item
-                title="Chính sách bảo mật"
-                description="Xem chính sách bảo mật"
+                title={t("settings.privacyPolicy")}
+                description={t("settings.privacyPolicyDesc")}
                 left={(props) => <List.Icon {...props} icon="shield-check" />}
                 onPress={() => Linking.openURL("https://deepfocus.app/privacy")}
               />
               <List.Item
-                title="Điều khoản dịch vụ"
-                description="Xem điều khoản dịch vụ"
+                title={t("settings.termsOfService")}
+                description={t("settings.termsOfServiceDesc")}
                 left={(props) => <List.Icon {...props} icon="file-document" />}
                 onPress={() => Linking.openURL("https://deepfocus.app/terms")}
+              />
+            </Card.Content>
+          </Card>
+
+          {/* Language Settings Section */}
+          <Card style={styles.card}>
+            <Card.Title
+              title={`🌐 ${t("settings.languageSettings")}`}
+              titleStyle={styles.cardTitle}
+            />
+            <Card.Content>
+              <List.Item
+                title={t("settings.vietnamese")}
+                description="Tiếng Việt"
+                right={() =>
+                  selectedLanguage === "vi" && (
+                    <List.Icon icon="check" color={theme.colors.primary} />
+                  )
+                }
+                onPress={() => {
+                  setSelectedLanguage("vi");
+                  setPreviewLanguage("vi");
+                }}
+                style={styles.languageItem}
+              />
+              <Divider />
+              <List.Item
+                title={t("settings.english")}
+                description="English"
+                right={() =>
+                  selectedLanguage === "en" && (
+                    <List.Icon icon="check" color={theme.colors.primary} />
+                  )
+                }
+                onPress={() => {
+                  setSelectedLanguage("en");
+                  setPreviewLanguage("en");
+                }}
+                style={styles.languageItem}
               />
             </Card.Content>
           </Card>
@@ -1354,9 +1481,10 @@ const SettingsScreen = () => {
           <Card style={[styles.card, styles.infoCard]}>
             <Card.Content>
               <Text variant="bodyMedium" style={styles.infoText}>
-                💡 <Text style={styles.infoBold}>Mẹo:</Text> Phương pháp
-                Pomodoro truyền thống sử dụng chu kỳ 25-5-15 (25 phút làm việc,
-                5 phút nghỉ ngắn, 15 phút nghỉ dài sau 4 pomodoro).
+                💡 <Text style={styles.infoBold}>{t("general.info")}:</Text>{" "}
+                {language === "vi"
+                  ? "Phương pháp Pomodoro truyền thống sử dụng chu kỳ 25-5-15 (25 phút làm việc, 5 phút nghỉ ngắn, 15 phút nghỉ dài sau 4 pomodoro)."
+                  : "The traditional Pomodoro Technique uses a 25-5-15 cycle (25 minutes work, 5 minutes short break, 15 minutes long break after 4 pomodoros)."}
               </Text>
             </Card.Content>
           </Card>
@@ -1486,6 +1614,9 @@ const styles = StyleSheet.create({
   },
   infoBold: {
     fontWeight: "bold",
+  },
+  languageItem: {
+    paddingVertical: 8,
   },
   snackbar: {
     position: "absolute",

@@ -22,9 +22,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const LoginScreen = () => {
   const theme = useTheme();
+  const { t } = useLanguage();
   const { login, isLoading, error, clearError } = useAuth();
 
   // Form state
@@ -56,16 +58,16 @@ const LoginScreen = () => {
 
     // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email là bắt buộc";
+      newErrors.email = t("login.emailRequired");
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = "Email không hợp lệ";
+      newErrors.email = t("auth.invalidEmail");
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = "Mật khẩu là bắt buộc";
+      newErrors.password = t("login.passwordRequired");
     } else if (formData.password.length < 6) {
-      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+      newErrors.password = t("auth.passwordTooShort");
     }
 
     setErrors(newErrors);
@@ -106,19 +108,15 @@ const LoginScreen = () => {
           result.error &&
           result.error.includes("Email hoặc mật khẩu không chính xác")
         ) {
-          setSnackbarMessage(
-            "Email hoặc mật khẩu không chính xác. Vui lòng thử lại."
-          );
+          setSnackbarMessage(t("auth.invalidCredentials"));
         } else {
-          setSnackbarMessage(
-            result.error || "Đăng nhập thất bại. Vui lòng thử lại."
-          );
+          setSnackbarMessage(result.error || t("auth.loginError"));
         }
         setSnackbarVisible(true);
       }
     } catch (error) {
       console.error("❌ Login error:", error);
-      setSnackbarMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+      setSnackbarMessage(t("auth.networkError"));
       setSnackbarVisible(true);
     }
   };
@@ -145,15 +143,13 @@ const LoginScreen = () => {
             <Title style={[styles.title, { color: theme.colors.primary }]}>
               DeepFocus
             </Title>
-            <Paragraph style={styles.subtitle}>
-              Đăng nhập để tiếp tục hành trình tập trung của bạn
-            </Paragraph>
+            <Paragraph style={styles.subtitle}>{t("login.subtitle")}</Paragraph>
           </View>
 
           {/* Login Form */}
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.formTitle}>Đăng nhập</Title>
+              <Title style={styles.formTitle}>{t("auth.login")}</Title>
 
               {/* Global Error */}
               {error && (
@@ -168,7 +164,7 @@ const LoginScreen = () => {
 
               {/* Email Input */}
               <TextInput
-                label="Email"
+                label={t("auth.email")}
                 value={formData.email}
                 onChangeText={(value) => handleInputChange("email", value)}
                 mode="outlined"
@@ -186,7 +182,7 @@ const LoginScreen = () => {
 
               {/* Password Input */}
               <TextInput
-                label="Mật khẩu"
+                label={t("auth.password")}
                 value={formData.password}
                 onChangeText={(value) => handleInputChange("password", value)}
                 mode="outlined"
@@ -215,13 +211,15 @@ const LoginScreen = () => {
                 disabled={isLoading}
                 loading={isLoading}
               >
-                {isLoading ? "Đang đăng nhập..." : "Đăng nhập"}
+                {isLoading ? t("auth.loggingIn") : t("auth.login")}
               </Button>
 
               {/* Divider */}
               <View style={styles.dividerContainer}>
                 <Divider style={styles.divider} />
-                <Paragraph style={styles.dividerText}>hoặc</Paragraph>
+                <Paragraph style={styles.dividerText}>
+                  {t("login.or")}
+                </Paragraph>
                 <Divider style={styles.divider} />
               </View>
 
@@ -233,7 +231,7 @@ const LoginScreen = () => {
                 contentStyle={styles.buttonContent}
                 disabled={isLoading}
               >
-                Tạo tài khoản mới
+                {t("login.createAccount")}
               </Button>
             </Card.Content>
           </Card>
@@ -241,10 +239,7 @@ const LoginScreen = () => {
           {/* Footer */}
           <View style={styles.footer}>
             <Paragraph style={styles.footerText}>
-              Bằng cách đăng nhập, bạn đồng ý với{" "}
-              <Paragraph style={styles.linkText}>Điều khoản dịch vụ</Paragraph>{" "}
-              và{" "}
-              <Paragraph style={styles.linkText}>Chính sách bảo mật</Paragraph>
+              {t("login.termsAgreement")}
             </Paragraph>
           </View>
         </ScrollView>
@@ -263,7 +258,7 @@ const LoginScreen = () => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         action={{
-          label: "Đóng",
+          label: t("general.close"),
           onPress: () => setSnackbarVisible(false),
         }}
         style={styles.snackbar}

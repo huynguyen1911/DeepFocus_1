@@ -7,18 +7,21 @@ import { StatusBar } from "expo-status-bar";
 
 import AppNavigator from "./src/navigation/AppNavigator";
 import { AuthProvider } from "./src/contexts/AuthContext";
+import { LanguageProvider } from "./src/contexts/LanguageContext";
 import { theme } from "./src/config/theme";
 
 function App() {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
-        <AuthProvider>
-          <NavigationContainer>
-            <StatusBar style="auto" />
-            <AppNavigator />
-          </NavigationContainer>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <NavigationContainer>
+              <StatusBar style="auto" />
+              <AppNavigator />
+            </NavigationContainer>
+          </AuthProvider>
+        </LanguageProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );

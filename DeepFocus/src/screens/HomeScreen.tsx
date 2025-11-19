@@ -11,6 +11,7 @@ import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useTasks } from '../contexts/TaskContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { taskAPI, statsAPI } from '../services/api';
 
 const HomeScreen = () => {
@@ -18,7 +19,8 @@ const HomeScreen = () => {
   const { user, logout } = useAuth();
   const { completedPomodoros, startWorkSessionWithTask, settings } = usePomodoro();
   const { tasks, isLoading, loadTasks, updateTask } = useTasks();
-  const [greeting] = useState(getGreeting());
+  const { t, language, resetLanguage } = useLanguage();
+  const [greeting] = useState(getGreeting(language));
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuKey, setMenuKey] = useState(0); // Force remount menu to fix stuck state
   const [pendingAction, setPendingAction] = useState<'profile' | 'settings' | 'logout' | null>(null);
@@ -34,6 +36,7 @@ const HomeScreen = () => {
     totalTasks: 0,
     completedTasks: 0,
     totalPomodoros: 0,
+    totalWorkTime: 0,
     pendingTasks: 0,
   });
   const [todayPomodoros, setTodayPomodoros] = useState(0);
@@ -50,27 +53,17 @@ const HomeScreen = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Load stats from API
+  // Load stats from both APIs
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const data = await taskAPI.getTaskStats();
-        setStats(data);
-      } catch (error) {
-        console.error('Failed to load stats:', error);
-      }
-    };
-
-    loadStats();
-  }, [tasks]); // Reload when tasks change
-
-  // Load today's pomodoro count from stats API
-  useEffect(() => {
-    const loadTodayStats = async () => {
+    const loadAllStats = async () => {
       try {
         // Small delay to ensure backend has processed the sync
         await new Promise(resolve => setTimeout(resolve, 500));
         
+        // Load task stats (for task counts)
+        const taskStats = await taskAPI.getTaskStats();
+        
+        // Load pomodoro stats (for pomodoro counts)
         const statsData = await statsAPI.getStats();
         
         // Find today's stats from last30Days
@@ -82,18 +75,27 @@ const HomeScreen = () => {
           return dayStr === todayStr;
         });
 
-        const newCount = todayStats?.completedPomodoros || 0;
-        const newWorkTime = todayStats?.totalWorkTime || 0;
-        setTodayPomodoros(newCount);
-        setTodayWorkTime(newWorkTime);
+        const newTodayCount = todayStats?.completedPomodoros || 0;
+        const newTodayWorkTime = todayStats?.totalWorkTime || 0;
+        
+        // Combine both stats (statsData.overall contains the overall statistics)
+        setStats({
+          totalTasks: taskStats.totalTasks || 0,
+          completedTasks: taskStats.completedTasks || 0,
+          pendingTasks: taskStats.pendingTasks || 0,
+          totalPomodoros: statsData.overall?.totalPomodoros || 0,
+          totalWorkTime: statsData.overall?.totalWorkTime || 0,
+        });
+        
+        setTodayPomodoros(newTodayCount);
+        setTodayWorkTime(newTodayWorkTime);
       } catch (error) {
-        console.error('❌ Failed to load today stats:', error);
-        setTodayPomodoros(0);
+        console.error('❌ Failed to load stats:', error);
       }
     };
 
-    loadTodayStats();
-  }, [completedPomodoros]); // Reload when pomodoros complete
+    loadAllStats();
+  }, [tasks, completedPomodoros]); // Reload when tasks or pomodoros change
 
   // Load sort preference from AsyncStorage
   useEffect(() => {
@@ -149,7 +151,7 @@ const HomeScreen = () => {
       setTimeout(() => {
         switch (action) {
           case 'profile':
-            Alert.alert('Hồ sơ', 'Tính năng hồ sơ đang được phát triển');
+            Alert.alert(t('navigation.profile'), t('general.featureInDevelopment'));
             // Remount menu after Alert to fix stuck state
             setTimeout(() => setMenuKey(prev => prev + 1), 200);
             break;
@@ -160,11 +162,11 @@ const HomeScreen = () => {
             break;
           case 'logout':
             Alert.alert(
-              'Đăng xuất',
-              'Bạn có chắc chắn muốn đăng xuất không?',
+              t('settings.logout'),
+              t('settings.logoutConfirm'),
               [
                 { 
-                  text: 'Hủy', 
+                  text: t('general.cancel'), 
                   style: 'cancel',
                   onPress: () => {
                     // Remount menu when cancel
@@ -172,9 +174,10 @@ const HomeScreen = () => {
                   }
                 },
                 {
-                  text: 'Đăng xuất',
+                  text: t('settings.logout'),
                   style: 'destructive',
                   onPress: async () => {
+                    resetLanguage(); // Reset to Vietnamese before logout
                     await logout();
                   },
                 },
@@ -190,10 +193,29 @@ const HomeScreen = () => {
     setRefreshing(true);
     await loadTasks(false);
     
-    // Reload stats
+    // Reload stats from both APIs
     try {
-      const data = await taskAPI.getTaskStats();
-      setStats(data);
+      const taskStats = await taskAPI.getTaskStats();
+      const statsData = await statsAPI.getStats();
+      
+      // Find today's stats
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const todayStats = statsData.last30Days?.find((day: any) => {
+        const dayStr = new Date(day.date).toISOString().split('T')[0];
+        return dayStr === todayStr;
+      });
+      
+      setStats({
+        totalTasks: taskStats.totalTasks || 0,
+        completedTasks: taskStats.completedTasks || 0,
+        pendingTasks: taskStats.pendingTasks || 0,
+        totalPomodoros: statsData.overall?.totalPomodoros || 0,
+        totalWorkTime: statsData.overall?.totalWorkTime || 0,
+      });
+      
+      setTodayPomodoros(todayStats?.completedPomodoros || 0);
+      setTodayWorkTime(todayStats?.totalWorkTime || 0);
     } catch (error) {
       console.error('Failed to refresh stats:', error);
     }
@@ -265,15 +287,15 @@ const HomeScreen = () => {
   // Handle start timer for a task
   const handleStartTimer = useCallback((task: any) => {
     Alert.alert(
-      'Bắt đầu Pomodoro',
-      `Bắt đầu làm việc cho nhiệm vụ: "${task.title}"`,
+      t('timer.startPomodoro'),
+      t('home.startTaskConfirm', { title: task.title }),
       [
         {
-          text: 'Hủy',
+          text: t('general.cancel'),
           style: 'cancel',
         },
         {
-          text: 'Bắt đầu',
+          text: t('timer.start'),
           onPress: () => {
             // Start timer with task
             startWorkSessionWithTask(task);
@@ -324,7 +346,7 @@ const HomeScreen = () => {
                 DeepFocus
               </Text>
               <Text variant="bodySmall" style={{ color: theme.colors.onPrimary, opacity: 0.8 }}>
-                Xin chào, {user?.username || 'User'}!
+                {t('home.hello', { name: user?.username || 'User' })}
               </Text>
             </View>
             <IconButton
@@ -349,10 +371,10 @@ const HomeScreen = () => {
           <Card style={styles.welcomeCard}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleLarge" style={[styles.greetingText, { color: theme.colors.onSurface }]}>{greeting}</Text>
-              <Text variant="headlineMedium" style={[styles.welcomeText, { color: theme.colors.primary }]}>Chào mừng {user?.username}!</Text>
-              <Text variant="titleMedium" style={[styles.subtitleText, { color: theme.colors.onSurface }]}>Ứng dụng Pomodoro Timer</Text>
+              <Text variant="headlineMedium" style={[styles.welcomeText, { color: theme.colors.primary }]}>{t('home.welcomeUser', { name: user?.username })}</Text>
+              <Text variant="titleMedium" style={[styles.subtitleText, { color: theme.colors.onSurface }]}>{t('home.appTitle')}</Text>
               <Divider style={styles.divider} />
-              <Text variant="bodyMedium" style={[styles.descriptionText, { color: theme.colors.onSurfaceVariant }]}>Tập trung sâu, làm việc hiệu quả với phương pháp Pomodoro</Text>
+              <Text variant="bodyMedium" style={[styles.descriptionText, { color: theme.colors.onSurfaceVariant }]}>{t('home.description')}</Text>
             </Card.Content>
           </Card>
           
@@ -361,12 +383,12 @@ const HomeScreen = () => {
             style={styles.timerSection}
             collapsable={false}
           >
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>DeepFocus - Pomodoro Timer</Text>
+            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{`${t('home.title')} - ${t('home.subtitle')}`}</Text>
             <Timer />
           </View>
           
           <View style={styles.statsSection}>
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Thống kê của bạn</Text>
+            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('home.yourStats')}</Text>
             
             {/* Daily Progress */}
             <DailyPomodoroProgress 
@@ -378,14 +400,14 @@ const HomeScreen = () => {
             <View style={styles.statsContainer}>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.totalPomodoros}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tổng Pomodoros</Text>
+                    <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.totalPomodoros}</Text>
+                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('stats.totalPomodoros')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.secondary }]}>{stats.totalPomodoros * 25}m</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Thời gian tập trung</Text>
+                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.secondary }]}>{stats.totalWorkTime}m</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('stats.focusTime')}</Text>
                 </Card.Content>
               </Card>
             </View>
@@ -393,13 +415,13 @@ const HomeScreen = () => {
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
                   <Text variant="headlineSmall" style={[styles.statNumber, { color: '#4CAF50' }]}>{stats.completedTasks}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tasks hoàn thành</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('tasks.completed')}</Text>
                 </Card.Content>
               </Card>
               <Card style={styles.statCard}>
                 <Card.Content style={styles.statContent}>
                   <Text variant="headlineSmall" style={[styles.statNumber, { color: '#FF9800' }]}>{stats.pendingTasks}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>Tasks đang làm</Text>
+                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('tasks.inProgress')}</Text>
                 </Card.Content>
               </Card>
             </View>
@@ -410,13 +432,13 @@ const HomeScreen = () => {
         <View style={styles.taskSection}>
           <View style={styles.taskSectionHeader}>
             <Text variant="titleLarge" style={[styles.taskSectionTitle, { color: theme.colors.onBackground }]}>
-              Nhiệm Vụ Của Tôi
+              {t('home.myTasks')}
             </Text>
           </View>
           
           <View style={styles.searchFilterContainer}>
             <Searchbar 
-              placeholder="Tìm kiếm nhiệm vụ..." 
+              placeholder={t('tasks.searchTasks')} 
               onChangeText={setSearchQuery} 
               value={searchQuery} 
               style={styles.searchBar} 
@@ -430,9 +452,9 @@ const HomeScreen = () => {
                 value={filterMode} 
                 onValueChange={setFilterMode} 
                 buttons={[
-                  { value: "all", label: `Tất cả (${tasks.length})`, icon: "format-list-bulleted" },
-                  { value: "active", label: `Đang làm (${tasks.filter((t: any) => !t.isCompleted).length})`, icon: "progress-clock" },
-                  { value: "completed", label: `Hoàn thành (${tasks.filter((t: any) => t.isCompleted).length})`, icon: "check-circle" },
+                  { value: "all", label: `${t('tasks.all')} (${tasks.length})`, icon: "format-list-bulleted" },
+                  { value: "active", label: `${t('tasks.active')} (${tasks.filter((t: any) => !t.isCompleted).length})`, icon: "progress-clock" },
+                  { value: "completed", label: `${t('tasks.completed')} (${tasks.filter((t: any) => t.isCompleted).length})`, icon: "check-circle" },
                 ]} 
                 style={styles.segmentedButtons} 
               />
@@ -452,7 +474,7 @@ const HomeScreen = () => {
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyIcon}>📋</Text>
                 <Text style={styles.emptyText}>
-                  {filterMode === "active" ? "Không có nhiệm vụ đang hoạt động" : filterMode === "completed" ? "Chưa hoàn thành nhiệm vụ nào" : debouncedSearchQuery.trim() ? `Không tìm thấy "${debouncedSearchQuery}"` : "Chưa có nhiệm vụ nào"}
+                  {filterMode === "active" ? t('tasks.noActiveTasks') : filterMode === "completed" ? t('tasks.noCompletedTasks') : debouncedSearchQuery.trim() ? t('tasks.noSearchResults', { query: debouncedSearchQuery }) : t('tasks.noTasks')}
                 </Text>
               </View>
             ) : (
@@ -483,22 +505,22 @@ const HomeScreen = () => {
               
               <Menu.Item 
                 onPress={() => handleSortChange('date')} 
-                title="Ngày tạo" 
+                title={t('tasks.sortByDate')} 
                 leadingIcon={sortBy === 'date' ? 'check' : undefined}
               />
               <Menu.Item 
                 onPress={() => handleSortChange('priority')} 
-                title="Độ ưu tiên" 
+                title={t('tasks.sortByPriority')} 
                 leadingIcon={sortBy === 'priority' ? 'check' : undefined}
               />
               <Menu.Item 
                 onPress={() => handleSortChange('dueDate')} 
-                title="Hạn chót" 
+                title={t('tasks.sortByDueDate')} 
                 leadingIcon={sortBy === 'dueDate' ? 'check' : undefined}
               />
               <Menu.Item 
                 onPress={() => handleSortChange('pomodoros')} 
-                title="Pomodoros còn lại" 
+                title={t('tasks.sortByPomodoros')} 
                 leadingIcon={sortBy === 'pomodoros' ? 'check' : undefined}
               />
             </View>
@@ -522,21 +544,21 @@ const HomeScreen = () => {
           <View style={styles.menuContainer}>
             <Card style={styles.menuCard}>
               <List.Item
-                title="Hồ sơ"
+                title={t('navigation.profile')}
                 left={props => <List.Icon {...props} icon="account" />}
                 onPress={handleProfilePress}
                 style={styles.menuItem}
               />
               <Divider />
               <List.Item
-                title="Cài đặt"
+                title={t('navigation.settings')}
                 left={props => <List.Icon {...props} icon="cog" />}
                 onPress={handleSettingsPress}
                 style={styles.menuItem}
               />
               <Divider />
               <List.Item
-                title="Đăng xuất"
+                title={t('settings.logout')}
                 left={props => <List.Icon {...props} icon="logout" />}
                 onPress={handleLogout}
                 style={styles.menuItem}

@@ -10,6 +10,7 @@ import {
   useTheme,
 } from "react-native-paper";
 import { usePomodoro, TIMER_STATES } from "../contexts/PomodoroContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { formatTime } from "../utils/helpers";
 import TaskSelector from "./TaskSelector";
 import PomodoroCompletionModal from "./PomodoroCompletionModal";
@@ -36,6 +37,7 @@ const Timer = () => {
     handleStartBreakFromModal,
     handleCloseCompletionModal,
   } = usePomodoro();
+  const { t } = useLanguage();
 
   // Handle task selection
   const handleSelectTask = (task) => {
@@ -60,13 +62,13 @@ const Timer = () => {
   const getStateLabel = () => {
     switch (timerState) {
       case TIMER_STATES.WORKING:
-        return "Tập Trung";
+        return t("home.focus");
       case TIMER_STATES.SHORT_BREAK:
-        return "Nghỉ Ngắn";
+        return t("home.shortBreak");
       case TIMER_STATES.LONG_BREAK:
-        return "Nghỉ Dài";
+        return t("home.longBreak");
       default:
-        return "Sẵn Sàng";
+        return t("home.ready");
     }
   };
 
@@ -116,7 +118,7 @@ const Timer = () => {
               contentStyle={styles.buttonContent}
               icon="play"
             >
-              Tiếp Tục Nhiệm Vụ
+              {t("home.resumeWork")}
             </Button>
             <View style={styles.buttonRow}>
               <Button
@@ -126,7 +128,7 @@ const Timer = () => {
                 contentStyle={styles.buttonContent}
                 icon="swap-horizontal"
               >
-                Đổi Task
+                {t("timer.swapTask")}
               </Button>
               <Button
                 mode="outlined"
@@ -137,7 +139,7 @@ const Timer = () => {
                 contentStyle={styles.buttonContent}
                 icon="close"
               >
-                Xóa Task
+                {t("tasks.delete")}
               </Button>
             </View>
           </View>
@@ -154,7 +156,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="format-list-checks"
           >
-            Chọn Nhiệm Vụ & Bắt Đầu
+            {t("timer.selectTaskAndStart")}
           </Button>
           <Button
             mode="outlined"
@@ -163,7 +165,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="play"
           >
-            Bắt Đầu Không Nhiệm Vụ
+            {t("timer.startWithoutTask")}
           </Button>
         </View>
       );
@@ -180,7 +182,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="pause"
           >
-            Tạm Dừng
+            {t("home.pause")}
           </Button>
           <Button
             mode="outlined"
@@ -189,7 +191,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="refresh"
           >
-            Đặt Lại
+            {t("home.reset")}
           </Button>
         </View>
       );
@@ -205,7 +207,7 @@ const Timer = () => {
           contentStyle={styles.buttonContent}
           icon="play"
         >
-          Tiếp Tục
+          {t("home.resume")}
         </Button>
         <View style={styles.buttonRow}>
           <Button
@@ -215,7 +217,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="refresh"
           >
-            Đặt Lại
+            {t("home.reset")}
           </Button>
           <Button
             mode="outlined"
@@ -224,7 +226,7 @@ const Timer = () => {
             contentStyle={styles.buttonContent}
             icon="skip-next"
           >
-            Bỏ Qua
+            {t("general.skip")}
           </Button>
         </View>
       </View>
@@ -254,10 +256,10 @@ const Timer = () => {
           <View style={styles.taskContainer}>
             <Text style={styles.taskLabel}>
               {timerState === TIMER_STATES.WORKING
-                ? "Đang làm việc:"
+                ? t("timer.workingOnLabel")
                 : timerState === TIMER_STATES.IDLE
-                ? "Nhiệm vụ hiện tại:"
-                : "Đang nghỉ:"}
+                ? t("timer.currentTaskLabel")
+                : t("timer.onBreakLabel")}
             </Text>
             <Text style={styles.taskTitle} numberOfLines={2}>
               {activeTask.title}
@@ -320,7 +322,9 @@ const Timer = () => {
         {completedPomodoros > 0 && (
           <View style={styles.counterContainer}>
             <Text style={styles.counterText}>
-              🎯 Pomodoros Hoàn Thành: {completedPomodoros}
+              {t("stats.completedPomodorosCount", {
+                count: completedPomodoros,
+              })}
             </Text>
           </View>
         )}

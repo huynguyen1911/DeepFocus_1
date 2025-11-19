@@ -24,10 +24,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTasks } from "../contexts/TaskContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const TaskDetailsScreen = () => {
   const theme = useTheme();
+  const { t, language } = useLanguage();
   const { updateTask, deleteTask, completeTask, tasks } = useTasks();
   const params = useLocalSearchParams();
 
@@ -119,12 +121,12 @@ const TaskDetailsScreen = () => {
     const newErrors = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = "Tiêu đề là bắt buộc";
+      newErrors.title = t("addTask.titleRequired");
     }
 
     const pomodoros = parseInt(formData.estimatedPomodoros);
     if (isNaN(pomodoros) || pomodoros < 1) {
-      newErrors.estimatedPomodoros = "Số pomodoro phải ít nhất là 1";
+      newErrors.estimatedPomodoros = t("addTask.pomodorosMinimum");
     }
 
     setErrors(newErrors);
@@ -147,8 +149,8 @@ const TaskDetailsScreen = () => {
 
   // Format date for display
   const formatDate = (date) => {
-    if (!date) return "Chưa đặt";
-    return date.toLocaleDateString("vi-VN", {
+    if (!date) return t("taskDetails.notSet");
+    return date.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -158,7 +160,7 @@ const TaskDetailsScreen = () => {
   // Format datetime for created at
   const formatDateTime = (date) => {
     if (!date) return "N/A";
-    return date.toLocaleString("vi-VN", {
+    return date.toLocaleString(language === "vi" ? "vi-VN" : "en-US", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -192,13 +194,13 @@ const TaskDetailsScreen = () => {
   const getPriorityLabel = () => {
     switch (formData.priority) {
       case "high":
-        return "Cao";
+        return t("tasks.priorityHigh");
       case "medium":
-        return "Trung bình";
+        return t("tasks.priorityMedium");
       case "low":
-        return "Thấp";
+        return t("tasks.priorityLow");
       default:
-        return "Trung bình";
+        return t("tasks.priorityMedium");
     }
   };
 
@@ -222,7 +224,7 @@ const TaskDetailsScreen = () => {
       const result = await updateTask(taskId, taskData);
 
       if (result.success) {
-        setSnackbarMessage("✅ Đã lưu thay đổi thành công!");
+        setSnackbarMessage(t("taskDetails.saveSuccess"));
         setSnackbarVisible(true);
         setHasChanges(false);
 
@@ -232,11 +234,11 @@ const TaskDetailsScreen = () => {
           ...taskData,
         }));
       } else {
-        setSnackbarMessage(result.error || "Không thể lưu thay đổi");
+        setSnackbarMessage(result.error || t("taskDetails.saveError"));
         setSnackbarVisible(true);
       }
     } catch (error) {
-      setSnackbarMessage("Đã xảy ra lỗi. Vui lòng thử lại.");
+      setSnackbarMessage(t("errors.generic"));
       setSnackbarVisible(true);
     } finally {
       setIsLoading(false);
@@ -246,15 +248,15 @@ const TaskDetailsScreen = () => {
   // Handle delete with confirmation
   const handleDelete = () => {
     Alert.alert(
-      "Xác nhận xóa",
-      "Bạn có chắc chắn muốn xóa nhiệm vụ này không?",
+      t("taskDetails.confirmDelete"),
+      t("taskDetails.confirmDeleteMessage"),
       [
         {
-          text: "Hủy",
+          text: t("tasks.cancel"),
           style: "cancel",
         },
         {
-          text: "Xóa",
+          text: t("taskDetails.delete"),
           style: "destructive",
           onPress: async () => {
             setIsLoading(true);
@@ -262,18 +264,20 @@ const TaskDetailsScreen = () => {
               const result = await deleteTask(taskId);
 
               if (result.success) {
-                setSnackbarMessage("✅ Đã xóa nhiệm vụ!");
+                setSnackbarMessage(t("taskDetails.deleteSuccess"));
                 setSnackbarVisible(true);
 
                 setTimeout(() => {
                   router.back();
                 }, 1000);
               } else {
-                setSnackbarMessage(result.error || "Không thể xóa nhiệm vụ");
+                setSnackbarMessage(
+                  result.error || t("taskDetails.deleteError")
+                );
                 setSnackbarVisible(true);
               }
             } catch (error) {
-              setSnackbarMessage("Đã xảy ra lỗi. Vui lòng thử lại.");
+              setSnackbarMessage(t("errors.generic"));
               setSnackbarVisible(true);
             } finally {
               setIsLoading(false);
@@ -304,16 +308,16 @@ const TaskDetailsScreen = () => {
         // Use the new status for the message
         setSnackbarMessage(
           newStatus
-            ? "✅ Đã đánh dấu hoàn thành!"
-            : "↩️ Đã đánh dấu chưa hoàn thành!"
+            ? t("taskDetails.markedComplete")
+            : t("taskDetails.markedIncomplete")
         );
         setSnackbarVisible(true);
       } else {
-        setSnackbarMessage(result.error || "Không thể cập nhật trạng thái");
+        setSnackbarMessage(result.error || t("taskDetails.statusError"));
         setSnackbarVisible(true);
       }
     } catch (error) {
-      setSnackbarMessage("Đã xảy ra lỗi. Vui lòng thử lại.");
+      setSnackbarMessage(t("errors.generic"));
       setSnackbarVisible(true);
     } finally {
       setIsLoading(false);
@@ -324,15 +328,15 @@ const TaskDetailsScreen = () => {
   const handleCancel = () => {
     if (hasChanges) {
       Alert.alert(
-        "Có thay đổi chưa lưu",
-        "Bạn có chắc chắn muốn thoát không? Các thay đổi sẽ không được lưu.",
+        t("taskDetails.unsavedChanges"),
+        t("taskDetails.unsavedChangesMessage"),
         [
           {
-            text: "Ở lại",
+            text: t("taskDetails.stay"),
             style: "cancel",
           },
           {
-            text: "Thoát",
+            text: t("taskDetails.exit"),
             style: "destructive",
             onPress: () => router.back(),
           },
@@ -351,7 +355,7 @@ const TaskDetailsScreen = () => {
       >
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+          <Text style={styles.loadingText}>{t("general.loading")}</Text>
         </View>
       </SafeAreaView>
     );
@@ -364,13 +368,13 @@ const TaskDetailsScreen = () => {
         edges={["bottom"]}
       >
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>Không tìm thấy nhiệm vụ</Text>
+          <Text style={styles.errorText}>{t("taskDetails.taskNotFound")}</Text>
           <Button
             mode="contained"
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            Quay lại
+            {t("taskDetails.goBack")}
           </Button>
         </View>
       </SafeAreaView>
@@ -415,7 +419,9 @@ const TaskDetailsScreen = () => {
                         : { color: "#E65100" }
                     }
                   >
-                    {formData.isCompleted ? "Hoàn thành" : "Đang thực hiện"}
+                    {formData.isCompleted
+                      ? t("tasks.completed")
+                      : t("tasks.inProgress")}
                   </Chip>
 
                   <Chip
@@ -437,7 +443,9 @@ const TaskDetailsScreen = () => {
                     <Text style={styles.progressPercentage}>
                       {Math.round(progressPercentage)}%
                     </Text>
-                    <Text style={styles.progressLabel}>Hoàn thành</Text>
+                    <Text style={styles.progressLabel}>
+                      {t("tasks.completed")}
+                    </Text>
                   </View>
                   <View style={styles.progressCircleOuter}>
                     <View
@@ -460,14 +468,18 @@ const TaskDetailsScreen = () => {
                     <Text style={styles.statValue}>
                       {formData.completedPomodoros}
                     </Text>
-                    <Text style={styles.statLabel}>Đã hoàn thành</Text>
+                    <Text style={styles.statLabel}>
+                      {t("taskDetails.completed")}
+                    </Text>
                   </View>
                   <Divider style={styles.statDivider} />
                   <View style={styles.statItem}>
                     <Text style={styles.statValue}>
                       {formData.estimatedPomodoros}
                     </Text>
-                    <Text style={styles.statLabel}>Dự kiến</Text>
+                    <Text style={styles.statLabel}>
+                      {t("taskDetails.estimated")}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -478,12 +490,12 @@ const TaskDetailsScreen = () => {
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                📝 Thông tin cơ bản
+                {t("taskDetails.basicInfo")}
               </Text>
 
               {/* Title Input */}
               <TextInput
-                label="Tiêu đề *"
+                label={t("addTask.titleLabel")}
                 value={formData.title}
                 onChangeText={(value) => handleInputChange("title", value)}
                 mode="outlined"
@@ -498,7 +510,7 @@ const TaskDetailsScreen = () => {
 
               {/* Description Input */}
               <TextInput
-                label="Mô tả"
+                label={t("taskDetails.description")}
                 value={formData.description}
                 onChangeText={(value) =>
                   handleInputChange("description", value)
@@ -513,7 +525,7 @@ const TaskDetailsScreen = () => {
 
               {/* Estimated Pomodoros */}
               <TextInput
-                label="Số Pomodoro dự kiến *"
+                label={t("addTask.pomodorosLabel")}
                 value={formData.estimatedPomodoros}
                 onChangeText={(value) =>
                   handleInputChange("estimatedPomodoros", value)
@@ -537,12 +549,12 @@ const TaskDetailsScreen = () => {
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                ⚙️ Cài đặt
+                {t("taskDetails.settings")}
               </Text>
 
               {/* Priority Selection */}
               <Text variant="titleSmall" style={styles.fieldLabel}>
-                Độ ưu tiên
+                {t("tasks.priority")}
               </Text>
               <View style={styles.priorityButtons}>
                 <Button
@@ -557,7 +569,7 @@ const TaskDetailsScreen = () => {
                   ]}
                   disabled={isLoading}
                 >
-                  Thấp
+                  {t("tasks.priorityLow")}
                 </Button>
                 <Button
                   mode={
@@ -573,7 +585,7 @@ const TaskDetailsScreen = () => {
                   ]}
                   disabled={isLoading}
                 >
-                  Trung bình
+                  {t("tasks.priorityMedium")}
                 </Button>
                 <Button
                   mode={formData.priority === "high" ? "contained" : "outlined"}
@@ -587,13 +599,13 @@ const TaskDetailsScreen = () => {
                   ]}
                   disabled={isLoading}
                 >
-                  Cao
+                  {t("tasks.priorityHigh")}
                 </Button>
               </View>
 
               {/* Due Date Picker */}
               <Text variant="titleSmall" style={styles.fieldLabel}>
-                Ngày hết hạn
+                {t("tasks.dueDate")}
               </Text>
               <Button
                 mode="outlined"
@@ -614,7 +626,7 @@ const TaskDetailsScreen = () => {
                   style={styles.clearDateButton}
                   disabled={isLoading}
                 >
-                  Xóa ngày hết hạn
+                  {t("addTask.clearDueDate")}
                 </Button>
               )}
 
@@ -634,11 +646,13 @@ const TaskDetailsScreen = () => {
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                📊 Thông tin chi tiết
+                {t("taskDetails.detailedInfo")}
               </Text>
 
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Ngày tạo:</Text>
+                <Text style={styles.metadataLabel}>
+                  {t("taskDetails.createdDate")}:
+                </Text>
                 <Text style={styles.metadataValue}>
                   {formatDateTime(formData.createdAt)}
                 </Text>
@@ -647,7 +661,7 @@ const TaskDetailsScreen = () => {
               <Divider style={styles.metadataDivider} />
 
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Trạng thái:</Text>
+                <Text style={styles.metadataLabel}>{t("tasks.status")}:</Text>
                 <Chip
                   icon={formData.isCompleted ? "check-circle" : "clock-outline"}
                   compact
@@ -662,14 +676,18 @@ const TaskDetailsScreen = () => {
                       : { color: "#E65100", fontSize: 12 }
                   }
                 >
-                  {formData.isCompleted ? "Hoàn thành" : "Đang thực hiện"}
+                  {formData.isCompleted
+                    ? t("tasks.completed")
+                    : t("tasks.inProgress")}
                 </Chip>
               </View>
 
               <Divider style={styles.metadataDivider} />
 
               <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>Tiến độ Pomodoro:</Text>
+                <Text style={styles.metadataLabel}>
+                  {t("taskDetails.pomodoroProgress")}:
+                </Text>
                 <Text style={styles.metadataValue}>
                   {formData.completedPomodoros} / {formData.estimatedPomodoros}
                 </Text>
@@ -687,7 +705,7 @@ const TaskDetailsScreen = () => {
                   <>
                     <Divider style={styles.metadataDivider} />
                     <Text style={styles.metadataLabel}>
-                      📜 Lịch sử Pomodoro:
+                      {t("taskDetails.pomodoroHistory")}:
                     </Text>
                     <View style={styles.historyContainer}>
                       {originalTask.pomodoroSessions
@@ -698,7 +716,7 @@ const TaskDetailsScreen = () => {
                           <View key={index} style={styles.historyItem}>
                             <Text style={styles.historyDate}>
                               {new Date(session.completedAt).toLocaleString(
-                                "vi-VN",
+                                language === "vi" ? "vi-VN" : "en-US",
                                 {
                                   day: "2-digit",
                                   month: "2-digit",
@@ -713,13 +731,14 @@ const TaskDetailsScreen = () => {
                               compact
                               style={styles.historyChip}
                             >
-                              {session.duration} phút
+                              {session.duration} {t("taskDetails.minutes")}
                             </Chip>
                           </View>
                         ))}
                       {originalTask.pomodoroSessions.length > 5 && (
                         <Text style={styles.historyMore}>
-                          +{originalTask.pomodoroSessions.length - 5} phiên khác
+                          +{originalTask.pomodoroSessions.length - 5}{" "}
+                          {t("taskDetails.moreSessions")}
                         </Text>
                       )}
                     </View>
@@ -732,7 +751,7 @@ const TaskDetailsScreen = () => {
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                🎯 Hành động
+                {t("taskDetails.actions")}
               </Text>
 
               {/* Toggle Complete Button */}
@@ -750,8 +769,8 @@ const TaskDetailsScreen = () => {
                 disabled={isLoading}
               >
                 {formData.isCompleted
-                  ? "Đánh dấu chưa hoàn thành"
-                  : "Đánh dấu hoàn thành"}
+                  ? t("taskDetails.markIncomplete")
+                  : t("taskDetails.markComplete")}
               </Button>
 
               {/* Save Button */}
@@ -763,7 +782,7 @@ const TaskDetailsScreen = () => {
                 loading={isLoading}
                 disabled={isLoading || !hasChanges}
               >
-                Lưu thay đổi
+                {t("taskDetails.saveChanges")}
               </Button>
 
               {/* Delete Button */}
@@ -775,7 +794,7 @@ const TaskDetailsScreen = () => {
                 textColor="#D32F2F"
                 disabled={isLoading}
               >
-                Xóa nhiệm vụ
+                {t("taskDetails.deleteTask")}
               </Button>
 
               {/* Cancel Button */}
@@ -786,7 +805,7 @@ const TaskDetailsScreen = () => {
                 style={styles.cancelButton}
                 disabled={isLoading}
               >
-                Quay lại
+                {t("taskDetails.goBack")}
               </Button>
             </Card.Content>
           </Card>
@@ -799,7 +818,7 @@ const TaskDetailsScreen = () => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
         action={{
-          label: "Đóng",
+          label: t("general.close"),
           onPress: () => setSnackbarVisible(false),
         }}
       >

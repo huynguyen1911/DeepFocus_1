@@ -408,6 +408,7 @@ export const apiUtils = {
       await AsyncStorage.multiRemove([
         STORAGE_KEYS.AUTH_TOKEN,
         STORAGE_KEYS.USER_DATA,
+        "@deepfocus:app_language", // Clear language preference on logout
       ]);
     } catch (error) {
       console.error("❌ Clear auth data error:", error);

@@ -23,9 +23,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const RegisterScreen = () => {
   const theme = useTheme();
+  const { t } = useLanguage();
   const { register, isLoading, error, clearError } = useAuth();
 
   // Form state
@@ -78,36 +80,35 @@ const RegisterScreen = () => {
 
     // Username validation
     if (!formData.username.trim()) {
-      newErrors.username = "Tên người dùng là bắt buộc";
+      newErrors.username = t("register.usernameRequired");
     } else if (!validateUsername(formData.username)) {
-      newErrors.username = "Tên người dùng phải có ít nhất 2 ký tự";
+      newErrors.username = t("register.usernameMinLength");
     }
 
     // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email là bắt buộc";
+      newErrors.email = t("register.emailRequired");
     } else if (!validateEmail(formData.email)) {
-      newErrors.email = "Email không hợp lệ";
+      newErrors.email = t("auth.invalidEmail");
     }
 
     // Password validation
     if (!formData.password) {
-      newErrors.password = "Mật khẩu là bắt buộc";
+      newErrors.password = t("register.passwordRequired");
     } else if (!validatePasswordStrength(formData.password)) {
-      newErrors.password =
-        "Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ và số";
+      newErrors.password = t("register.passwordStrength");
     }
 
     // Confirm password validation
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Xác nhận mật khẩu là bắt buộc";
+      newErrors.confirmPassword = t("register.confirmPasswordRequired");
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+      newErrors.confirmPassword = t("auth.passwordsNotMatch");
     }
 
     // Terms agreement validation
     if (!agreeToTerms) {
-      newErrors.terms = "Bạn phải đồng ý với điều khoản dịch vụ";
+      newErrors.terms = t("auth.mustAgreeTerms");
     }
 
     setErrors(newErrors);
@@ -151,19 +152,15 @@ const RegisterScreen = () => {
       } else {
         // Handle specific error codes
         if (result.error && result.error.includes("Email đã tồn tại")) {
-          setSnackbarMessage(
-            "Email này đã được đăng ký. Vui lòng sử dụng email khác hoặc đăng nhập."
-          );
+          setSnackbarMessage(t("auth.emailExists"));
         } else {
-          setSnackbarMessage(
-            result.error || "Đăng ký thất bại. Vui lòng thử lại."
-          );
+          setSnackbarMessage(result.error || t("auth.registerError"));
         }
         setSnackbarVisible(true);
       }
     } catch (error) {
       // Network error or unexpected error
-      setSnackbarMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại.");
+      setSnackbarMessage(t("auth.networkError"));
       setSnackbarVisible(true);
     }
   };
@@ -182,10 +179,10 @@ const RegisterScreen = () => {
     const hasNumber = /\d/.test(formData.password);
     const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(formData.password);
 
-    if (length < 6) return "Yếu - Cần ít nhất 6 ký tự";
-    if (!hasLetter || !hasNumber) return "Trung bình - Cần có chữ và số";
-    if (hasSpecial && length >= 8) return "Mạnh - Mật khẩu tốt";
-    return "Khá - Mật khẩu chấp nhận được";
+    if (length < 6) return t("register.passwordWeak");
+    if (!hasLetter || !hasNumber) return t("register.passwordMedium");
+    if (hasSpecial && length >= 8) return t("register.passwordStrong");
+    return t("register.passwordFair");
   };
 
   const getPasswordStrengthColor = () => {
@@ -214,17 +211,17 @@ const RegisterScreen = () => {
           {/* Header */}
           <View style={styles.header}>
             <Title style={[styles.title, { color: theme.colors.primary }]}>
-              Tạo tài khoản
+              {t("register.title")}
             </Title>
             <Paragraph style={styles.subtitle}>
-              Bắt đầu hành trình tập trung của bạn với DeepFocus
+              {t("register.subtitle")}
             </Paragraph>
           </View>
 
           {/* Register Form */}
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.formTitle}>Đăng ký</Title>
+              <Title style={styles.formTitle}>{t("auth.register")}</Title>
 
               {/* Global Error */}
               {error && (
@@ -239,7 +236,7 @@ const RegisterScreen = () => {
 
               {/* Username Input */}
               <TextInput
-                label="Tên người dùng"
+                label={t("auth.username")}
                 value={formData.username}
                 onChangeText={(value) => handleInputChange("username", value)}
                 mode="outlined"
@@ -256,7 +253,7 @@ const RegisterScreen = () => {
 
               {/* Email Input */}
               <TextInput
-                label="Email"
+                label={t("auth.email")}
                 value={formData.email}
                 onChangeText={(value) => handleInputChange("email", value)}
                 mode="outlined"
@@ -274,7 +271,7 @@ const RegisterScreen = () => {
 
               {/* Password Input */}
               <TextInput
-                label="Mật khẩu"
+                label={t("auth.password")}
                 value={formData.password}
                 onChangeText={(value) => handleInputChange("password", value)}
                 mode="outlined"
@@ -309,7 +306,7 @@ const RegisterScreen = () => {
 
               {/* Confirm Password Input */}
               <TextInput
-                label="Xác nhận mật khẩu"
+                label={t("auth.confirmPassword")}
                 value={formData.confirmPassword}
                 onChangeText={(value) =>
                   handleInputChange("confirmPassword", value)
@@ -342,14 +339,7 @@ const RegisterScreen = () => {
                   color={theme.colors.primary}
                 />
                 <Paragraph style={styles.checkboxText}>
-                  Tôi đồng ý với{" "}
-                  <Paragraph style={styles.linkText}>
-                    Điều khoản dịch vụ
-                  </Paragraph>{" "}
-                  và{" "}
-                  <Paragraph style={styles.linkText}>
-                    Chính sách bảo mật
-                  </Paragraph>
+                  {t("auth.agreeTerms")}
                 </Paragraph>
               </TouchableOpacity>
               <HelperText type="error" visible={!!errors.terms}>
@@ -365,13 +355,17 @@ const RegisterScreen = () => {
                 disabled={isLoading || !agreeToTerms}
                 loading={isLoading}
               >
-                {isLoading ? "Đang tạo tài khoản..." : "Tạo tài khoản"}
+                {isLoading
+                  ? t("auth.registering")
+                  : t("register.createAccount")}
               </Button>
 
               {/* Divider */}
               <View style={styles.dividerContainer}>
                 <Divider style={styles.divider} />
-                <Paragraph style={styles.dividerText}>hoặc</Paragraph>
+                <Paragraph style={styles.dividerText}>
+                  {t("login.or")}
+                </Paragraph>
                 <Divider style={styles.divider} />
               </View>
 
@@ -383,7 +377,7 @@ const RegisterScreen = () => {
                 contentStyle={styles.buttonContent}
                 disabled={isLoading}
               >
-                Đã có tài khoản? Đăng nhập
+                {t("auth.haveAccount")} {t("auth.loginNow")}
               </Button>
             </Card.Content>
           </Card>
@@ -403,7 +397,7 @@ const RegisterScreen = () => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={4000}
         action={{
-          label: "Đóng",
+          label: t("general.close"),
           onPress: () => setSnackbarVisible(false),
         }}
         style={styles.snackbar}

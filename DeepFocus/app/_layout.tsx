@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 
 import { theme } from '@/src/config/theme';
+import { LanguageProvider } from '@/src/contexts/LanguageContext';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
@@ -24,9 +25,10 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
-            <AuthProvider>
-              <TaskProvider>
-                <ConnectedPomodoroProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <TaskProvider>
+                  <ConnectedPomodoroProvider>
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -77,9 +79,10 @@ export default function RootLayout() {
               </Stack>
               <StatusBar style="light" />
               <OfflineIndicator />
-            </ConnectedPomodoroProvider>
-          </TaskProvider>
-        </AuthProvider>
+                  </ConnectedPomodoroProvider>
+                </TaskProvider>
+              </AuthProvider>
+            </LanguageProvider>
       </PaperProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
