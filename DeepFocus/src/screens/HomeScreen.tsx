@@ -67,12 +67,14 @@ const HomeScreen = () => {
         const statsData = await statsAPI.getStats();
         
         // Find today's stats from last30Days
+        // Use local date to avoid timezone issues
         const today = new Date();
-        const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+        const localTodayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         
         const todayStats = statsData.last30Days?.find((day: any) => {
-          const dayStr = new Date(day.date).toISOString().split('T')[0];
-          return dayStr === todayStr;
+          const date = new Date(day.date);
+          const dayStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+          return dayStr === localTodayStr;
         });
 
         const newTodayCount = todayStats?.completedPomodoros || 0;

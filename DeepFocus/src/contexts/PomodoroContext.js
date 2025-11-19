@@ -9,6 +9,12 @@ import React, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { statsAPI } from "../services/api";
 import { useAuth } from "./AuthContext";
+import {
+  sendWorkCompleteNotification,
+  sendBreakCompleteNotification,
+  sendDailyGoalNotification,
+} from "../services/notificationService";
+import { successHaptic, mediumHaptic, lightHaptic } from "../utils/haptics";
 
 // Timer states
 export const TIMER_STATES = {
@@ -235,6 +241,7 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
 
   // Define helper functions with useCallback
   const startWorkSession = useCallback(() => {
+    lightHaptic(); // Light haptic feedback when starting work
     dispatch({
       type: POMODORO_ACTIONS.SET_STATE,
       payload: {
@@ -322,6 +329,28 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
 
           // Update completed count
           dispatch({ type: POMODORO_ACTIONS.COMPLETE_POMODORO });
+
+          // Send notification and haptic if enabled
+          if (currentState.settings.notifications) {
+            successHaptic(); // Success haptic for completed pomodoro
+            await sendWorkCompleteNotification(newCompletedPomodoros, {
+              sound: currentState.settings.sound ?? true,
+              vibration: currentState.settings.vibration ?? true,
+            });
+
+            // Check if daily goal achieved
+            const dailyGoal = currentState.settings.dailyGoal || 8;
+            if (newCompletedPomodoros === dailyGoal) {
+              console.log(`🌟 Daily goal of ${dailyGoal} pomodoros achieved!`);
+              await sendDailyGoalNotification(dailyGoal, {
+                sound: currentState.settings.sound ?? true,
+                vibration: currentState.settings.vibration ?? true,
+              });
+            }
+          } else {
+            // Even if notifications disabled, still give haptic feedback
+            successHaptic();
+          }
 
           // Sync stats with backend
           // Ensure minimum 1 minute to avoid backend validation error
@@ -415,6 +444,23 @@ export const PomodoroProvider = ({ children, onPomodoroComplete }) => {
           // Break completed - return to idle
           const currentState = stateRef.current;
           const wasLongBreak = state.timerState === TIMER_STATES.LONG_BREAK;
+
+          console.log("💤 Break completed, returning to idle (task preserved)");
+
+          // Send notification and haptic if enabled
+          if (currentState.settings.notifications) {
+            mediumHaptic(); // Medium haptic for break complete
+            await sendBreakCompleteNotification(
+              wasLongBreak ? "long" : "short",
+              {
+                sound: currentState.settings.sound ?? true,
+                vibration: currentState.settings.vibration ?? true,
+              }
+            );
+          } else {
+            // Even if notifications disabled, still give haptic feedback
+            mediumHaptic();
+          }
 
           // Keep the active task so user can continue working on it
           dispatch({

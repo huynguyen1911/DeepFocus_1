@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,12 +14,19 @@ import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import OfflineIndicator from '@/src/components/OfflineIndicator';
+import NetworkStatusBar from '@/src/components/NetworkStatusBar';
+import { requestNotificationPermissions } from '@/src/services/notificationService';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
+  // Request notification permissions on app start
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
   return (
     <ErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -29,6 +36,7 @@ export default function RootLayout() {
               <AuthProvider>
                 <TaskProvider>
                   <ConnectedPomodoroProvider>
+              <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
