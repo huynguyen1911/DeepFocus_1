@@ -31,6 +31,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="classes"
+        options={{
+          title: 'Lớp Học',
+          tabBarLabel: 'Classes',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="statistics"
         options={{
           title: 'Thống Kê',

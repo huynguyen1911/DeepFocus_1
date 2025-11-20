@@ -2,6 +2,11 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
 const focusProfileSchema = new mongoose.Schema({
+  fullName: {
+    type: String,
+    default: "",
+    trim: true,
+  },
   level: {
     type: Number,
     default: 1,

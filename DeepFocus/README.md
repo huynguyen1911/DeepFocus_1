@@ -4,11 +4,36 @@ DeepFocus là một ứng dụng Pomodoro Timer được phát triển bằng Re
 
 ## 🚀 Tính năng
 
+### Core Features
+
 - ⏰ Pomodoro Timer với giao diện thân thiện
+- ✅ Quản lý nhiệm vụ (Task Management)
+- 🎯 Hệ thống vai trò đa dạng (Multi-Role System)
+- 📊 Thống kê và theo dõi tiến độ
 - 🎨 Giao diện Material Design với theme màu đỏ
 - 📱 Hỗ trợ đa nền tảng (iOS, Android, Web)
-- 💾 Lưu trữ dữ liệu cục bộ
+- 💾 Lưu trữ dữ liệu cục bộ với AsyncStorage
 - 🔄 Navigation mượt mà
+- 🌐 Hỗ trợ đa ngôn ngữ (Tiếng Việt, English)
+
+### Phase 2: Class Management System 🎓
+
+- 👨‍🏫 **Tạo lớp học** (Teacher only)
+  - Tạo và quản lý nhiều lớp học
+  - Tự động tạo mã tham gia 6 ký tự
+  - Mã có thời hạn 7 ngày và có thể tạo lại
+- 👨‍🎓 **Tham gia lớp** (Student only)
+  - Tham gia lớp bằng mã code
+  - Hệ thống phê duyệt tự động
+  - Theo dõi trạng thái (đang chờ/đã duyệt)
+- 📋 **Quản lý thành viên**
+  - Duyệt/từ chối yêu cầu tham gia
+  - Xóa thành viên khỏi lớp
+  - Xem danh sách thành viên với thống kê
+- 🔒 **Bảo mật & Phân quyền**
+  - JWT Authentication
+  - Role-based access control
+  - Chỉ creator mới có quyền quản lý lớp
 
 ## 📋 Yêu cầu hệ thống
 
@@ -26,13 +51,31 @@ git clone [repository-url]
 cd DeepFocus
 ```
 
-### 2. Cài đặt dependencies
+### 2. Cài đặt Frontend dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Cài đặt Expo CLI (nếu chưa có)
+### 3. Cài đặt Backend dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 4. Cấu hình môi trường
+
+Tạo file `.env` trong thư mục `backend`:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb://localhost:27017/deepfocus
+JWT_SECRET=your_jwt_secret_key_here
+NODE_ENV=development
+```
+
+### 5. Cài đặt Expo CLI (nếu chưa có)
 
 ```bash
 npm install -g expo-cli
@@ -40,7 +83,18 @@ npm install -g expo-cli
 
 ## 🚀 Chạy ứng dụng
 
-### Khởi động development server
+### 1. Khởi động Backend Server
+
+```bash
+cd backend
+npm run dev
+```
+
+Backend sẽ chạy tại `http://localhost:5000`
+
+### 2. Khởi động Frontend
+
+Mở terminal mới:
 
 ```bash
 npm start
@@ -68,27 +122,68 @@ npm run web
 
 ```
 DeepFocus/
-├── App.js                  # Entry point chính
-├── app.json               # Cấu hình Expo
-├── package.json           # Dependencies và scripts
+├── app/                      # Expo Router (App Directory)
+│   ├── (tabs)/              # Tab navigation
+│   │   ├── index.tsx        # Home screen
+│   │   ├── classes.tsx      # Classes list
+│   │   ├── statistics.tsx   # Statistics
+│   │   ├── explore.tsx      # Explore
+│   │   └── settings.tsx     # Settings
+│   ├── classes/             # Class management routes
+│   │   ├── create.tsx       # Create class
+│   │   ├── join.tsx         # Join class
+│   │   └── [id].tsx         # Class details
+│   ├── _layout.tsx          # Root layout with providers
+│   └── modal.tsx            # Modal screens
 │
 ├── src/
-│   ├── components/        # Reusable components
-│   ├── screens/          # Screen components
-│   │   └── HomeScreen.js # Màn hình chính
-│   ├── navigation/       # Navigation setup
-│   │   └── AppNavigator.js
-│   ├── contexts/         # React contexts
-│   ├── services/         # API và services
-│   │   └── StorageService.js
-│   ├── utils/            # Utility functions
-│   │   └── helpers.js
-│   └── config/           # Configuration files
-│       ├── theme.js      # Theme configuration
-│       └── constants.js  # App constants
+│   ├── components/          # Reusable components
+│   ├── screens/            # Screen components
+│   │   ├── HomeScreen.tsx
+│   │   ├── ClassListScreen.tsx
+│   │   ├── CreateClassScreen.tsx
+│   │   ├── JoinClassScreen.tsx
+│   │   └── ClassDetailScreen.tsx
+│   ├── contexts/           # React contexts
+│   │   ├── AuthContext.js
+│   │   ├── RoleContext.js
+│   │   ├── TaskContext.js
+│   │   ├── ClassContext.js
+│   │   └── LanguageContext.js
+│   ├── services/           # API services
+│   │   ├── api.js          # API client
+│   │   └── notificationService.js
+│   ├── locales/            # Translations
+│   │   └── translations.js
+│   ├── utils/              # Utility functions
+│   └── config/             # Configuration
+│       └── theme.js
 │
-└── assets/               # Static assets
-    └── images/          # Images và icons
+├── backend/                 # Node.js Backend
+│   ├── controllers/         # Request handlers
+│   │   ├── authController.js
+│   │   ├── taskController.js
+│   │   └── classController.js
+│   ├── models/             # MongoDB models
+│   │   ├── User.js
+│   │   ├── Task.js
+│   │   └── Class.js
+│   ├── routes/             # API routes
+│   │   ├── auth.js
+│   │   ├── tasks.js
+│   │   └── classes.js
+│   ├── middleware/         # Custom middleware
+│   │   └── authMiddleware.js
+│   ├── tests/              # Backend tests
+│   │   ├── unit/
+│   │   └── integration/
+│   └── server.js           # Express server
+│
+├── docs/                    # Documentation
+│   └── API.md              # API documentation
+│
+└── assets/                 # Static assets
+    └── images/
 ```
 
 ## 🎨 Theme
@@ -104,26 +199,123 @@ DeepFocus/
 
 ### Home Screen
 
-- Màn hình chào mừng với thiết kế Material Design
-- Card container với styling đẹp mắt
-- Text chào mừng và subtitle
+- Pomodoro Timer với các chế độ Focus/Break
+- Chọn và theo dõi nhiệm vụ
+- Thống kê Pomodoros hàng ngày
+- Material Design với animations
+
+### Classes Screen (Phase 2)
+
+- **Class List**: Hiển thị danh sách lớp theo role
+- **Create Class** (Teacher): Form tạo lớp với mã code tự động
+- **Join Class** (Student): Nhập mã 6 ký tự để tham gia
+- **Class Details**:
+  - Teacher view: Quản lý thành viên, duyệt requests, regenerate code
+  - Student view: Xem thông tin lớp và trạng thái
+
+### Task Management
+
+- Tạo, chỉnh sửa, xóa nhiệm vụ
+- Gán nhiệm vụ vào Pomodoro session
+- Theo dõi tiến độ hoàn thành
+
+### Statistics
+
+- Xem thống kê Pomodoros theo ngày/tuần/tháng
+- Phân tích năng suất
+- Lịch sử nhiệm vụ hoàn thành
 
 ## 🔧 Scripts có sẵn
+
+### Frontend
 
 - `npm start` - Khởi động Expo development server
 - `npm run android` - Chạy trên Android
 - `npm run ios` - Chạy trên iOS
 - `npm run web` - Chạy trên web browser
+- `npm test` - Chạy frontend tests
 - `npm run lint` - Kiểm tra code style
+
+### Backend
+
+- `npm run dev` - Khởi động backend với nodemon
+- `npm start` - Khởi động backend (production)
+- `npm test` - Chạy backend tests
+  - Unit tests: `npm test -- classController.test.js`
+  - Integration tests: `npm test -- class.test.js`
 
 ## 📦 Dependencies chính
 
+### Frontend
+
 - **React Native**: Framework phát triển mobile
 - **Expo**: Platform phát triển và deployment
-- **React Navigation**: Navigation library
+- **Expo Router**: File-based navigation
 - **React Native Paper**: Material Design components
 - **AsyncStorage**: Local storage solution
-- **Safe Area Context**: Handle safe area
+- **Axios**: HTTP client
+- **React Testing Library**: Testing utilities
+
+### Backend
+
+- **Express**: Web framework
+- **MongoDB & Mongoose**: Database
+- **JWT**: Authentication
+- **bcryptjs**: Password hashing
+- **Jest**: Testing framework
+- **Supertest**: HTTP testing
+
+## 🧪 Testing
+
+### Backend Tests
+
+```bash
+cd backend
+
+# Run all tests
+npm test
+
+# Run specific test suite
+npm test -- classController.test.js
+npm test -- class.test.js
+```
+
+### Frontend Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test
+npm test -- ClassContext.test.js
+```
+
+## 📚 API Documentation
+
+Xem chi tiết API documentation tại: [docs/API.md](./docs/API.md)
+
+### Quick API Reference
+
+**Authentication:**
+
+```
+POST /api/auth/register - Đăng ký
+POST /api/auth/login - Đăng nhập
+```
+
+**Classes:**
+
+```
+POST   /api/classes - Tạo lớp
+GET    /api/classes/:id - Chi tiết lớp
+PUT    /api/classes/:id - Cập nhật lớp
+DELETE /api/classes/:id - Xóa lớp
+POST   /api/classes/join - Tham gia lớp
+POST   /api/classes/:id/regenerate-code - Tạo lại mã
+PUT    /api/classes/:id/members/:memberId/approve - Duyệt thành viên
+PUT    /api/classes/:id/members/:memberId/reject - Từ chối
+DELETE /api/classes/:id/members/:memberId - Xóa thành viên
+```
 
 ## 🤝 Đóng góp
 

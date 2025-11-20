@@ -12,6 +12,7 @@ import { LanguageProvider } from '@/src/contexts/LanguageContext';
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
+import { ClassProvider } from '@/src/contexts/ClassContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import OfflineIndicator from '@/src/components/OfflineIndicator';
@@ -37,8 +38,9 @@ export default function RootLayout() {
               <AuthProvider>
                 <RoleProvider>
                   <TaskProvider>
-                    <ConnectedPomodoroProvider>
-                      <NetworkStatusBar />
+                    <ClassProvider>
+                      <ConnectedPomodoroProvider>
+                        <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -86,10 +88,40 @@ export default function RootLayout() {
                     },
                   }} 
                 />
+                <Stack.Screen 
+                  name="classes/create" 
+                  options={{ 
+                    presentation: 'modal',
+                    title: 'Tạo Lớp',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="classes/join" 
+                  options={{ 
+                    presentation: 'modal',
+                    title: 'Tham Gia Lớp',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="classes/[id]" 
+                  options={{ 
+                    title: 'Chi Tiết Lớp',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
               </Stack>
-                      <StatusBar style="light" />
-                      <OfflineIndicator />
-                    </ConnectedPomodoroProvider>
+                        <StatusBar style="light" />
+                        <OfflineIndicator />
+                      </ConnectedPomodoroProvider>
+                    </ClassProvider>
                   </TaskProvider>
                 </RoleProvider>
               </AuthProvider>

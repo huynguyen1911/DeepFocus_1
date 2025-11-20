@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const statsRoutes = require("./routes/stats");
 const roleRoutes = require("./routes/roles");
+const classRoutes = require("./routes/classes");
 
 // Create Express app
 const app = express();
@@ -20,9 +21,9 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL || "http://localhost:8081",
-      "http://192.168.2.5:8081", // Add updated IP address
+      "http://10.100.101.228:8081", // Add updated IP address
       "http://localhost:19006", // Expo web
-      "exp://192.168.2.5:8081", // Expo mobile
+      "exp://10.100.101.228:8081", // Expo mobile
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -64,6 +65,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/roles", roleRoutes);
+app.use("/api/classes", classRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -74,6 +76,75 @@ app.get("/api/health", (req, res) => {
     environment: process.env.NODE_ENV || "development",
     version: "1.0.0",
   });
+});
+
+// Debug endpoint to check user (REMOVE IN PRODUCTION)
+app.get("/api/debug/user/:email", async (req, res) => {
+  try {
+    const User = require("./models/User");
+    const user = await User.findOne({ email: req.params.email.toLowerCase() });
+
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not found",
+        email: req.params.email.toLowerCase(),
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        defaultRole: user.defaultRole,
+        roles: user.roles,
+        isActive: user.isActive,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug endpoint to check class (REMOVE IN PRODUCTION)
+app.get("/api/debug/class/:classId", async (req, res) => {
+  try {
+    const Class = require("./models/Class");
+    const classData = await Class.findById(req.params.classId)
+      .populate("createdBy", "focusProfile.fullName email defaultRole")
+      .populate("members.user", "focusProfile.fullName email defaultRole");
+
+    if (!classData) {
+      return res.json({
+        success: false,
+        message: "Class not found",
+        classId: req.params.classId
+      });
+    }
+
+    res.json({
+      success: true,
+      class: {
+        id: classData._id,
+        name: classData.name,
+        createdBy: classData.createdBy,
+        joinCode: classData.joinCode,
+        members: classData.members.map(m => ({
+          userId: m.user._id,
+          userEmail: m.user.email,
+          userName: m.user.focusProfile?.fullName,
+          userRole: m.user.defaultRole,
+          status: m.status,
+          role: m.role,
+          joinedAt: m.joinedAt
+        }))
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Root endpoint
@@ -113,7 +184,7 @@ app.listen(PORT, HOST, () => {
   console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Network:192.168.2.5:${PORT}/api/health`); // Updated IP
+  console.log(`🌐 Network:10.100.101.228:${PORT}/api/health`); // Updated IP
   console.log(
     `🌍 CORS enabled for: ${
       process.env.FRONTEND_URL || "http://localhost:8081"

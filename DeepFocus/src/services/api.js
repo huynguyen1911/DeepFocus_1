@@ -427,6 +427,137 @@ export const roleAPI = {
   },
 };
 
+// Class Management API
+export const classAPI = {
+  // Create a new class (Teacher only)
+  createClass: async (classData) => {
+    try {
+      const response = await apiClient.post("/classes", classData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get class details by ID
+  getClass: async (classId) => {
+    try {
+      const response = await apiClient.get(`/classes/${classId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update class details (Teacher only)
+  updateClass: async (classId, updates) => {
+    try {
+      const response = await apiClient.put(`/classes/${classId}`, updates);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete class (Teacher only)
+  deleteClass: async (classId) => {
+    try {
+      const response = await apiClient.delete(`/classes/${classId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get all classes created by teacher
+  getTeacherClasses: async () => {
+    try {
+      const response = await apiClient.get("/classes/teacher/my-classes");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get all classes joined by student
+  getStudentClasses: async () => {
+    try {
+      const response = await apiClient.get("/classes/student/my-classes");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Request to join class with join code (Student only)
+  joinClass: async (joinCode) => {
+    try {
+      const response = await apiClient.post("/classes/join", { joinCode });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Regenerate join code for class (Teacher only)
+  regenerateCode: async (classId) => {
+    try {
+      const response = await apiClient.post(
+        `/classes/${classId}/regenerate-code`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get class members list
+  getMembers: async (classId) => {
+    try {
+      const response = await apiClient.get(`/classes/${classId}/members`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Approve join request (Teacher only)
+  approveRequest: async (classId, memberId) => {
+    try {
+      const response = await apiClient.put(
+        `/classes/${classId}/members/${memberId}/approve`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Reject join request (Teacher only)
+  rejectRequest: async (classId, memberId) => {
+    try {
+      const response = await apiClient.put(
+        `/classes/${classId}/members/${memberId}/reject`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Remove member from class (Teacher only)
+  removeMember: async (classId, memberId) => {
+    try {
+      const response = await apiClient.delete(
+        `/classes/${classId}/members/${memberId}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // General API utilities
 export const apiUtils = {
   // Check if user is authenticated

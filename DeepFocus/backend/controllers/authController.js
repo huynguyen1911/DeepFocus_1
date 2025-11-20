@@ -6,7 +6,8 @@ const { generateToken } = require("../middleware/auth");
 // @access  Public
 const registerUser = async (req, res) => {
   try {
-    const { username, email, password, focusProfile } = req.body;
+    const { username, email, password, focusProfile, defaultRole, fullName } =
+      req.body;
 
     // Validation
     if (!username || !email || !password) {
@@ -42,6 +43,31 @@ const registerUser = async (req, res) => {
       password,
     };
 
+    // Add defaultRole if provided (student, teacher, guardian)
+    if (
+      defaultRole &&
+      ["student", "teacher", "guardian"].includes(defaultRole)
+    ) {
+      userData.defaultRole = defaultRole;
+
+      // Set roles array with the specified role as primary
+      userData.roles = [
+        {
+          type: defaultRole,
+          isPrimary: true,
+          isActive: true,
+        },
+      ];
+    }
+
+    // Add fullName to focusProfile if provided
+    if (fullName) {
+      userData.focusProfile = {
+        ...(userData.focusProfile || {}),
+        fullName: fullName.trim(),
+      };
+    }
+
     // Add focus profile if provided
     if (focusProfile) {
       userData.focusProfile = {
@@ -70,6 +96,8 @@ const registerUser = async (req, res) => {
           id: user._id,
           username: user.username,
           email: user.email,
+          defaultRole: user.defaultRole,
+          roles: user.roles,
           focusProfile: user.focusProfile,
           joinDate: user.joinDate,
           profileCompleteness: user.profileCompleteness,
@@ -170,6 +198,8 @@ const loginUser = async (req, res) => {
           id: user._id,
           username: user.username,
           email: user.email,
+          defaultRole: user.defaultRole,
+          roles: user.roles,
           focusProfile: user.focusProfile,
           lastLogin: user.lastLogin,
           profileCompleteness: user.profileCompleteness,
@@ -203,6 +233,8 @@ const getUserProfile = async (req, res) => {
           id: user._id,
           username: user.username,
           email: user.email,
+          defaultRole: user.defaultRole,
+          roles: user.roles,
           focusProfile: user.focusProfile,
           lastLogin: user.lastLogin,
           joinDate: user.joinDate,
@@ -266,6 +298,8 @@ const updateProfile = async (req, res) => {
           id: user._id,
           username: user.username,
           email: user.email,
+          defaultRole: user.defaultRole,
+          roles: user.roles,
           focusProfile: user.focusProfile,
           profileCompleteness: user.profileCompleteness,
         },

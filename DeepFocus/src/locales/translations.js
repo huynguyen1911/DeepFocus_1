@@ -417,6 +417,38 @@ export const translations = {
     },
 
     // Common/General
+    common: {
+      loading: "Đang tải...",
+      saving: "Đang lưu...",
+      error: "Có lỗi xảy ra",
+      success: "Thành công",
+      close: "Đóng",
+      confirm: "Xác nhận",
+      cancel: "Hủy",
+      ok: "OK",
+      yes: "Có",
+      no: "Không",
+      done: "Hoàn thành",
+      unknown: "Không xác định",
+      next: "Tiếp theo",
+      previous: "Trước",
+      search: "Tìm kiếm",
+      filter: "Lọc",
+      sort: "Sắp xếp",
+      refresh: "Làm mới",
+      retry: "Thử lại",
+      noResults: "Không có kết quả",
+      noInternet: "Không có kết nối internet",
+      offline: "Offline",
+      online: "Online",
+      back: "Quay lại",
+      continue: "Tiếp tục",
+      skip: "Bỏ qua",
+      info: "Mẹo",
+      featureInDevelopment: "Tính năng đang được phát triển",
+    },
+
+    // Keep general as alias for backwards compatibility
     general: {
       loading: "Đang tải...",
       saving: "Đang lưu...",
@@ -565,6 +597,127 @@ export const translations = {
       removeRole: "Xóa Vai Trò",
       currentRole: "Vai Trò Hiện Tại",
       primaryRole: "Vai Trò Chính",
+    },
+
+    // Classes
+    classes: {
+      title: "Lớp Học",
+      myClasses: "Lớp Của Tôi",
+      createClass: "Tạo Lớp",
+      joinClass: "Tham Gia Lớp",
+      className: "Tên Lớp",
+      classNamePlaceholder: "Nhập tên lớp...",
+      description: "Mô Tả",
+      descriptionPlaceholder: "Nhập mô tả lớp học...",
+      joinCode: "Mã Tham Gia",
+      joinCodePlaceholder: "Nhập mã 6 ký tự...",
+      members: "Thành Viên",
+      memberCount: "{count} thành viên",
+      pendingRequests: "Yêu Cầu Chờ Duyệt",
+      pendingCount: "{count} đang chờ",
+      approvedMembers: "Thành Viên Đã Duyệt",
+      settings: "Cài Đặt",
+      allowJoinRequests: "Cho phép yêu cầu tham gia",
+      regenerateCode: "Tạo Lại Mã",
+      copyCode: "Sao Chép Mã",
+      shareCode: "Chia Sẻ Mã",
+      classDetails: "Chi Tiết Lớp",
+      editClass: "Chỉnh Sửa Lớp",
+      deleteClass: "Xóa Lớp",
+      leaveClass: "Rời Khỏi Lớp",
+      viewMembers: "Xem Thành Viên",
+      manageMembers: "Quản Lý Thành Viên",
+
+      // Actions
+      create: "Tạo",
+      join: "Tham Gia",
+      approve: "Duyệt",
+      reject: "Từ Chối",
+      remove: "Xóa",
+
+      // Messages
+      createSuccess: "Đã tạo lớp thành công!",
+      createError: "Không thể tạo lớp",
+      joinSuccess: "Yêu cầu tham gia đã được gửi!",
+      joinError: "Không thể tham gia lớp",
+      updateSuccess: "Đã cập nhật lớp",
+      updateError: "Không thể cập nhật lớp",
+      deleteSuccess: "Đã xóa lớp",
+      deleteError: "Không thể xóa lớp",
+      approveSuccess: "Đã duyệt thành viên",
+      approveError: "Không thể duyệt thành viên",
+      rejectSuccess: "Đã từ chối yêu cầu",
+      rejectError: "Không thể từ chối yêu cầu",
+      removeSuccess: "Đã xóa thành viên",
+      removeError: "Không thể xóa thành viên",
+      codeRegenerated: "Đã tạo mã mới!",
+      codeCopied: "Đã sao chép mã!",
+      codeExpired: "Mã đã hết hạn",
+      codeExpiresSoon: "Mã sắp hết hạn",
+      invalidCode: "Mã không hợp lệ",
+      alreadyMember: "Bạn đã là thành viên",
+      pendingApproval: "Đang chờ duyệt",
+
+      // Confirmations
+      deleteConfirm: "Xóa lớp này?",
+      deleteConfirmMessage:
+        "Tất cả thành viên sẽ bị xóa khỏi lớp. Hành động này không thể hoàn tác.",
+      leaveConfirm: "Rời khỏi lớp này?",
+      leaveConfirmMessage: "Bạn sẽ cần mã mới để tham gia lại.",
+      removeConfirm: "Xóa thành viên này?",
+      removeConfirmMessage: "Họ sẽ cần mã mới để tham gia lại.",
+
+      // Empty states
+      noClasses: "Chưa có lớp nào",
+      noClassesDescription: "Tạo lớp mới hoặc tham gia lớp hiện có",
+      noMembers: "Chưa có thành viên",
+      noPendingRequests: "Không có yêu cầu chờ duyệt",
+
+      // Status
+      status: "Trạng Thái",
+      active: "Đang Hoạt Động",
+      pending: "Chờ Duyệt",
+      expired: "Đã Hết Hạn",
+
+      // Roles in class
+      teacher: "Giáo Viên",
+      student: "Học Sinh",
+      creator: "Người Tạo",
+
+      // Stats
+      totalPomodoros: "Tổng Pomodoros",
+      completedTasks: "Nhiệm Vụ Hoàn Thành",
+      joinedDate: "Ngày Tham Gia",
+      createdDate: "Ngày Tạo",
+      lastActive: "Hoạt Động Gần Đây",
+
+      // Validation
+      nameRequired: "Vui lòng nhập tên lớp",
+      codeRequired: "Vui lòng nhập mã tham gia",
+      codeInvalid: "Mã phải có 6 ký tự",
+
+      // Additional UI text
+      createClassDescription:
+        "Tạo lớp mới để quản lý học sinh và theo dõi tiến độ của họ",
+      joinClassDescription: "Nhập mã 6 ký tự để tham gia lớp học",
+      classCreatedMessage:
+        "Lớp học đã được tạo thành công! Chia sẻ mã tham gia với học sinh của bạn.",
+      joinSuccessMessage:
+        "Yêu cầu tham gia của bạn đã được gửi. Vui lòng đợi giáo viên duyệt.",
+      shareCodeMessage:
+        "Chia sẻ mã này với học sinh để họ có thể tham gia lớp của bạn.",
+      joinCodeHelper: "Nhận mã từ giáo viên của bạn",
+      createClassHelper: "Bạn sẽ nhận được mã tham gia sau khi tạo lớp",
+      joinClassInfo:
+        "Sau khi tham gia, bạn cần đợi giáo viên duyệt yêu cầu của mình.",
+      codeExpiry: "Hết hạn",
+      statusPending: "Đang Chờ Duyệt",
+      pendingDescription: "Giáo viên sẽ xem xét yêu cầu của bạn sớm",
+      regenerateSuccess: "Đã tạo mã mới thành công",
+      regenerateError: "Không thể tạo mã mới",
+      regenerateConfirm: "Tạo mã mới? Mã cũ sẽ không còn hoạt động.",
+      classNotFound: "Không tìm thấy lớp",
+      loadError: "Không thể tải lớp",
     },
   },
 
@@ -963,6 +1116,38 @@ export const translations = {
       firstPomodoro: "First Pomodoro! Great start! 🎯",
     },
 
+    common: {
+      loading: "Loading...",
+      saving: "Saving...",
+      error: "An error occurred",
+      success: "Success",
+      close: "Close",
+      confirm: "Confirm",
+      cancel: "Cancel",
+      ok: "OK",
+      yes: "Yes",
+      no: "No",
+      done: "Done",
+      unknown: "Unknown",
+      next: "Next",
+      previous: "Previous",
+      search: "Search",
+      filter: "Filter",
+      sort: "Sort",
+      refresh: "Refresh",
+      retry: "Retry",
+      noResults: "No results",
+      noInternet: "No internet connection",
+      offline: "Offline",
+      online: "Online",
+      back: "Back",
+      continue: "Continue",
+      skip: "Skip",
+      info: "Tip",
+      featureInDevelopment: "Feature in development",
+    },
+
+    // Keep general as alias for backwards compatibility
     general: {
       loading: "Loading...",
       saving: "Saving...",
@@ -1106,6 +1291,126 @@ export const translations = {
       removeRole: "Remove Role",
       currentRole: "Current Role",
       primaryRole: "Primary Role",
+    },
+
+    // Classes
+    classes: {
+      title: "Classes",
+      myClasses: "My Classes",
+      createClass: "Create Class",
+      joinClass: "Join Class",
+      className: "Class Name",
+      classNamePlaceholder: "Enter class name...",
+      description: "Description",
+      descriptionPlaceholder: "Enter class description...",
+      joinCode: "Join Code",
+      joinCodePlaceholder: "Enter 6-character code...",
+      members: "Members",
+      memberCount: "{count} members",
+      pendingRequests: "Pending Requests",
+      pendingCount: "{count} pending",
+      approvedMembers: "Approved Members",
+      settings: "Settings",
+      allowJoinRequests: "Allow join requests",
+      regenerateCode: "Regenerate Code",
+      copyCode: "Copy Code",
+      shareCode: "Share Code",
+      classDetails: "Class Details",
+      editClass: "Edit Class",
+      deleteClass: "Delete Class",
+      leaveClass: "Leave Class",
+      viewMembers: "View Members",
+      manageMembers: "Manage Members",
+
+      // Actions
+      create: "Create",
+      join: "Join",
+      approve: "Approve",
+      reject: "Reject",
+      remove: "Remove",
+
+      // Messages
+      createSuccess: "Class created successfully!",
+      createError: "Failed to create class",
+      joinSuccess: "Join request sent!",
+      joinError: "Failed to join class",
+      updateSuccess: "Class updated",
+      updateError: "Failed to update class",
+      deleteSuccess: "Class deleted",
+      deleteError: "Failed to delete class",
+      approveSuccess: "Member approved",
+      approveError: "Failed to approve member",
+      rejectSuccess: "Request rejected",
+      rejectError: "Failed to reject request",
+      removeSuccess: "Member removed",
+      removeError: "Failed to remove member",
+      codeRegenerated: "New code generated!",
+      codeCopied: "Code copied!",
+      codeExpired: "Code expired",
+      codeExpiresSoon: "Code expires soon",
+      invalidCode: "Invalid code",
+      alreadyMember: "Already a member",
+      pendingApproval: "Pending approval",
+
+      // Confirmations
+      deleteConfirm: "Delete this class?",
+      deleteConfirmMessage:
+        "All members will be removed. This action cannot be undone.",
+      leaveConfirm: "Leave this class?",
+      leaveConfirmMessage: "You'll need a new code to rejoin.",
+      removeConfirm: "Remove this member?",
+      removeConfirmMessage: "They'll need a new code to rejoin.",
+
+      // Empty states
+      noClasses: "No classes yet",
+      noClassesDescription: "Create a new class or join an existing one",
+      noMembers: "No members yet",
+      noPendingRequests: "No pending requests",
+
+      // Status
+      status: "Status",
+      active: "Active",
+      pending: "Pending",
+      expired: "Expired",
+
+      // Roles in class
+      teacher: "Teacher",
+      student: "Student",
+      creator: "Creator",
+
+      // Stats
+      totalPomodoros: "Total Pomodoros",
+      completedTasks: "Completed Tasks",
+      joinedDate: "Joined Date",
+      createdDate: "Created Date",
+      lastActive: "Last Active",
+
+      // Validation
+      nameRequired: "Please enter class name",
+      codeRequired: "Please enter join code",
+      codeInvalid: "Code must be 6 characters",
+
+      // Additional UI text
+      createClassDescription:
+        "Create a new class to manage students and track their progress",
+      joinClassDescription: "Enter the 6-character code to join a class",
+      classCreatedMessage:
+        "Your class has been created successfully! Share the join code with your students.",
+      joinSuccessMessage:
+        "Your join request has been sent. Please wait for teacher approval.",
+      shareCodeMessage:
+        "Share this code with students so they can join your class.",
+      joinCodeHelper: "Get the code from your teacher",
+      createClassHelper: "You'll receive a join code after creating the class",
+      joinClassInfo: "After joining, you need to wait for teacher approval.",
+      codeExpiry: "Expires",
+      statusPending: "Pending Approval",
+      pendingDescription: "Teacher will review your request soon",
+      regenerateSuccess: "New code generated successfully",
+      regenerateError: "Failed to generate new code",
+      regenerateConfirm: "Generate new code? Old code will no longer work.",
+      classNotFound: "Class not found",
+      loadError: "Failed to load class",
     },
   },
 };
