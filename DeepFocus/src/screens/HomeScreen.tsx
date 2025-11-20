@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Timer from '../components/Timer';
 import TaskItem from '../components/TaskItem';
 import DailyPomodoroProgress from '../components/DailyPomodoroProgress';
+import RoleSwitcher from '../components/RoleSwitcher';
 import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
@@ -351,12 +352,15 @@ const HomeScreen = () => {
                 {t('home.hello', { name: user?.username || 'User' })}
               </Text>
             </View>
-            <IconButton
-              icon="account-circle"
-              iconColor={theme.colors.onPrimary}
-              size={28}
-              onPress={() => setMenuVisible(true)}
-            />
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <RoleSwitcher />
+              <IconButton
+                icon="account-circle"
+                iconColor={theme.colors.onPrimary}
+                size={28}
+                onPress={() => setMenuVisible(true)}
+              />
+            </View>
           </View>
         </View>
       

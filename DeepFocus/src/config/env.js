@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 const ENV = {
   development: {
     // Use your computer's IP address instead of localhost for mobile testing
-    API_BASE_URL: "http://192.168.1.6:5000/api", // Updated to current IP
+    API_BASE_URL: "http://192.168.2.5:5000/api", // Updated to current IP
     // Fallback to localhost for web testing
     API_BASE_URL_FALLBACK: "http://localhost:5000/api",
     TIMEOUT: 30000, // Increase to 30 seconds for mobile testing

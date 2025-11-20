@@ -10,6 +10,7 @@ import 'react-native-gesture-handler';
 import { theme } from '@/src/config/theme';
 import { LanguageProvider } from '@/src/contexts/LanguageContext';
 import { AuthProvider } from '@/src/contexts/AuthContext';
+import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
@@ -34,9 +35,10 @@ export default function RootLayout() {
           <PaperProvider theme={theme}>
             <LanguageProvider>
               <AuthProvider>
-                <TaskProvider>
-                  <ConnectedPomodoroProvider>
-              <NetworkStatusBar />
+                <RoleProvider>
+                  <TaskProvider>
+                    <ConnectedPomodoroProvider>
+                      <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -85,10 +87,11 @@ export default function RootLayout() {
                   }} 
                 />
               </Stack>
-              <StatusBar style="light" />
-              <OfflineIndicator />
-                  </ConnectedPomodoroProvider>
-                </TaskProvider>
+                      <StatusBar style="light" />
+                      <OfflineIndicator />
+                    </ConnectedPomodoroProvider>
+                  </TaskProvider>
+                </RoleProvider>
               </AuthProvider>
             </LanguageProvider>
       </PaperProvider>

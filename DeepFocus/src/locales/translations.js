@@ -554,6 +554,18 @@ export const translations = {
         cancel: "Quay lại",
       },
     },
+
+    // Roles
+    roles: {
+      student: "Học Sinh",
+      teacher: "Giáo Viên",
+      guardian: "Phụ Huynh",
+      switchRole: "Chuyển Vai Trò",
+      addRole: "Thêm Vai Trò",
+      removeRole: "Xóa Vai Trò",
+      currentRole: "Vai Trò Hiện Tại",
+      primaryRole: "Vai Trò Chính",
+    },
   },
 
   // English translations
@@ -1082,6 +1094,18 @@ export const translations = {
         save: "Save",
         cancel: "Back",
       },
+    },
+
+    // Roles
+    roles: {
+      student: "Student",
+      teacher: "Teacher",
+      guardian: "Guardian",
+      switchRole: "Switch Role",
+      addRole: "Add Role",
+      removeRole: "Remove Role",
+      currentRole: "Current Role",
+      primaryRole: "Primary Role",
     },
   },
 };

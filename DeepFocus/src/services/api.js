@@ -371,6 +371,62 @@ export const statsAPI = {
   },
 };
 
+// Role API functions
+export const roleAPI = {
+  // Get user roles
+  getRoles: async () => {
+    try {
+      const response = await apiClient.get("/roles");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Add a new role
+  addRole: async (roleType) => {
+    try {
+      const response = await apiClient.post("/roles", { roleType });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Switch active role
+  switchRole: async (roleType) => {
+    try {
+      const response = await apiClient.put("/roles/switch", { roleType });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update role-specific profile
+  updateRoleProfile: async (roleType, profileData) => {
+    try {
+      const response = await apiClient.put(
+        `/roles/${roleType}/profile`,
+        profileData
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Remove a role
+  removeRole: async (roleType) => {
+    try {
+      const response = await apiClient.delete(`/roles/${roleType}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // General API utilities
 export const apiUtils = {
   // Check if user is authenticated

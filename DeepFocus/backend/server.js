@@ -10,6 +10,7 @@ dotenv.config();
 const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const statsRoutes = require("./routes/stats");
+const roleRoutes = require("./routes/roles");
 
 // Create Express app
 const app = express();
@@ -19,9 +20,9 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL || "http://localhost:8081",
-      "http://192.168.1.6:8081", // Add updated IP address
+      "http://192.168.2.5:8081", // Add updated IP address
       "http://localhost:19006", // Expo web
-      "exp://192.168.1.6:8081", // Expo mobile
+      "exp://192.168.2.5:8081", // Expo mobile
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -62,6 +63,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/roles", roleRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -111,7 +113,7 @@ app.listen(PORT, HOST, () => {
   console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Network:192.168.1.6:${PORT}/api/health`); // Updated IP
+  console.log(`🌐 Network:192.168.2.5:${PORT}/api/health`); // Updated IP
   console.log(
     `🌍 CORS enabled for: ${
       process.env.FRONTEND_URL || "http://localhost:8081"

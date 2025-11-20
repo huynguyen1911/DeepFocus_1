@@ -56,6 +56,100 @@ const focusProfileSchema = new mongoose.Schema({
   },
 });
 
+// Role schema for multi-role support
+const roleSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    required: true,
+    enum: ["student", "teacher", "guardian"],
+  },
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  isPrimary: {
+    type: Boolean,
+    default: false,
+  },
+  addedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+// Student profile schema
+const studentProfileSchema = new mongoose.Schema({
+  grade: {
+    type: String,
+    default: "",
+  },
+  school: {
+    type: String,
+    default: "",
+  },
+  guardians: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  joinedClasses: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+    },
+  ],
+  joinedGroups: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+    },
+  ],
+});
+
+// Teacher profile schema
+const teacherProfileSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    default: "",
+  },
+  school: {
+    type: String,
+    default: "",
+  },
+  subject: {
+    type: String,
+    default: "",
+  },
+  createdClasses: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Class",
+    },
+  ],
+});
+
+// Guardian profile schema
+const guardianProfileSchema = new mongoose.Schema({
+  relation: {
+    type: String,
+    default: "",
+    enum: ["", "parent", "guardian", "relative", "other"],
+  },
+  monitoringStudents: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+  createdGroups: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+    },
+  ],
+});
+
 const userSchema = new mongoose.Schema(
   {
     username: {
@@ -85,6 +179,44 @@ const userSchema = new mongoose.Schema(
     },
     focusProfile: {
       type: focusProfileSchema,
+      default: () => ({}),
+    },
+    roles: {
+      type: [roleSchema],
+      default: () => [{ type: "student", isPrimary: true, isActive: true }],
+      validate: {
+        validator: function (roles) {
+          // Must have at least one role
+          if (roles.length === 0) return false;
+
+          // Check for duplicate role types
+          const types = roles.map((r) => r.type);
+          const uniqueTypes = new Set(types);
+          if (types.length !== uniqueTypes.size) return false;
+
+          // Must have exactly one primary role
+          const primaryRoles = roles.filter((r) => r.isPrimary);
+          return primaryRoles.length === 1;
+        },
+        message:
+          "User must have at least one role, no duplicate roles, and exactly one primary role",
+      },
+    },
+    defaultRole: {
+      type: String,
+      enum: ["student", "teacher", "guardian"],
+      default: "student",
+    },
+    studentProfile: {
+      type: studentProfileSchema,
+      default: () => ({}),
+    },
+    teacherProfile: {
+      type: teacherProfileSchema,
+      default: () => ({}),
+    },
+    guardianProfile: {
+      type: guardianProfileSchema,
       default: () => ({}),
     },
     isActive: {
@@ -176,6 +308,75 @@ userSchema.statics.findByEmail = function (email) {
 // Static method to find active users
 userSchema.statics.findActiveUsers = function () {
   return this.find({ isActive: true });
+};
+
+// Instance method to add a role
+userSchema.methods.addRole = function (roleType) {
+  // Check if role already exists
+  const existingRole = this.roles.find((r) => r.type === roleType);
+  if (existingRole) {
+    throw new Error(`Role ${roleType} already exists for this user`);
+  }
+
+  // Validate role type
+  const validRoles = ["student", "teacher", "guardian"];
+  if (!validRoles.includes(roleType)) {
+    throw new Error(`Invalid role type: ${roleType}`);
+  }
+
+  // Add the new role
+  this.roles.push({
+    type: roleType,
+    isActive: true,
+    isPrimary: false,
+  });
+
+  return this.save();
+};
+
+// Instance method to remove a role
+userSchema.methods.removeRole = function (roleType) {
+  // Cannot remove if it's the only role
+  if (this.roles.length === 1) {
+    throw new Error("Cannot remove the only role");
+  }
+
+  // Cannot remove primary role without setting a new primary first
+  const roleToRemove = this.roles.find((r) => r.type === roleType);
+  if (roleToRemove && roleToRemove.isPrimary) {
+    throw new Error(
+      "Cannot remove primary role. Set another role as primary first"
+    );
+  }
+
+  // Remove the role
+  this.roles = this.roles.filter((r) => r.type !== roleType);
+
+  return this.save();
+};
+
+// Instance method to switch primary role
+userSchema.methods.switchPrimaryRole = function (roleType) {
+  const newPrimaryRole = this.roles.find((r) => r.type === roleType);
+  if (!newPrimaryRole) {
+    throw new Error(`Role ${roleType} not found`);
+  }
+
+  // Set all roles to not primary
+  this.roles.forEach((r) => {
+    r.isPrimary = false;
+  });
+
+  // Set the new primary role
+  newPrimaryRole.isPrimary = true;
+  this.defaultRole = roleType;
+
+  return this.save();
+};
+
+// Instance method to check if user has a specific role
+userSchema.methods.hasRole = function (roleType) {
+  return this.roles.some((r) => r.type === roleType && r.isActive);
 };
 
 // Pre-remove middleware
