@@ -241,17 +241,35 @@ export default function ClassDetailScreen() {
           </Card.Content>
         </Card>
 
-        {/* Statistics Button */}
+        {/* Quick Actions */}
         <Card style={styles.card}>
           <Card.Content>
-            <Button
-              mode="contained"
-              icon="chart-bar"
-              onPress={() => router.push(`/classes/statistics/${id}`)}
-              style={styles.statisticsButton}
-            >
-              {t("classes.viewStatistics")}
-            </Button>
+            <View style={styles.actionsGrid}>
+              <Button
+                mode="contained"
+                icon="chart-bar"
+                onPress={() => router.push(`/classes/statistics/${id}`)}
+                style={styles.actionButton}
+              >
+                {t("classes.viewStatistics")}
+              </Button>
+              <Button
+                mode="contained"
+                icon="trophy"
+                onPress={() => router.push(`/classes/leaderboard/${id}`)}
+                style={styles.actionButton}
+              >
+                {t("leaderboard.title")}
+              </Button>
+              <Button
+                mode="contained"
+                icon="account-group"
+                onPress={() => router.push(`/classes/members/${id}`)}
+                style={styles.actionButton}
+              >
+                {t("members.title")}
+              </Button>
+            </View>
           </Card.Content>
         </Card>
 
@@ -503,6 +521,15 @@ const styles = StyleSheet.create({
   expiryText: {
     textAlign: "center",
     opacity: 0.6,
+  },
+  actionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    minWidth: "30%",
   },
   memberActions: {
     flexDirection: "row",

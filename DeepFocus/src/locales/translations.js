@@ -446,6 +446,10 @@ export const translations = {
       skip: "Bỏ qua",
       info: "Mẹo",
       featureInDevelopment: "Tính năng đang được phát triển",
+      minutes: "phút",
+      hours: "giờ",
+      remove: "Xóa",
+      thisMember: "thành viên này",
     },
 
     // Keep general as alias for backwards compatibility
@@ -776,6 +780,45 @@ export const translations = {
       comparison: "So sánh",
       trend: "Xu hướng",
       improvement: "Cải thiện",
+    },
+
+    // Leaderboard translations
+    leaderboard: {
+      title: "Bảng Xếp Hạng",
+      loading: "Đang tải bảng xếp hạng...",
+      loadError: "Không thể tải bảng xếp hạng",
+      description:
+        "Bảng xếp hạng dựa trên tổng số phiên học và thời lượng tập trung",
+      sessions: "Phiên",
+      duration: "Thời lượng",
+      tasks: "Nhiệm vụ",
+      noData: "Chưa có dữ liệu",
+      noDataDescription: "Bắt đầu học tập để xuất hiện trên bảng xếp hạng!",
+      loadMore: "Xem thêm",
+    },
+
+    // Members management translations
+    members: {
+      title: "Thành Viên Lớp",
+      loading: "Đang tải danh sách thành viên...",
+      loadError: "Không thể tải danh sách thành viên",
+      activeMembers: "thành viên",
+      pendingMembers: "đang chờ",
+      pendingRequests: "Yêu Cầu Chờ Duyệt",
+      noMembers: "Chưa có thành viên nào",
+      statusActive: "Đang hoạt động",
+      statusPending: "Chờ duyệt",
+      roleTeacher: "Giáo viên",
+      removeMember: "Xóa thành viên",
+      removeConfirm: 'Bạn có chắc muốn xóa "{name}" khỏi lớp?',
+      removeSuccess: "Đã xóa thành viên thành công",
+      removeError: "Không thể xóa thành viên",
+      approveSuccess: "Đã duyệt thành viên thành công",
+      approveError: "Không thể duyệt thành viên",
+      rejectRequest: "Từ chối yêu cầu",
+      rejectConfirm: "Bạn có chắc muốn từ chối yêu cầu này?",
+      rejectSuccess: "Đã từ chối yêu cầu",
+      rejectError: "Không thể từ chối yêu cầu",
     },
   },
 
@@ -1203,6 +1246,10 @@ export const translations = {
       skip: "Skip",
       info: "Tip",
       featureInDevelopment: "Feature in development",
+      minutes: "min",
+      hours: "hr",
+      remove: "Remove",
+      thisMember: "this member",
     },
 
     // Keep general as alias for backwards compatibility
@@ -1527,6 +1574,45 @@ export const translations = {
       comparison: "Comparison",
       trend: "Trend",
       improvement: "Improvement",
+    },
+
+    // Leaderboard translations
+    leaderboard: {
+      title: "Leaderboard",
+      loading: "Loading leaderboard...",
+      loadError: "Failed to load leaderboard",
+      description:
+        "Leaderboard based on total study sessions and focus duration",
+      sessions: "Sessions",
+      duration: "Duration",
+      tasks: "Tasks",
+      noData: "No data yet",
+      noDataDescription: "Start studying to appear on the leaderboard!",
+      loadMore: "Load more",
+    },
+
+    // Members management translations
+    members: {
+      title: "Class Members",
+      loading: "Loading members list...",
+      loadError: "Failed to load members list",
+      activeMembers: "members",
+      pendingMembers: "pending",
+      pendingRequests: "Pending Requests",
+      noMembers: "No members yet",
+      statusActive: "Active",
+      statusPending: "Pending",
+      roleTeacher: "Teacher",
+      removeMember: "Remove member",
+      removeConfirm: 'Are you sure you want to remove "{name}" from the class?',
+      removeSuccess: "Member removed successfully",
+      removeError: "Failed to remove member",
+      approveSuccess: "Member approved successfully",
+      approveError: "Failed to approve member",
+      rejectRequest: "Reject request",
+      rejectConfirm: "Are you sure you want to reject this request?",
+      rejectSuccess: "Request rejected",
+      rejectError: "Failed to reject request",
     },
   },
 };
