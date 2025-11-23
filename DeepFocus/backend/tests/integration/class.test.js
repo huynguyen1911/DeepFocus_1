@@ -103,12 +103,12 @@ describe("Class Integration Tests - Complete Flow", () => {
       .expect(201);
 
     expect(createResponse.body.success).toBe(true);
-    expect(createResponse.body.data.name).toBe("Math 101");
-    expect(createResponse.body.data.joinCode).toBeDefined();
-    expect(createResponse.body.data.joinCode).toHaveLength(6);
+    expect(createResponse.body.data.class.name).toBe("Math 101");
+    expect(createResponse.body.data.class.joinCode).toBeDefined();
+    expect(createResponse.body.data.class.joinCode).toHaveLength(6);
 
-    classId = createResponse.body.data._id;
-    joinCode = createResponse.body.data.joinCode;
+    classId = createResponse.body.data.class._id;
+    joinCode = createResponse.body.data.class.joinCode;
 
     // Step 2: Verify teacher can see their class
     const teacherClassesResponse = await request(app)
@@ -128,7 +128,7 @@ describe("Class Integration Tests - Complete Flow", () => {
       .expect(200);
 
     expect(joinResponse.body.success).toBe(true);
-    expect(joinResponse.body.message).toContain("approval");
+    expect(joinResponse.body.message).toContain("sent successfully");
 
     // Step 4: Verify class has pending member
     const classDetailsResponse = await request(app)
@@ -219,7 +219,7 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    const code = createResponse.body.data.joinCode;
+    const code = createResponse.body.data.class.joinCode;
 
     // First join request
     await request(app)
@@ -258,8 +258,8 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    const code = createResponse.body.data.joinCode;
-    classId = createResponse.body.data._id;
+    const code = createResponse.body.data.class.joinCode;
+    classId = createResponse.body.data.class._id;
 
     // Create another student
     const student2 = await User.create({
@@ -301,7 +301,7 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    classId = createResponse.body.data._id;
+    classId = createResponse.body.data.class._id;
 
     // Try to remove creator (use teacherId not member._id)
     const removeResponse = await request(app)
@@ -321,12 +321,12 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    classId = createResponse.body.data._id;
-    const oldCode = createResponse.body.data.joinCode;
+    classId = createResponse.body.data.class._id;
+    const oldCode = createResponse.body.data.class.joinCode;
 
     // Regenerate code
     const regenerateResponse = await request(app)
-      .post(`/api/classes/${classId}/regenerate-code`)
+      .put(`/api/classes/${classId}/regenerate-code`)
       .set("Authorization", `Bearer ${teacherToken}`)
       .expect(200);
 
@@ -353,8 +353,8 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    classId = createResponse.body.data._id;
-    const code = createResponse.body.data.joinCode;
+    classId = createResponse.body.data.class._id;
+    const code = createResponse.body.data.class.joinCode;
 
     // Student joins and gets approved
     await request(app)
@@ -401,8 +401,8 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    classId = createResponse.body.data._id;
-    const code = createResponse.body.data.joinCode;
+    classId = createResponse.body.data.class._id;
+    const code = createResponse.body.data.class.joinCode;
 
     // Student joins
     await request(app)
@@ -435,7 +435,7 @@ describe("Class Integration Tests - Complete Flow", () => {
       .send({ name: "Test Class" })
       .expect(201);
 
-    classId = createResponse.body.data._id;
+    classId = createResponse.body.data.class._id;
 
     // Delete class
     const deleteResponse = await request(app)

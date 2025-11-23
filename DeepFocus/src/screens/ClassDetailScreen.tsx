@@ -241,6 +241,20 @@ export default function ClassDetailScreen() {
           </Card.Content>
         </Card>
 
+        {/* Statistics Button */}
+        <Card style={styles.card}>
+          <Card.Content>
+            <Button
+              mode="contained"
+              icon="chart-bar"
+              onPress={() => router.push(`/classes/statistics/${id}`)}
+              style={styles.statisticsButton}
+            >
+              {t("classes.viewStatistics")}
+            </Button>
+          </Card.Content>
+        </Card>
+
         {/* Join Code Card (Teacher Only) */}
         {isTeacher && currentClass.joinCode && (
           <Card style={styles.card}>

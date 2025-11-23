@@ -7,6 +7,10 @@ const {
   loginUser,
   getUserProfile,
   updateProfile,
+  deleteUser,
+  getAllUsers,
+  promoteToAdmin,
+  revokeAdmin,
 } = require("../controllers/authController");
 
 // Import middleware
@@ -63,5 +67,25 @@ router.post("/logout", authMiddleware, (req, res) => {
     message: "Logout successful. Please remove token from client storage.",
   });
 });
+
+// @route   GET /api/auth/users
+// @desc    Get all users (Admin only)
+// @access  Private/Admin
+router.get("/users", authMiddleware, getAllUsers);
+
+// @route   PUT /api/auth/user/:userId/promote
+// @desc    Promote user to admin (Admin only)
+// @access  Private/Admin
+router.put("/user/:userId/promote", authMiddleware, promoteToAdmin);
+
+// @route   PUT /api/auth/user/:userId/revoke
+// @desc    Revoke admin privileges (Admin only)
+// @access  Private/Admin
+router.put("/user/:userId/revoke", authMiddleware, revokeAdmin);
+
+// @route   DELETE /api/auth/user/:userId
+// @desc    Delete user account (User can delete own, Admin can delete any)
+// @access  Private
+router.delete("/user/:userId", authMiddleware, deleteUser);
 
 module.exports = router;

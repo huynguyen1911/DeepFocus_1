@@ -25,6 +25,7 @@ describe("Class Controller Tests", () => {
       email: "teacher@test.com",
       password: "password123",
       roles: [{ type: "teacher", isPrimary: true, isActive: true }],
+      defaultRole: "teacher",
     });
     await teacherUser.save();
 
@@ -33,6 +34,7 @@ describe("Class Controller Tests", () => {
       email: "student@test.com",
       password: "password123",
       roles: [{ type: "student", isPrimary: true, isActive: true }],
+      defaultRole: "student",
     });
     await studentUser.save();
 
@@ -46,7 +48,7 @@ describe("Class Controller Tests", () => {
   describe("createClass", () => {
     test("should create class successfully for teacher", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         body: {
           name: "Test Class",
           description: "Test Description",
@@ -78,7 +80,7 @@ describe("Class Controller Tests", () => {
 
     test("should fail if user is not a teacher", async () => {
       mockReq = {
-        user: { _id: studentUser._id },
+        user: studentUser,
         body: {
           name: "Test Class",
         },
@@ -97,7 +99,7 @@ describe("Class Controller Tests", () => {
 
     test("should fail if class name is missing", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         body: {
           description: "Test Description",
         },
@@ -125,9 +127,9 @@ describe("Class Controller Tests", () => {
         joinCodeExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         members: [
           {
-            userId: teacherUser._id,
+            user: teacherUser._id,
             role: "teacher",
-            status: "approved",
+            status: "active",
           },
         ],
       });
@@ -136,7 +138,7 @@ describe("Class Controller Tests", () => {
 
     test("should allow student to request join with valid code", async () => {
       mockReq = {
-        user: { _id: studentUser._id },
+        user: studentUser,
         body: {
           joinCode: "ABC123",
         },
@@ -155,7 +157,7 @@ describe("Class Controller Tests", () => {
       const updatedClass = await Class.findById(createdClass._id);
       const pendingMember = updatedClass.members.find(
         (m) =>
-          m.userId.toString() === studentUser._id.toString() &&
+          m.user.toString() === studentUser._id.toString() &&
           m.status === "pending"
       );
       expect(pendingMember).toBeDefined();
@@ -163,7 +165,7 @@ describe("Class Controller Tests", () => {
 
     test("should fail with invalid join code", async () => {
       mockReq = {
-        user: { _id: studentUser._id },
+        user: studentUser,
         body: {
           joinCode: "INVALID",
         },
@@ -183,14 +185,14 @@ describe("Class Controller Tests", () => {
     test("should fail if student already joined", async () => {
       // Add student as member first
       createdClass.members.push({
-        userId: studentUser._id,
+        user: studentUser._id,
         role: "student",
-        status: "approved",
+        status: "active",
       });
       await createdClass.save();
 
       mockReq = {
-        user: { _id: studentUser._id },
+        user: studentUser,
         body: {
           joinCode: "ABC123",
         },
@@ -209,7 +211,7 @@ describe("Class Controller Tests", () => {
 
     test("should fail if non-student tries to join", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         body: {
           joinCode: "ABC123",
         },
@@ -221,7 +223,7 @@ describe("Class Controller Tests", () => {
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: false,
-          message: "Only students can join classes",
+          message: "Only students can request to join classes",
         })
       );
     });
@@ -235,12 +237,12 @@ describe("Class Controller Tests", () => {
         createdBy: teacherUser._id,
         members: [
           {
-            userId: teacherUser._id,
+            user: teacherUser._id,
             role: "teacher",
-            status: "approved",
+            status: "active",
           },
           {
-            userId: studentUser._id,
+            user: studentUser._id,
             role: "student",
             status: "pending",
           },
@@ -251,7 +253,7 @@ describe("Class Controller Tests", () => {
 
     test("should approve join request successfully", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         params: {
           id: createdClass._id.toString(),
           memberId: studentUser._id.toString(),
@@ -270,9 +272,9 @@ describe("Class Controller Tests", () => {
       // Verify member status changed
       const updatedClass = await Class.findById(createdClass._id);
       const approvedMember = updatedClass.members.find(
-        (m) => m.userId.toString() === studentUser._id.toString()
+        (m) => m.user.toString() === studentUser._id.toString()
       );
-      expect(approvedMember.status).toBe("approved");
+      expect(approvedMember.status).toBe("active");
 
       // Verify class was added to student's profile
       const updatedStudent = await User.findById(studentUser._id);
@@ -287,11 +289,12 @@ describe("Class Controller Tests", () => {
         email: "another@test.com",
         password: "password123",
         roles: [{ type: "teacher", isPrimary: true, isActive: true }],
+        defaultRole: "teacher",
       });
       await anotherUser.save();
 
       mockReq = {
-        user: { _id: anotherUser._id },
+        user: anotherUser,
         params: {
           id: createdClass._id.toString(),
           memberId: studentUser._id.toString(),
@@ -312,20 +315,20 @@ describe("Class Controller Tests", () => {
 
   describe("removeMember", () => {
     beforeEach(async () => {
-      // Create class with approved student
+      // Create class with active student
       createdClass = new Class({
         name: "Test Class",
         createdBy: teacherUser._id,
         members: [
           {
-            userId: teacherUser._id,
+            user: teacherUser._id,
             role: "teacher",
-            status: "approved",
+            status: "active",
           },
           {
-            userId: studentUser._id,
+            user: studentUser._id,
             role: "student",
-            status: "approved",
+            status: "active",
           },
         ],
       });
@@ -338,7 +341,7 @@ describe("Class Controller Tests", () => {
 
     test("should remove member successfully", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         params: {
           id: createdClass._id.toString(),
           memberId: studentUser._id.toString(),
@@ -357,7 +360,7 @@ describe("Class Controller Tests", () => {
       // Verify member was removed from class
       const updatedClass = await Class.findById(createdClass._id);
       const memberExists = updatedClass.members.find(
-        (m) => m.userId.toString() === studentUser._id.toString()
+        (m) => m.user.toString() === studentUser._id.toString()
       );
       expect(memberExists).toBeUndefined();
 
@@ -370,7 +373,7 @@ describe("Class Controller Tests", () => {
 
     test("should fail to remove class creator", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         params: {
           id: createdClass._id.toString(),
           memberId: teacherUser._id.toString(),
@@ -398,9 +401,9 @@ describe("Class Controller Tests", () => {
         joinCodeExpiry: new Date(Date.now() - 1000), // Expired
         members: [
           {
-            userId: teacherUser._id,
+            user: teacherUser._id,
             role: "teacher",
-            status: "approved",
+            status: "active",
           },
         ],
       });
@@ -409,7 +412,7 @@ describe("Class Controller Tests", () => {
 
     test("should regenerate join code successfully", async () => {
       mockReq = {
-        user: { _id: teacherUser._id },
+        user: teacherUser,
         params: {
           id: createdClass._id.toString(),
         },

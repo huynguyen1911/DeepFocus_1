@@ -13,6 +13,7 @@ import { AuthProvider } from '@/src/contexts/AuthContext';
 import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ClassProvider } from '@/src/contexts/ClassContext';
+import { SessionProvider } from '@/src/contexts/SessionContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import OfflineIndicator from '@/src/components/OfflineIndicator';
@@ -39,8 +40,9 @@ export default function RootLayout() {
                 <RoleProvider>
                   <TaskProvider>
                     <ClassProvider>
-                      <ConnectedPomodoroProvider>
-                        <NetworkStatusBar />
+                      <SessionProvider>
+                        <ConnectedPomodoroProvider>
+                          <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -117,10 +119,20 @@ export default function RootLayout() {
                     },
                   }} 
                 />
+                <Stack.Screen 
+                  name="classes/statistics/[id]" 
+                  options={{ 
+                    title: 'Thống Kê Lớp',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
               </Stack>
-                        <StatusBar style="light" />
-                        <OfflineIndicator />
-                      </ConnectedPomodoroProvider>
+                          <StatusBar style="light" />
+                          <OfflineIndicator />
+                        </ConnectedPomodoroProvider>
+                      </SessionProvider>
                     </ClassProvider>
                   </TaskProvider>
                 </RoleProvider>

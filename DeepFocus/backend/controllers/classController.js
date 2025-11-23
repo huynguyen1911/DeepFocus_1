@@ -8,7 +8,7 @@ const User = require("../models/User");
  */
 const createClass = async (req, res) => {
   try {
-    const { name, description, type } = req.body;
+    const { name, description, type, settings } = req.body;
     const userId = req.user._id;
 
     // Verify user is a teacher
@@ -16,6 +16,14 @@ const createClass = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Only teachers can create classes",
+      });
+    }
+
+    // Validate required fields
+    if (!name || name.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Class name is required",
       });
     }
 
@@ -30,6 +38,7 @@ const createClass = async (req, res) => {
       createdBy: userId,
       joinCode,
       joinCodeExpiry: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      settings: settings || {},
       members: [
         {
           user: userId,
@@ -50,7 +59,9 @@ const createClass = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Class created successfully",
-      data: newClass,
+      data: {
+        class: newClass,
+      },
     });
   } catch (error) {
     console.error("Error creating class:", error);
@@ -435,6 +446,14 @@ const requestJoinClass = async (req, res) => {
     const { joinCode } = req.body;
     const userId = req.user._id;
 
+    // Verify user is a student
+    if (req.user.defaultRole !== "student") {
+      return res.status(403).json({
+        success: false,
+        message: "Only students can request to join classes",
+      });
+    }
+
     if (!joinCode) {
       return res.status(400).json({
         success: false,
@@ -502,7 +521,7 @@ const requestJoinClass = async (req, res) => {
       success: true,
       message: classData.settings.autoApprove
         ? "Successfully joined class"
-        : "Join request submitted. Waiting for teacher approval",
+        : "Join request sent successfully",
       data: {
         classId: classData._id,
         className: classData.name,
@@ -620,9 +639,18 @@ const approveJoinRequest = async (req, res) => {
     member.status = "active";
     await classData.save();
 
+    // Add class to student's joinedClasses if not already there
+    const student = await User.findById(memberId);
+    if (student && student.studentProfile) {
+      if (!student.studentProfile.joinedClasses.includes(id)) {
+        student.studentProfile.joinedClasses.push(id);
+        await student.save();
+      }
+    }
+
     res.json({
       success: true,
-      message: "Join request approved successfully",
+      message: "Member approved successfully",
     });
   } catch (error) {
     console.error("Error approving join request:", error);
@@ -829,6 +857,200 @@ const getMemberList = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get class leaderboard
+ * @route   GET /api/classes/:id/leaderboard
+ * @access  Private (Class members only)
+ */
+const getClassLeaderboard = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+    const { limit = 10 } = req.query;
+
+    // Verify class exists and user is a member
+    const classData = await Class.findById(id);
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    const isMember = classData.members.some(
+      (m) => m.user.toString() === userId.toString() && m.status === "active"
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not a member of this class",
+      });
+    }
+
+    // Get leaderboard from Session model
+    const Session = require("../models/Session");
+    const leaderboard = await Session.getClassLeaderboard(id, parseInt(limit));
+
+    res.json({
+      success: true,
+      count: leaderboard.length,
+      leaderboard: leaderboard,
+    });
+  } catch (error) {
+    console.error("Error getting class leaderboard:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get class leaderboard",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Update class statistics
+ * @route   POST /api/classes/:id/update-stats
+ * @access  Private (Teacher only)
+ */
+const updateClassStats = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const classData = await Class.findById(id);
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Check if user is the creator
+    if (classData.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only the class creator can update class statistics",
+      });
+    }
+
+    // Recalculate stats from sessions
+    const Session = require("../models/Session");
+    const stats = await Session.getClassStats(id);
+
+    classData.stats = {
+      totalPomodoros: stats.totalSessions,
+      totalFocusTime: stats.totalDuration,
+      averagePerStudent: stats.avgPerStudent,
+      lastUpdated: new Date(),
+    };
+
+    await classData.save();
+
+    res.json({
+      success: true,
+      message: "Class statistics updated successfully",
+      stats: classData.stats,
+    });
+  } catch (error) {
+    console.error("Error updating class stats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update class statistics",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Get student progress in class
+ * @route   GET /api/classes/:id/student/:studentId/progress
+ * @access  Private (Class members only)
+ */
+const getStudentProgress = async (req, res) => {
+  try {
+    const { id, studentId } = req.params;
+    const userId = req.user._id;
+
+    // Verify class exists and user is a member
+    const classData = await Class.findById(id);
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    const isUserMember = classData.members.some(
+      (m) => m.user.toString() === userId.toString() && m.status === "active"
+    );
+
+    if (!isUserMember) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not a member of this class",
+      });
+    }
+
+    // Verify student exists (either must be active member OR user is viewing their own progress)
+    const studentMember = classData.members.find(
+      (m) => m.user.toString() === studentId.toString()
+    );
+
+    // If not viewing own progress and student is not in class or not active, return 404
+    if (!studentMember && userId.toString() !== studentId.toString()) {
+      return res.status(404).json({
+        success: false,
+        message: "Student is not a member of this class",
+      });
+    }
+
+    // Get student's session stats for this class
+    const Session = require("../models/Session");
+
+    const sessions = await Session.find({
+      user: studentId,
+      class: id,
+      completed: true,
+      type: "focus",
+    }).sort({ createdAt: -1 });
+
+    const totalSessions = sessions.length;
+    const totalDuration = sessions.reduce((sum, s) => sum + s.duration, 0);
+    const avgDuration =
+      totalSessions > 0 ? Math.round(totalDuration / totalSessions) : 0;
+
+    // Get recent sessions (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const recentSessions = sessions.filter(
+      (s) => new Date(s.createdAt) >= sevenDaysAgo
+    );
+
+    res.json({
+      success: true,
+      studentId,
+      classId: id,
+      totalSessions,
+      totalDuration,
+      avgDuration,
+      recentSessions: recentSessions,
+      lastSession: sessions.length > 0 ? sessions[0].createdAt : null,
+      sessions: sessions.slice(0, 10), // Return last 10 sessions
+    });
+  } catch (error) {
+    console.error("Error getting student progress:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get student progress",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createClass,
   getClasses,
@@ -843,4 +1065,7 @@ module.exports = {
   rejectJoinRequest,
   removeMember,
   getMemberList,
+  getClassLeaderboard,
+  updateClassStats,
+  getStudentProgress,
 };

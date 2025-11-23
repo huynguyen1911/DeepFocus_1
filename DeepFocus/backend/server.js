@@ -12,6 +12,7 @@ const taskRoutes = require("./routes/tasks");
 const statsRoutes = require("./routes/stats");
 const roleRoutes = require("./routes/roles");
 const classRoutes = require("./routes/classes");
+const sessionRoutes = require("./routes/sessions");
 
 // Create Express app
 const app = express();
@@ -21,9 +22,9 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL || "http://localhost:8081",
-      "http://10.100.101.228:8081", // Add updated IP address
+      "http://192.168.2.5:8081", // Add updated IP address
       "http://localhost:19006", // Expo web
-      "exp://10.100.101.228:8081", // Expo mobile
+      "exp://192.168.2.5:8081", // Expo mobile
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -57,8 +58,10 @@ const connectDB = async () => {
   }
 };
 
-// Connect to database
-connectDB();
+// Connect to database only if not in test mode
+if (process.env.NODE_ENV !== "test") {
+  connectDB();
+}
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -66,6 +69,7 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/classes", classRoutes);
+app.use("/api/sessions", sessionRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -108,45 +112,6 @@ app.get("/api/debug/user/:email", async (req, res) => {
   }
 });
 
-// Debug endpoint to check class (REMOVE IN PRODUCTION)
-app.get("/api/debug/class/:classId", async (req, res) => {
-  try {
-    const Class = require("./models/Class");
-    const classData = await Class.findById(req.params.classId)
-      .populate("createdBy", "focusProfile.fullName email defaultRole")
-      .populate("members.user", "focusProfile.fullName email defaultRole");
-
-    if (!classData) {
-      return res.json({
-        success: false,
-        message: "Class not found",
-        classId: req.params.classId
-      });
-    }
-
-    res.json({
-      success: true,
-      class: {
-        id: classData._id,
-        name: classData.name,
-        createdBy: classData.createdBy,
-        joinCode: classData.joinCode,
-        members: classData.members.map(m => ({
-          userId: m.user._id,
-          userEmail: m.user.email,
-          userName: m.user.focusProfile?.fullName,
-          userRole: m.user.defaultRole,
-          status: m.status,
-          role: m.role,
-          joinedAt: m.joinedAt
-        }))
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Root endpoint
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -176,30 +141,35 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-const HOST = "0.0.0.0"; // Listen on all network interfaces
+// Export app for testing
+module.exports = app;
 
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Network:10.100.101.228:${PORT}/api/health`); // Updated IP
-  console.log(
-    `🌍 CORS enabled for: ${
-      process.env.FRONTEND_URL || "http://localhost:8081"
-    }`
-  );
-});
+// Start server only if not in test mode
+if (process.env.NODE_ENV !== "test") {
+  const PORT = process.env.PORT || 5000;
+  const HOST = "0.0.0.0"; // Listen on all network interfaces
 
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (err, promise) => {
-  console.error("❌ Unhandled Promise Rejection:", err.message);
-  process.exit(1);
-});
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Network:192.168.2.5:${PORT}/api/health`); // Updated IP
+    console.log(
+      `🌍 CORS enabled for: ${
+        process.env.FRONTEND_URL || "http://localhost:8081"
+      }`
+    );
+  });
 
-// Handle uncaught exceptions
-process.on("uncaughtException", (err) => {
-  console.error("❌ Uncaught Exception:", err.message);
-  process.exit(1);
-});
+  // Handle unhandled promise rejections
+  process.on("unhandledRejection", (err, promise) => {
+    console.error("❌ Unhandled Promise Rejection:", err.message);
+    process.exit(1);
+  });
+
+  // Handle uncaught exceptions
+  process.on("uncaughtException", (err) => {
+    console.error("❌ Uncaught Exception:", err.message);
+    process.exit(1);
+  });
+}

@@ -141,12 +141,16 @@ classSchema.index({ createdAt: -1 });
 
 // Virtual for active members count
 classSchema.virtual("activeMembersCount").get(function () {
-  return this.members.filter((m) => m.status === "active").length;
+  return this.members
+    ? this.members.filter((m) => m.status === "active").length
+    : 0;
 });
 
 // Virtual for pending members count
 classSchema.virtual("pendingMembersCount").get(function () {
-  return this.members.filter((m) => m.status === "pending").length;
+  return this.members
+    ? this.members.filter((m) => m.status === "pending").length
+    : 0;
 });
 
 // Static method to generate unique join code

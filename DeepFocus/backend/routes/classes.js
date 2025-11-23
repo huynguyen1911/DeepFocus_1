@@ -15,6 +15,9 @@ const {
   rejectJoinRequest,
   removeMember,
   getMemberList,
+  getClassLeaderboard,
+  updateClassStats,
+  getStudentProgress,
 } = require("../controllers/classController");
 
 // All routes require authentication
@@ -60,29 +63,44 @@ router.delete("/:id", deleteClass);
 // @access  Private (Student)
 router.post("/join", requestJoinClass);
 
-// @route   POST /api/classes/:id/regenerate-code
+// @route   PUT /api/classes/:id/regenerate-code
 // @desc    Regenerate join code for class (Teacher only)
 // @access  Private (Teacher/Creator)
-router.post("/:id/regenerate-code", regenerateJoinCode);
+router.put("/:id/regenerate-code", regenerateJoinCode);
 
 // @route   GET /api/classes/:id/members
 // @desc    Get class members list
 // @access  Private (Members only)
 router.get("/:id/members", getMemberList);
 
-// @route   POST /api/classes/:id/approve/:memberId
+// @route   PUT /api/classes/:id/members/:memberId/approve
 // @desc    Approve join request (Teacher only)
 // @access  Private (Teacher/Creator)
-router.post("/:id/approve/:memberId", approveJoinRequest);
+router.put("/:id/members/:memberId/approve", approveJoinRequest);
 
-// @route   POST /api/classes/:id/reject/:memberId
+// @route   PUT /api/classes/:id/members/:memberId/reject
 // @desc    Reject join request (Teacher only)
 // @access  Private (Teacher/Creator)
-router.post("/:id/reject/:memberId", rejectJoinRequest);
+router.put("/:id/members/:memberId/reject", rejectJoinRequest);
 
-// @route   POST /api/classes/:id/remove/:memberId
+// @route   DELETE /api/classes/:id/members/:memberId
 // @desc    Remove member from class (Teacher only)
 // @access  Private (Teacher/Creator)
-router.post("/:id/remove/:memberId", removeMember);
+router.delete("/:id/members/:memberId", removeMember);
+
+// @route   GET /api/classes/:id/leaderboard
+// @desc    Get class leaderboard
+// @access  Private (Members only)
+router.get("/:id/leaderboard", getClassLeaderboard);
+
+// @route   PUT /api/classes/:id/update-stats
+// @desc    Update class statistics
+// @access  Private (Teacher/Creator)
+router.put("/:id/update-stats", updateClassStats);
+
+// @route   GET /api/classes/:id/student/:studentId/progress
+// @desc    Get student progress in class
+// @access  Private (Members only)
+router.get("/:id/student/:studentId/progress", getStudentProgress);
 
 module.exports = router;

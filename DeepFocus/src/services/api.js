@@ -556,6 +556,127 @@ export const classAPI = {
       throw error;
     }
   },
+
+  // Get class leaderboard
+  getLeaderboard: async (classId, limit = 10) => {
+    try {
+      const response = await apiClient.get(
+        `/classes/${classId}/leaderboard?limit=${limit}`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Update class statistics (Teacher only)
+  updateStats: async (classId) => {
+    try {
+      const response = await apiClient.post(`/classes/${classId}/update-stats`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get student progress in class
+  getStudentProgress: async (classId, studentId) => {
+    try {
+      const response = await apiClient.get(
+        `/classes/${classId}/student/${studentId}/progress`
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
+// Session Management API (Phase 3)
+export const sessionAPI = {
+  // Create a new Pomodoro session
+  createSession: async (sessionData) => {
+    try {
+      const response = await apiClient.post("/sessions", sessionData);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Complete a session
+  completeSession: async (sessionId, notes = "") => {
+    try {
+      const response = await apiClient.put(`/sessions/${sessionId}/complete`, {
+        notes,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Cancel a session
+  cancelSession: async (sessionId) => {
+    try {
+      const response = await apiClient.put(`/sessions/${sessionId}/cancel`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get active session
+  getActiveSession: async () => {
+    try {
+      const response = await apiClient.get("/sessions/active");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get user's sessions with pagination and filters
+  getMySessions: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const url = queryParams
+        ? `/sessions/my-sessions?${queryParams}`
+        : "/sessions/my-sessions";
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get sessions for a specific class
+  getClassSessions: async (classId, params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const url = queryParams
+        ? `/sessions/class/${classId}?${queryParams}`
+        : `/sessions/class/${classId}`;
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get session statistics
+  getSessionStats: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams(params).toString();
+      const url = queryParams
+        ? `/sessions/stats?${queryParams}`
+        : "/sessions/stats";
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 // General API utilities

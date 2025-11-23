@@ -66,7 +66,7 @@ const roleSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ["student", "teacher", "guardian"],
+    enum: ["student", "teacher", "guardian", "admin"],
   },
   isActive: {
     type: Boolean,
@@ -209,8 +209,12 @@ const userSchema = new mongoose.Schema(
     },
     defaultRole: {
       type: String,
-      enum: ["student", "teacher", "guardian"],
+      enum: ["student", "teacher", "guardian", "admin"],
       default: "student",
+    },
+    isAdmin: {
+      type: Boolean,
+      default: false,
     },
     studentProfile: {
       type: studentProfileSchema,
@@ -324,7 +328,7 @@ userSchema.methods.addRole = function (roleType) {
   }
 
   // Validate role type
-  const validRoles = ["student", "teacher", "guardian"];
+  const validRoles = ["student", "teacher", "guardian", "admin"];
   if (!validRoles.includes(roleType)) {
     throw new Error(`Invalid role type: ${roleType}`);
   }

@@ -3,35 +3,54 @@ const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
+
+// Mock auth middleware before requiring routes
+jest.mock("../../middleware/auth", () => {
+  const jwt = require("jsonwebtoken");
+  return {
+    authMiddleware: (req, res, next) => {
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res
+          .status(401)
+          .json({ success: false, message: "No token provided" });
+      }
+      try {
+        const decoded = jwt.verify(
+          token,
+          process.env.JWT_SECRET || "test-secret"
+        );
+        req.user = { _id: decoded.userId };
+        next();
+      } catch (error) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Invalid token" });
+      }
+    },
+    adminMiddleware: (req, res, next) => {
+      next();
+    },
+    generateToken: () => "mock-token",
+    optionalAuth: (req, res, next) => {
+      next();
+    },
+  };
+});
+
 const roleRoutes = require("../../routes/roles");
 
 // Create Express app for testing
 const app = express();
 app.use(express.json());
 
-// Mock auth middleware - must be defined before requiring the routes
-const mockAuthMiddleware = jest.fn((req, res, next) => {
-  // Attach mock user to request
-  if (req.headers.authorization) {
-    try {
-      const token = req.headers.authorization.split(" ")[1];
-      const decoded = jwt.verify(
-        token,
-        process.env.JWT_SECRET || "test-secret"
-      );
-      req.user = { _id: decoded.userId };
-      next();
-    } catch (error) {
-      return res.status(401).json({ success: false, message: "Invalid token" });
-    }
-  } else {
-    return res
-      .status(401)
-      .json({ success: false, message: "No token provided" });
+// Middleware to inject test user
+app.use((req, res, next) => {
+  if (req.headers["x-test-user-id"]) {
+    req.user = { _id: req.headers["x-test-user-id"] };
   }
+  next();
 });
-
-jest.mock("../../middleware/auth", () => mockAuthMiddleware);
 
 app.use("/api/roles", roleRoutes);
 
@@ -53,6 +72,10 @@ describe("Role API Integration Tests", () => {
       process.env.JWT_SECRET || "test-secret",
       { expiresIn: "1h" }
     );
+  });
+
+  afterEach(async () => {
+    await User.deleteMany({});
   });
 
   describe("GET /api/roles", () => {
@@ -210,15 +233,27 @@ describe("Role API Integration Tests", () => {
     });
 
     test("should not remove only role", async () => {
-      // Remove teacher role first, leaving only student
-      await testUser.removeRole("teacher");
+      // First, switch primary role back to student
+      await request(app)
+        .put("/api/roles/switch")
+        .set("Authorization", `Bearer ${authToken}`)
+        .send({ roleType: "student" })
+        .expect(200);
 
+      // Remove teacher role, leaving only student
+      await request(app)
+        .delete("/api/roles/teacher")
+        .set("Authorization", `Bearer ${authToken}`)
+        .expect(200);
+
+      // Try to remove the only remaining role (student) - should fail
       const response = await request(app)
         .delete("/api/roles/student")
         .set("Authorization", `Bearer ${authToken}`)
         .expect(500);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.message).toContain("Cannot remove");
     });
 
     test("should not remove primary role", async () => {
