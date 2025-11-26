@@ -608,15 +608,13 @@ describe("Session Integration Tests", () => {
       expect(response.body.leaderboard[0]).toHaveProperty("email");
     });
 
-    it.skip("should get student progress", async () => {
-      // FIXME: Test fails with 404 - student membership check issue
-      // Problem: testUser._id from outer beforeEach doesn't match student in class members
-      // after sessions are created in inner beforeEach. Needs investigation.
+    it("should get student progress", async () => {
       const response = await request(app)
-        .get(`/api/classes/${testClass._id}/students/${testUser._id}/progress`)
+        .get(`/api/classes/${testClass._id}/student/${testUser._id}/progress`)
         .set("Authorization", `Bearer ${authToken}`)
         .expect(200);
 
+      expect(response.body).toHaveProperty("success", true);
       expect(response.body).toHaveProperty("totalSessions", 5);
       expect(response.body).toHaveProperty("totalDuration", 125);
       expect(response.body).toHaveProperty("avgDuration", 25);
