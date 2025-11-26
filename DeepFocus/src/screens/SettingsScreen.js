@@ -1406,6 +1406,20 @@ const SettingsScreen = () => {
             </Card.Content>
           </Card>
 
+          {/* Notifications Section */}
+          <Card style={styles.card}>
+            <Card.Title title={`🔔 Thông Báo`} titleStyle={styles.cardTitle} />
+            <Card.Content>
+              <List.Item
+                title="Xem tất cả thông báo"
+                description="Kiểm tra các thông báo và cập nhật mới nhất"
+                left={(props) => <List.Icon {...props} icon="bell" />}
+                right={(props) => <List.Icon {...props} icon="chevron-right" />}
+                onPress={() => navigation.navigate("alerts")}
+              />
+            </Card.Content>
+          </Card>
+
           {/* App Info Section */}
           <Card style={styles.card}>
             <Card.Title

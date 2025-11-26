@@ -270,6 +270,16 @@ export default function ClassDetailScreen() {
                 {t("members.title")}
               </Button>
             </View>
+            <View style={styles.actionsRow}>
+              <Button
+                mode="contained"
+                icon="gift"
+                onPress={() => router.push(`/rewards/${id}`)}
+                style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+              >
+                Phần Thưởng & Phạt
+              </Button>
+            </View>
           </Card.Content>
         </Card>
 

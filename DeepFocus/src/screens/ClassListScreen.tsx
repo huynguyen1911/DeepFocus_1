@@ -184,6 +184,27 @@ export default function ClassListScreen() {
                         </Text>
                       </View>
                     )}
+
+                    {isTeacher && (
+                      <View style={styles.quickActionsContainer}>
+                        <IconButton
+                          icon="gift"
+                          mode="contained"
+                          size={20}
+                          iconColor="#FF9800"
+                          containerColor={theme.colors.surfaceVariant}
+                          onPress={() => router.push(`/rewards/${classItem._id}`)}
+                        />
+                        <IconButton
+                          icon="trophy"
+                          mode="contained"
+                          size={20}
+                          iconColor="#FFD700"
+                          containerColor={theme.colors.surfaceVariant}
+                          onPress={() => router.push(`/rewards/summary?classId=${classItem._id}`)}
+                        />
+                      </View>
+                    )}
                   </Card.Content>
                 </Card>
               );
@@ -300,6 +321,14 @@ const styles = StyleSheet.create({
   joinCode: {
     fontWeight: "bold",
     fontFamily: "monospace",
+  },
+  quickActionsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    paddingTop: 8,
+    gap: 12,
   },
   fab: {
     position: "absolute",

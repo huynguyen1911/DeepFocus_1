@@ -1,11 +1,16 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { View, StyleSheet } from 'react-native';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { theme } from '@/src/config/theme';
+import { useAlert } from '@/src/contexts/AlertContext';
+import AlertBadge from '@/src/components/AlertBadge';
 
 export default function TabLayout() {
+  const { unreadCount } = useAlert();
+
   return (
     <Tabs
       screenOptions={{
@@ -59,9 +64,26 @@ export default function TabLayout() {
         options={{
           title: 'Cài Đặt',
           tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <View>
+              <IconSymbol size={28} name="gearshape.fill" color={color} />
+              {unreadCount > 0 && (
+                <View style={styles.badgeContainer}>
+                  <AlertBadge count={unreadCount} size="small" />
+                </View>
+              )}
+            </View>
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  badgeContainer: {
+    position: 'absolute',
+    top: -4,
+    right: -8,
+  },
+});

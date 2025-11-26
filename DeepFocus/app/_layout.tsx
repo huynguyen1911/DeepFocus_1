@@ -14,6 +14,8 @@ import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ClassProvider } from '@/src/contexts/ClassContext';
 import { SessionProvider } from '@/src/contexts/SessionContext';
+import { RewardProvider } from '@/src/contexts/RewardContext';
+import { AlertProvider } from '@/src/contexts/AlertContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import OfflineIndicator from '@/src/components/OfflineIndicator';
@@ -41,8 +43,10 @@ export default function RootLayout() {
                   <TaskProvider>
                     <ClassProvider>
                       <SessionProvider>
-                        <ConnectedPomodoroProvider>
-                          <NetworkStatusBar />
+                        <RewardProvider>
+                          <AlertProvider>
+                            <ConnectedPomodoroProvider>
+                              <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -128,10 +132,49 @@ export default function RootLayout() {
                     },
                   }} 
                 />
+                <Stack.Screen 
+                  name="rewards/[classId]" 
+                  options={{ 
+                    title: 'Phần Thưởng & Phạt',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="rewards/create" 
+                  options={{ 
+                    presentation: 'modal',
+                    title: 'Tạo Phần Thưởng',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="rewards/summary" 
+                  options={{ 
+                    title: 'Bảng Xếp Hạng',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="alerts" 
+                  options={{ 
+                    title: 'Thông Báo',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
               </Stack>
-                          <StatusBar style="light" />
-                          <OfflineIndicator />
-                        </ConnectedPomodoroProvider>
+                              <StatusBar style="light" />
+                              <OfflineIndicator />
+                            </ConnectedPomodoroProvider>
+                          </AlertProvider>
+                        </RewardProvider>
                       </SessionProvider>
                     </ClassProvider>
                   </TaskProvider>

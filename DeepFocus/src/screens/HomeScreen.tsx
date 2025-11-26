@@ -13,6 +13,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useTasks } from '../contexts/TaskContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAlert } from '../contexts/AlertContext';
+import AlertBadge from '../components/AlertBadge';
 import { taskAPI, statsAPI } from '../services/api';
 
 const HomeScreen = () => {
@@ -21,6 +23,7 @@ const HomeScreen = () => {
   const { completedPomodoros, startWorkSessionWithTask, settings } = usePomodoro();
   const { tasks, isLoading, loadTasks, updateTask } = useTasks();
   const { t, language, resetLanguage } = useLanguage();
+  const { unreadCount } = useAlert();
   const [greeting] = useState(getGreeting(language));
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuKey, setMenuKey] = useState(0); // Force remount menu to fix stuck state
@@ -354,6 +357,19 @@ const HomeScreen = () => {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <RoleSwitcher />
+              <View style={{ position: 'relative' }}>
+                <IconButton
+                  icon="bell"
+                  iconColor={theme.colors.onPrimary}
+                  size={28}
+                  onPress={() => router.push('/alerts')}
+                />
+                {unreadCount > 0 && (
+                  <View style={{ position: 'absolute', top: 4, right: 4 }}>
+                    <AlertBadge count={unreadCount} size="small" />
+                  </View>
+                )}
+              </View>
               <IconButton
                 icon="account-circle"
                 iconColor={theme.colors.onPrimary}
