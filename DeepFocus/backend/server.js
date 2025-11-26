@@ -70,6 +70,8 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/roles", roleRoutes);
 app.use("/api/classes", classRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/rewards", require("./routes/rewards"));
+app.use("/api/alerts", require("./routes/alerts"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

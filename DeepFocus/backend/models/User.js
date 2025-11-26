@@ -80,6 +80,13 @@ const roleSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  // Guardian-specific field: array of child user IDs
+  children: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
 });
 
 // Student profile schema
@@ -264,8 +271,9 @@ userSchema.virtual("profileCompleteness").get(function () {
   let completeness = 0;
   if (this.username) completeness += 25;
   if (this.email) completeness += 25;
-  if (this.focusProfile.dailyGoal > 0) completeness += 25;
-  if (this.focusProfile.workDuration > 0) completeness += 25;
+  if (this.focusProfile && this.focusProfile.dailyGoal > 0) completeness += 25;
+  if (this.focusProfile && this.focusProfile.workDuration > 0)
+    completeness += 25;
   return completeness;
 });
 
