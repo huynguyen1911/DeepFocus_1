@@ -14,8 +14,9 @@ import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ClassProvider } from '@/src/contexts/ClassContext';
 import { SessionProvider } from '@/src/contexts/SessionContext';
-import { RewardProvider } from '@/src/contexts/RewardContext';
+import { RewardProvider } from '@/src/contexts/RewardProvider';
 import { AlertProvider } from '@/src/contexts/AlertContext';
+import { GuardianProvider } from '@/src/contexts/GuardianContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import OfflineIndicator from '@/src/components/OfflineIndicator';
@@ -45,7 +46,8 @@ export default function RootLayout() {
                       <SessionProvider>
                         <RewardProvider>
                           <AlertProvider>
-                            <ConnectedPomodoroProvider>
+                            <GuardianProvider>
+                              <ConnectedPomodoroProvider>
                               <NetworkStatusBar />
               <Stack
                 screenOptions={{
@@ -169,10 +171,48 @@ export default function RootLayout() {
                     },
                   }} 
                 />
+                <Stack.Screen 
+                  name="guardian/dashboard" 
+                  options={{ 
+                    title: 'Quản Lý Con Em',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="guardian/link-child" 
+                  options={{ 
+                    presentation: 'modal',
+                    title: 'Liên Kết Con Em',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="guardian/child-detail/[id]" 
+                  options={{ 
+                    title: 'Chi Tiết Con Em',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
+                <Stack.Screen 
+                  name="guardian/pending-requests" 
+                  options={{ 
+                    title: 'Yêu Cầu Liên Kết',
+                    headerStyle: {
+                      backgroundColor: theme.colors.primary,
+                    },
+                  }} 
+                />
               </Stack>
                               <StatusBar style="light" />
                               <OfflineIndicator />
-                            </ConnectedPomodoroProvider>
+                              </ConnectedPomodoroProvider>
+                            </GuardianProvider>
                           </AlertProvider>
                         </RewardProvider>
                       </SessionProvider>

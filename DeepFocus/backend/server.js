@@ -72,6 +72,7 @@ app.use("/api/classes", classRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/rewards", require("./routes/rewards"));
 app.use("/api/alerts", require("./routes/alerts"));
+app.use("/api/guardian", require("./routes/guardian"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

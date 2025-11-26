@@ -679,6 +679,93 @@ export const sessionAPI = {
   },
 };
 
+// Guardian Management API (Phase 5)
+export const guardianAPI = {
+  // Send link request to child
+  sendLinkRequest: async (childIdentifier, relation = "parent", notes = "") => {
+    try {
+      const response = await apiClient.post("/guardian/link-child", {
+        childIdentifier,
+        relation,
+        notes,
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get linked children
+  getLinkedChildren: async (status = "accepted") => {
+    try {
+      const response = await apiClient.get("/guardian/children", {
+        params: { status },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get child's detailed progress
+  getChildProgress: async (childId, period = "week") => {
+    try {
+      const response = await apiClient.get(
+        `/guardian/children/${childId}/progress`,
+        {
+          params: { period },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get guardian dashboard summary
+  getDashboardSummary: async () => {
+    try {
+      const response = await apiClient.get("/guardian/dashboard");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Remove link with child
+  removeChildLink: async (childId) => {
+    try {
+      const response = await apiClient.delete(`/guardian/children/${childId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get pending link requests (for child)
+  getPendingRequests: async () => {
+    try {
+      const response = await apiClient.get("/guardian/link-requests");
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Respond to link request (for child)
+  respondToRequest: async (requestId, action) => {
+    try {
+      const response = await apiClient.put(
+        `/guardian/link-requests/${requestId}`,
+        { action }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+};
+
 // General API utilities
 export const apiUtils = {
   // Check if user is authenticated

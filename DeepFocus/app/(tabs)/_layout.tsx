@@ -6,10 +6,14 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { theme } from '@/src/config/theme';
 import { useAlert } from '@/src/contexts/AlertContext';
+import { useRole } from '@/src/contexts/RoleContext';
+import { useGuardian } from '@/src/contexts/GuardianContext';
 import AlertBadge from '@/src/components/AlertBadge';
 
 export default function TabLayout() {
   const { unreadCount } = useAlert();
+  const { currentRole, hasRole } = useRole();
+  const { pendingRequests } = useGuardian();
 
   return (
     <Tabs
@@ -59,6 +63,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
+      {hasRole('guardian') && (
+        <Tabs.Screen
+          name="guardian"
+          options={{
+            title: 'Quản Lý Con Em',
+            tabBarLabel: 'Guardian',
+            tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
+            href: '/guardian/dashboard',
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{
@@ -67,9 +82,12 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <View>
               <IconSymbol size={28} name="gearshape.fill" color={color} />
-              {unreadCount > 0 && (
+              {(unreadCount > 0 || pendingRequests.length > 0) && (
                 <View style={styles.badgeContainer}>
-                  <AlertBadge count={unreadCount} size="small" />
+                  <AlertBadge 
+                    count={unreadCount + pendingRequests.length} 
+                    size="small" 
+                  />
                 </View>
               )}
             </View>

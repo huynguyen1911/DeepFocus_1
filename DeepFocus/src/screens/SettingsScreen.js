@@ -24,7 +24,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePomodoro } from "../contexts/PomodoroContext";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRole } from "../contexts/RoleContext";
+import { useGuardian } from "../contexts/GuardianContext";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 
 const SETTINGS_STORAGE_KEY = "@deepfocus:pomodoro_settings";
 
@@ -35,6 +38,9 @@ const SettingsScreen = () => {
   const { t, language, changeLanguage, setPreviewLanguage, resetLanguage } =
     useLanguage();
   const navigation = useNavigation();
+  const router = useRouter();
+  const { hasRole } = useRole();
+  const { pendingRequests } = useGuardian();
 
   // Create user-specific storage key
   const userId = user?.id || user?._id || "default";
@@ -1351,6 +1357,30 @@ const SettingsScreen = () => {
               {t("settings.resetDefault")}
             </Button>
           </View>
+
+          {/* Guardian Section - Only show for students with pending requests */}
+          {hasRole("student") && pendingRequests.length > 0 && (
+            <Card style={styles.card}>
+              <Card.Title
+                title={`👪 Yêu cầu liên kết (${pendingRequests.length})`}
+                titleStyle={styles.cardTitle}
+              />
+              <Card.Content>
+                <Text variant="bodyMedium" style={{ marginBottom: 12 }}>
+                  Bạn có {pendingRequests.length} yêu cầu liên kết từ phụ
+                  huynh/gia sư
+                </Text>
+                <Button
+                  mode="contained"
+                  onPress={() => router.push("/guardian/pending-requests")}
+                  icon="account-multiple"
+                  style={{ marginTop: 8 }}
+                >
+                  Xem yêu cầu
+                </Button>
+              </Card.Content>
+            </Card>
+          )}
 
           {/* Account Section */}
           <Card style={styles.card}>
