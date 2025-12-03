@@ -448,6 +448,43 @@ const HomeScreen = () => {
               </Card>
             </View>
           </View>
+
+          {/* Gamification Quick Access */}
+          <View style={styles.gamificationSection}>
+            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Gamification</Text>
+            
+            <View style={styles.gamificationCards}>
+              <TouchableOpacity 
+                style={[styles.gamificationCard, { backgroundColor: theme.colors.primaryContainer }]}
+                onPress={() => router.push('/achievements')}
+              >
+                <View style={styles.gamificationIcon}>
+                  <Text style={styles.gamificationEmoji}>🏆</Text>
+                </View>
+                <Text variant="titleMedium" style={[styles.gamificationTitle, { color: theme.colors.onPrimaryContainer }]}>
+                  Achievements
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onPrimaryContainer, textAlign: 'center' }}>
+                  View your unlocked achievements
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.gamificationCard, { backgroundColor: theme.colors.secondaryContainer }]}
+                onPress={() => router.push('/competitions')}
+              >
+                <View style={styles.gamificationIcon}>
+                  <Text style={styles.gamificationEmoji}>⚔️</Text>
+                </View>
+                <Text variant="titleMedium" style={[styles.gamificationTitle, { color: theme.colors.onSecondaryContainer }]}>
+                  Competitions
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSecondaryContainer, textAlign: 'center' }}>
+                  Join challenges and compete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* Task Section - Below home section */}
@@ -663,6 +700,33 @@ const styles = StyleSheet.create({
   statNumber: { 
     fontWeight: 'bold', 
     marginBottom: 4 
+  },
+  gamificationSection: { 
+    marginBottom: 20, 
+    marginTop: 12 
+  },
+  gamificationCards: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  gamificationCard: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+    minHeight: 140,
+  },
+  gamificationIcon: {
+    marginBottom: 8,
+  },
+  gamificationEmoji: {
+    fontSize: 40,
+  },
+  gamificationTitle: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+    textAlign: 'center',
   },
   taskSection: {
     backgroundColor: '#F5F5F5',

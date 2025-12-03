@@ -73,6 +73,10 @@ app.use("/api/sessions", sessionRoutes);
 app.use("/api/rewards", require("./routes/rewards"));
 app.use("/api/alerts", require("./routes/alerts"));
 app.use("/api/guardian", require("./routes/guardian"));
+app.use("/api/achievements", require("./routes/achievements"));
+app.use("/api/competitions", require("./routes/competitions"));
+app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/reports", require("./routes/reports"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

@@ -94,6 +94,22 @@ export default function TabLayout() {
           ),
         }}
       />
+      
+      {/* Hidden routes - accessible via router.push but not shown in tabs */}
+      <Tabs.Screen
+        name="achievements"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'Achievements',
+        }}
+      />
+      <Tabs.Screen
+        name="competitions"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'Competitions',
+        }}
+      />
     </Tabs>
   );
 }

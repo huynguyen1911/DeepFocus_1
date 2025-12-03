@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "jest": "^30.2.0",
+    "react-test-renderer": "^19.2.0"
+  },
+  "dependencies": {
+    "expo-constants": "^18.0.10",
+    "expo-device": "^8.0.9",
+    "expo-file-system": "~19.0.19",
+    "expo-notifications": "^0.32.13",
+    "expo-sharing": "~14.0.7"
+  }
+}
