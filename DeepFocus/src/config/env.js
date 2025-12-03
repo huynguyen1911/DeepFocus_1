@@ -10,7 +10,7 @@ const ENV = {
     TIMEOUT: 30000, // Increase to 30 seconds for mobile testing
   },
   production: {
-    API_BASE_URL: "https://your-production-api.com/api",
+    API_BASE_URL: "https://deepfocus1-production.up.railway.app/api",
     TIMEOUT: 15000,
   },
 };

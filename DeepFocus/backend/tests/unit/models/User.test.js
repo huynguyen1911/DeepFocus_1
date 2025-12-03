@@ -183,7 +183,6 @@ describe("User Model - Multi-Role Tests", () => {
       expect(user.guardianProfile).toBeDefined();
       expect(user.guardianProfile.relation).toBe("");
       expect(user.guardianProfile.monitoringStudents).toEqual([]);
-      expect(user.guardianProfile.createdGroups).toEqual([]);
     });
   });
 });

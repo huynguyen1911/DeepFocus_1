@@ -89,35 +89,39 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Debug endpoint to check user (REMOVE IN PRODUCTION)
-app.get("/api/debug/user/:email", async (req, res) => {
-  try {
-    const User = require("./models/User");
-    const user = await User.findOne({ email: req.params.email.toLowerCase() });
-
-    if (!user) {
-      return res.json({
-        success: false,
-        message: "User not found",
+// Debug endpoint - ONLY enabled in development
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/debug/user/:email", async (req, res) => {
+    try {
+      const User = require("./models/User");
+      const user = await User.findOne({
         email: req.params.email.toLowerCase(),
       });
-    }
 
-    res.json({
-      success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        defaultRole: user.defaultRole,
-        roles: user.roles,
-        isActive: user.isActive,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+      if (!user) {
+        return res.json({
+          success: false,
+          message: "User not found",
+          email: req.params.email.toLowerCase(),
+        });
+      }
+
+      res.json({
+        success: true,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          defaultRole: user.defaultRole,
+          roles: user.roles,
+          isActive: user.isActive,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+}
 
 // Root endpoint
 app.get("/", (req, res) => {

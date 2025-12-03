@@ -111,12 +111,6 @@ const studentProfileSchema = new mongoose.Schema({
       ref: "Class",
     },
   ],
-  joinedGroups: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Group",
-    },
-  ],
 });
 
 // Teacher profile schema
@@ -152,12 +146,6 @@ const guardianProfileSchema = new mongoose.Schema({
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-    },
-  ],
-  createdGroups: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Group",
     },
   ],
 });
