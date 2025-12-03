@@ -1,0 +1,12 @@
+﻿{
+  "2schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "cd DeepFocus/backend && npm install"
+  },
+  "deploy": {
+    "startCommand": "cd DeepFocus/backend && npm start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}
