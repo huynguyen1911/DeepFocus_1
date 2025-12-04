@@ -2,9 +2,13 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const ip = require("ip");
 
 // Load environment variables
 dotenv.config();
+
+// Get local IP address automatically
+const LOCAL_IP = ip.address();
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -22,9 +26,9 @@ app.use(
   cors({
     origin: [
       process.env.FRONTEND_URL || "http://localhost:8081",
-      "http://192.168.2.5:8081", // Add updated IP address
+      `http://${LOCAL_IP}:8081`, // Auto-detected IP for mobile
       "http://localhost:19006", // Expo web
-      "exp://192.168.2.5:8081", // Expo mobile
+      `exp://${LOCAL_IP}:8081`, // Expo mobile with auto IP
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -163,8 +167,9 @@ if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, HOST, () => {
     console.log(`🚀 DeepFocus Backend Server running on port ${PORT}`);
     console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
-    console.log(`🌐 Network:192.168.2.5:${PORT}/api/health`); // Updated IP
+    console.log(`🔗 Local: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Network: http://${LOCAL_IP}:${PORT}/api/health`);
+    console.log(`📱 Mobile API URL: http://${LOCAL_IP}:${PORT}/api`);
     console.log(
       `🌍 CORS enabled for: ${
         process.env.FRONTEND_URL || "http://localhost:8081"

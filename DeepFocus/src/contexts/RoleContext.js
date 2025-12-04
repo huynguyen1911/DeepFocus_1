@@ -137,7 +137,7 @@ export const RoleProvider = ({ children }) => {
       // Call API to switch role
       const response = await roleAPI.switchRole(roleType);
 
-      if (response.data.success) {
+      if (response.success) {
         setCurrentRole(roleType);
 
         // Update roles list with new primary status
@@ -149,7 +149,7 @@ export const RoleProvider = ({ children }) => {
 
         return { success: true };
       } else {
-        throw new Error(response.data.message || "Failed to switch role");
+        throw new Error(response.message || "Failed to switch role");
       }
     } catch (err) {
       console.error("Error switching role:", err);
@@ -165,12 +165,12 @@ export const RoleProvider = ({ children }) => {
       // Call API to add role
       const response = await roleAPI.addRole(roleType);
 
-      if (response.data.success) {
+      if (response.success) {
         // Reload roles to get updated data
         await loadRoles();
         return { success: true };
       } else {
-        throw new Error(response.data.message || "Failed to add role");
+        throw new Error(response.message || "Failed to add role");
       }
     } catch (err) {
       console.error("Error adding role:", err);

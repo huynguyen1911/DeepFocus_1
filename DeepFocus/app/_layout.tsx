@@ -14,13 +14,11 @@ import { RoleProvider } from '@/src/contexts/RoleContext';
 import { TaskProvider } from '@/src/contexts/TaskContext';
 import { ClassProvider } from '@/src/contexts/ClassContext';
 import { SessionProvider } from '@/src/contexts/SessionContext';
-import { RewardProvider } from '@/src/contexts/RewardProvider';
+import { RewardProvider } from '@/src/contexts/RewardContext';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { GuardianProvider } from '@/src/contexts/GuardianContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
-import OfflineIndicator from '@/src/components/OfflineIndicator';
-import NetworkStatusBar from '@/src/components/NetworkStatusBar';
 import { requestNotificationPermissions } from '@/src/services/notificationService';
 
 export const unstable_settings = {
@@ -48,7 +46,6 @@ export default function RootLayout() {
                           <AlertProvider>
                             <GuardianProvider>
                               <ConnectedPomodoroProvider>
-                              <NetworkStatusBar />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -210,7 +207,6 @@ export default function RootLayout() {
                 />
               </Stack>
                               <StatusBar style="light" />
-                              <OfflineIndicator />
                               </ConnectedPomodoroProvider>
                             </GuardianProvider>
                           </AlertProvider>

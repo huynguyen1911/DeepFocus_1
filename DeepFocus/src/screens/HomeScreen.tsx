@@ -7,13 +7,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Timer from '../components/Timer';
 import TaskItem from '../components/TaskItem';
 import DailyPomodoroProgress from '../components/DailyPomodoroProgress';
-import RoleSwitcher from '../components/RoleSwitcher';
+import TeacherDashboard from '../components/TeacherDashboard';
 import { getGreeting } from '../utils/helpers';
 import { useAuth } from '../contexts/AuthContext';
 import { usePomodoro } from '../contexts/PomodoroContext';
 import { useTasks } from '../contexts/TaskContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAlert } from '../contexts/AlertContext';
+import { useRole } from '../contexts/RoleContext';
 import AlertBadge from '../components/AlertBadge';
 import { taskAPI, statsAPI } from '../services/api';
 
@@ -24,7 +25,11 @@ const HomeScreen = () => {
   const { tasks, isLoading, loadTasks, updateTask } = useTasks();
   const { t, language, resetLanguage } = useLanguage();
   const { unreadCount } = useAlert();
+  const { currentRole } = useRole();
   const [greeting] = useState(getGreeting(language));
+  
+  // Check if user is Teacher/Guardian
+  const isTeacher = currentRole === 'teacher';
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuKey, setMenuKey] = useState(0); // Force remount menu to fix stuck state
   const [pendingAction, setPendingAction] = useState<'profile' | 'settings' | 'logout' | null>(null);
@@ -157,9 +162,7 @@ const HomeScreen = () => {
       setTimeout(() => {
         switch (action) {
           case 'profile':
-            Alert.alert(t('navigation.profile'), t('general.featureInDevelopment'));
-            // Remount menu after Alert to fix stuck state
-            setTimeout(() => setMenuKey(prev => prev + 1), 200);
+            router.push('/profile');
             break;
           case 'settings':
             router.push('/settings');
@@ -338,6 +341,12 @@ const HomeScreen = () => {
     />
   ), [handleStartTimer]);
 
+  // If Teacher/Guardian role, show Teacher Dashboard instead
+  if (isTeacher) {
+    return <TeacherDashboard />;
+  }
+
+  // Student role: show normal Pomodoro home screen
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }} 
@@ -356,7 +365,6 @@ const HomeScreen = () => {
               </Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <RoleSwitcher />
               <View style={{ position: 'relative' }}>
                 <IconButton
                   icon="bell"

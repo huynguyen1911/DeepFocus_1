@@ -10,6 +10,7 @@
     "expo-device": "^8.0.9",
     "expo-file-system": "~19.0.19",
     "expo-notifications": "^0.32.13",
-    "expo-sharing": "~14.0.7"
+    "expo-sharing": "~14.0.7",
+    "ip": "^2.0.1"
   }
 }

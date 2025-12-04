@@ -15,6 +15,9 @@ export default function TabLayout() {
   const { currentRole, hasRole } = useRole();
   const { pendingRequests } = useGuardian();
 
+  // Determine if user is in Teacher/Guardian mode
+  const isTeacher = currentRole === 'teacher';
+
   return (
     <Tabs
       screenOptions={{
@@ -31,49 +34,68 @@ export default function TabLayout() {
         },
         headerTitleAlign: 'center',
       }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'DeepFocus',
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="classes"
-        options={{
-          title: 'Lớp Học',
-          tabBarLabel: 'Classes',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="statistics"
-        options={{
-          title: 'Thống Kê',
-          tabBarLabel: 'Stats',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Khám phá',
-          tabBarLabel: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-      {hasRole('guardian') && (
-        <Tabs.Screen
-          name="guardian"
-          options={{
-            title: 'Quản Lý Con Em',
-            tabBarLabel: 'Guardian',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
-            href: '/guardian/dashboard',
-          }}
-        />
+      
+      {/* Student View Tabs */}
+      {!isTeacher && (
+        <>
+          <Tabs.Screen
+            name="index"
+            options={{
+              title: 'DeepFocus',
+              tabBarLabel: 'Home',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="timer" color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="classes"
+            options={{
+              title: 'Lớp Học',
+              tabBarLabel: 'Classes',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="statistics"
+            options={{
+              title: 'Thống Kê',
+              tabBarLabel: 'Stats',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.bar.fill" color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="explore"
+            options={{
+              title: 'Khám phá',
+              tabBarLabel: 'Explore',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="trophy.fill" color={color} />,
+            }}
+          />
+        </>
       )}
+
+      {/* Teacher View Tabs */}
+      {isTeacher && (
+        <>
+          <Tabs.Screen
+            name="classes"
+            options={{
+              title: 'Quản Lý Lớp',
+              tabBarLabel: 'Classes',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="rectangle.stack.fill" color={color} />,
+            }}
+          />
+          <Tabs.Screen
+            name="statistics"
+            options={{
+              title: 'Analytics',
+              tabBarLabel: 'Analytics',
+              tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.line.uptrend.xyaxis" color={color} />,
+            }}
+          />
+        </>
+      )}
+
+      {/* Settings - Always visible */}
       <Tabs.Screen
         name="settings"
         options={{
@@ -94,8 +116,34 @@ export default function TabLayout() {
           ),
         }}
       />
-      
+
+      {/* Hide these tabs when not in use */}
+      {isTeacher && (
+        <>
+          <Tabs.Screen
+            name="index"
+            options={{
+              href: null,
+              title: 'Home',
+            }}
+          />
+          <Tabs.Screen
+            name="explore"
+            options={{
+              href: null,
+              title: 'Explore',
+            }}
+          />
+        </>
+      )}
       {/* Hidden routes - accessible via router.push but not shown in tabs */}
+      <Tabs.Screen
+        name="guardian"
+        options={{
+          href: null,
+          title: 'Guardian',
+        }}
+      />
       <Tabs.Screen
         name="achievements"
         options={{

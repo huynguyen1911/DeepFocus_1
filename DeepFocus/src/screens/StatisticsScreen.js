@@ -20,7 +20,9 @@ import { theme } from "../config/theme";
 import { statsAPI } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useRole } from "../contexts/RoleContext";
 import { formatWorkTime } from "../utils/statsUtils";
+import ClassAnalytics from "../components/ClassAnalytics";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 32;
@@ -28,7 +30,11 @@ const CHART_WIDTH = SCREEN_WIDTH - 32;
 export default function StatisticsScreen() {
   const { isAuthenticated } = useAuth();
   const { t, language } = useLanguage();
+  const { currentRole } = useRole();
   const [loading, setLoading] = useState(true);
+
+  // Check if user is Teacher/Guardian
+  const isTeacher = currentRole === "teacher";
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState(null);
   const [dateRange, setDateRange] = useState("7days"); // today, 7days, 30days, custom
@@ -339,6 +345,11 @@ export default function StatisticsScreen() {
     if (!stats || !stats.achievements) return 0;
     return stats.achievements.filter((a) => a.unlocked !== false).length;
   };
+
+  // If Teacher/Guardian role, show Class Analytics instead
+  if (isTeacher) {
+    return <ClassAnalytics />;
+  }
 
   if (loading) {
     return (

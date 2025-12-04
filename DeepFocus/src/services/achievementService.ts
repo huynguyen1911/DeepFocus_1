@@ -1,4 +1,4 @@
-import api from './api';
+import { apiClient as api } from './api';
 
 export interface Achievement {
   _id: string;
@@ -43,32 +43,32 @@ export interface AchievementSummary {
 
 class AchievementService {
   async getAllAchievements(): Promise<UserAchievement[]> {
-    const response = await api.get('/api/achievements');
+    const response = await api.get('/achievements');
     return response.data.data;
   }
 
   async getAchievementDetail(achievementId: string): Promise<UserAchievement> {
-    const response = await api.get(`/api/achievements/${achievementId}`);
+    const response = await api.get(`/achievements/${achievementId}`);
     return response.data.data;
   }
 
   async getAchievementSummary(): Promise<AchievementSummary> {
-    const response = await api.get('/api/achievements/summary');
+    const response = await api.get('/achievements/summary');
     return response.data.data;
   }
 
   async checkUnlocks(): Promise<{ newUnlocks: UserAchievement[] }> {
-    const response = await api.post('/api/achievements/check-unlocks');
+    const response = await api.post('/achievements/check-unlocks');
     return response.data;
   }
 
   async toggleFavorite(achievementId: string): Promise<UserAchievement> {
-    const response = await api.post(`/api/achievements/${achievementId}/favorite`);
+    const response = await api.post(`/achievements/${achievementId}/favorite`);
     return response.data.data;
   }
 
   async shareAchievement(achievementId: string, platform: string = 'general'): Promise<{ shareUrl: string }> {
-    const response = await api.post(`/api/achievements/${achievementId}/share`, { platform });
+    const response = await api.post(`/achievements/${achievementId}/share`, { platform });
     return response.data;
   }
 }

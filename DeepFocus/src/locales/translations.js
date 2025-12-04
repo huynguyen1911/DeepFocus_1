@@ -594,10 +594,11 @@ export const translations = {
     // Roles
     roles: {
       student: "Học Sinh",
-      teacher: "Giáo Viên",
+      teacher: "Teacher/Guardian",
       guardian: "Phụ Huynh",
       switchRole: "Chuyển Vai Trò",
       addRole: "Thêm Vai Trò",
+      addNewRole: "Thêm Role Mới",
       removeRole: "Xóa Vai Trò",
       currentRole: "Vai Trò Hiện Tại",
       primaryRole: "Vai Trò Chính",
@@ -1389,10 +1390,11 @@ export const translations = {
     // Roles
     roles: {
       student: "Student",
-      teacher: "Teacher",
+      teacher: "Teacher/Guardian",
       guardian: "Guardian",
       switchRole: "Switch Role",
       addRole: "Add Role",
+      addNewRole: "Add New Role",
       removeRole: "Remove Role",
       currentRole: "Current Role",
       primaryRole: "Primary Role",

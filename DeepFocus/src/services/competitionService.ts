@@ -1,4 +1,4 @@
-import api from './api';
+import { apiClient as api } from './api';
 
 export interface Competition {
   _id: string;
@@ -90,7 +90,7 @@ class CompetitionService {
     if (filters?.type) params.append('type', filters.type);
     if (filters?.featured !== undefined) params.append('featured', String(filters.featured));
 
-    const response = await api.get(`/api/competitions?${params.toString()}`);
+    const response = await api.get(`/competitions?${params.toString()}`);
     return response.data.data;
   }
 
@@ -103,12 +103,12 @@ class CompetitionService {
     topParticipants: CompetitionEntry[];
     isCreator: boolean;
   }> {
-    const response = await api.get(`/api/competitions/${competitionId}`);
+    const response = await api.get(`/competitions/${competitionId}`);
     return response.data.data;
   }
 
   async getUserCompetitions(): Promise<{ competition: Competition; entry: CompetitionEntry }[]> {
-    const response = await api.get('/api/competitions/my-competitions');
+    const response = await api.get('/competitions/my-competitions');
     return response.data.data;
   }
 
@@ -132,17 +132,17 @@ class CompetitionService {
     };
     classId?: string;
   }): Promise<Competition> {
-    const response = await api.post('/api/competitions', data);
+    const response = await api.post('/competitions', data);
     return response.data.data;
   }
 
   async joinCompetition(competitionId: string): Promise<CompetitionEntry> {
-    const response = await api.post(`/api/competitions/${competitionId}/join`);
+    const response = await api.post(`/competitions/${competitionId}/join`);
     return response.data.data;
   }
 
   async leaveCompetition(competitionId: string, reason?: string): Promise<void> {
-    await api.post(`/api/competitions/${competitionId}/leave`, { reason });
+    await api.post(`/competitions/${competitionId}/leave`, { reason });
   }
 
   async getLeaderboard(
@@ -158,12 +158,12 @@ class CompetitionService {
     if (options?.limit) params.append('limit', String(options.limit));
     if (options?.skip) params.append('skip', String(options.skip));
 
-    const response = await api.get(`/api/competitions/${competitionId}/leaderboard?${params.toString()}`);
+    const response = await api.get(`/competitions/${competitionId}/leaderboard?${params.toString()}`);
     return response.data.data;
   }
 
   async updateProgress(competitionId: string, progressData: { currentValue: number }): Promise<void> {
-    await api.post(`/api/competitions/${competitionId}/progress`, { progressData });
+    await api.post(`/competitions/${competitionId}/progress`, { progressData });
   }
 }
 

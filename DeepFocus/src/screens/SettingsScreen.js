@@ -39,8 +39,11 @@ const SettingsScreen = () => {
     useLanguage();
   const navigation = useNavigation();
   const router = useRouter();
-  const { hasRole } = useRole();
+  const { currentRole, hasRole } = useRole();
   const { pendingRequests } = useGuardian();
+
+  // Determine if user is Teacher/Guardian
+  const isTeacher = currentRole === "teacher";
 
   // Create user-specific storage key
   const userId = user?.id || user?._id || "default";
@@ -990,373 +993,391 @@ const SettingsScreen = () => {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          {/* Test Mode Section */}
-          <Card style={[styles.card, styles.testModeCard]}>
-            <Card.Content>
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.testModeLabel}>
-                    🧪 {t("settings.testMode")} (10/5/10 {t("stats.seconds")})
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.testModeDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={testMode}
-                  onValueChange={setTestMode}
-                  color="#FF9800"
-                />
-              </View>
-              {testMode && (
-                <View style={styles.testModeWarning}>
-                  <Text variant="bodySmall" style={styles.warningText}>
-                    ⚠️ {t("settings.testModeWarning")}
-                  </Text>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
+          {/* Student-Only Settings: Pomodoro Configuration */}
+          {!isTeacher && (
+            <>
+              {/* Test Mode Section */}
+              <Card style={[styles.card, styles.testModeCard]}>
+                <Card.Content>
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.testModeLabel}>
+                        🧪 {t("settings.testMode")} (10/5/10{" "}
+                        {t("stats.seconds")})
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.testModeDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={testMode}
+                      onValueChange={setTestMode}
+                      color="#FF9800"
+                    />
+                  </View>
+                  {testMode && (
+                    <View style={styles.testModeWarning}>
+                      <Text variant="bodySmall" style={styles.warningText}>
+                        ⚠️ {t("settings.testModeWarning")}
+                      </Text>
+                    </View>
+                  )}
+                </Card.Content>
+              </Card>
 
-          {/* Timer Durations Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`⏱️ ${t("settings.timerSettings")}`}
-              titleStyle={styles.cardTitle}
-            />
-            <Card.Content>
-              {/* Work Duration */}
-              <View style={styles.settingRow}>
-                <Text
-                  variant="bodyLarge"
-                  style={[styles.label, testMode && styles.disabledText]}
-                >
-                  {t("settings.workDuration")}
-                </Text>
-                <Text
-                  variant="titleMedium"
+              {/* Timer Durations Section */}
+              <Card style={styles.card}>
+                <Card.Title
+                  title={`⏱️ ${t("settings.timerSettings")}`}
+                  titleStyle={styles.cardTitle}
+                />
+                <Card.Content>
+                  {/* Work Duration */}
+                  <View style={styles.settingRow}>
+                    <Text
+                      variant="bodyLarge"
+                      style={[styles.label, testMode && styles.disabledText]}
+                    >
+                      {t("settings.workDuration")}
+                    </Text>
+                    <Text
+                      variant="titleMedium"
+                      style={[
+                        styles.value,
+                        { color: theme.colors.primary },
+                        testMode && styles.disabledText,
+                      ]}
+                    >
+                      {testMode
+                        ? `10 ${t("stats.seconds")}`
+                        : `${workDuration} ${t("settings.minutes")}`}
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={5}
+                    maximumValue={45}
+                    step={5}
+                    value={workDuration}
+                    onValueChange={(value) => {
+                      triggerHapticFeedback();
+                      setWorkDuration(value);
+                    }}
+                    minimumTrackTintColor={theme.colors.primary}
+                    maximumTrackTintColor="#E0E0E0"
+                    thumbTintColor={theme.colors.primary}
+                    disabled={testMode}
+                  />
+
+                  <Divider style={styles.divider} />
+
+                  {/* Short Break Duration */}
+                  <View style={styles.settingRow}>
+                    <Text
+                      variant="bodyLarge"
+                      style={[styles.label, testMode && styles.disabledText]}
+                    >
+                      {t("settings.shortBreakDuration")}
+                    </Text>
+                    <Text
+                      variant="titleMedium"
+                      style={[
+                        styles.value,
+                        { color: "#66BB6A" },
+                        testMode && styles.disabledText,
+                      ]}
+                    >
+                      {testMode
+                        ? `5 ${t("stats.seconds")}`
+                        : `${shortBreakDuration} ${t("settings.minutes")}`}
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={1}
+                    maximumValue={10}
+                    step={1}
+                    value={shortBreakDuration}
+                    onValueChange={(value) => {
+                      triggerHapticFeedback();
+                      setShortBreakDuration(value);
+                    }}
+                    minimumTrackTintColor="#66BB6A"
+                    maximumTrackTintColor="#E0E0E0"
+                    thumbTintColor="#66BB6A"
+                    disabled={testMode}
+                  />
+
+                  <Divider style={styles.divider} />
+
+                  {/* Long Break Duration */}
+                  <View style={styles.settingRow}>
+                    <Text
+                      variant="bodyLarge"
+                      style={[styles.label, testMode && styles.disabledText]}
+                    >
+                      {t("settings.longBreakDuration")}
+                    </Text>
+                    <Text
+                      variant="titleMedium"
+                      style={[
+                        styles.value,
+                        { color: "#5C6BC0" },
+                        testMode && styles.disabledText,
+                      ]}
+                    >
+                      {testMode
+                        ? `10 ${t("stats.seconds")}`
+                        : `${longBreakDuration} ${t("settings.minutes")}`}
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={5}
+                    maximumValue={30}
+                    step={5}
+                    value={longBreakDuration}
+                    onValueChange={(value) => {
+                      triggerHapticFeedback();
+                      setLongBreakDuration(value);
+                    }}
+                    minimumTrackTintColor="#5C6BC0"
+                    maximumTrackTintColor="#E0E0E0"
+                    thumbTintColor="#5C6BC0"
+                    disabled={testMode}
+                  />
+                </Card.Content>
+              </Card>
+
+              {/* Break Interval Section */}
+              <Card style={styles.card}>
+                <Card.Title
+                  title={`🔄 ${t("settings.behaviorSettings")}`}
+                  titleStyle={styles.cardTitle}
+                />
+                <Card.Content>
+                  <View style={styles.settingRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        {t("settings.pomodorosUntilLongBreak")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.pomodorosUntilLongBreakDesc", {
+                          count: pomodorosUntilLongBreak,
+                        })}
+                      </Text>
+                    </View>
+                    <Text
+                      variant="titleMedium"
+                      style={[styles.value, { color: theme.colors.primary }]}
+                    >
+                      {pomodorosUntilLongBreak}
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={2}
+                    maximumValue={8}
+                    step={1}
+                    value={pomodorosUntilLongBreak}
+                    onValueChange={(value) => {
+                      triggerHapticFeedback();
+                      setPomodorosUntilLongBreak(value);
+                    }}
+                    minimumTrackTintColor={theme.colors.primary}
+                    maximumTrackTintColor="#E0E0E0"
+                    thumbTintColor={theme.colors.primary}
+                  />
+
+                  <Divider style={styles.divider} />
+
+                  {/* Daily Goal Setting */}
+                  <View style={styles.settingRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        🎯 {t("settings.dailyGoalLabel")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.dailyGoalDesc")}
+                      </Text>
+                    </View>
+                    <Text
+                      variant="titleMedium"
+                      style={[styles.value, { color: theme.colors.primary }]}
+                    >
+                      {dailyGoal}
+                    </Text>
+                  </View>
+                  <Slider
+                    style={styles.slider}
+                    minimumValue={1}
+                    maximumValue={20}
+                    step={1}
+                    value={dailyGoal}
+                    onValueChange={(value) => {
+                      triggerHapticFeedback();
+                      setDailyGoal(Math.round(value));
+                    }}
+                    minimumTrackTintColor={theme.colors.primary}
+                    maximumTrackTintColor="#E0E0E0"
+                    thumbTintColor={theme.colors.primary}
+                  />
+                </Card.Content>
+              </Card>
+
+              {/* Auto-Start Section */}
+              <Card style={styles.card}>
+                <Card.Title
+                  title={`🚀 ${t("settings.behaviorSettings")}`}
+                  titleStyle={styles.cardTitle}
+                />
+                <Card.Content>
+                  {/* Auto Start Breaks */}
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        {t("settings.autoStartBreaks")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.autoStartBreaksDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={autoStartBreaks}
+                      onValueChange={setAutoStartBreaks}
+                      color={theme.colors.primary}
+                    />
+                  </View>
+
+                  <Divider style={styles.divider} />
+
+                  {/* Auto Start Pomodoros */}
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        {t("settings.autoStartPomodoros")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.autoStartPomodorosDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={autoStartPomodoros}
+                      onValueChange={setAutoStartPomodoros}
+                      color={theme.colors.primary}
+                    />
+                  </View>
+                </Card.Content>
+              </Card>
+
+              {/* Notifications Section */}
+              <Card style={styles.card}>
+                <Card.Title
+                  title={`🔔 ${t("settings.notificationSettings")}`}
+                  titleStyle={styles.cardTitle}
+                />
+                <Card.Content>
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        {t("settings.enableNotifications")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.enableNotificationsDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={notifications}
+                      onValueChange={setNotifications}
+                      color={theme.colors.primary}
+                    />
+                  </View>
+
+                  <Divider style={styles.divider} />
+
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        🔊 {t("settings.soundEnabled")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.soundEnabledDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={sound}
+                      onValueChange={setSound}
+                      color={theme.colors.primary}
+                      disabled={!notifications}
+                    />
+                  </View>
+
+                  <Divider style={styles.divider} />
+
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        📳 {t("settings.vibrationEnabled")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        {t("settings.vibrationEnabledDesc")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={vibration}
+                      onValueChange={setVibration}
+                      color={theme.colors.primary}
+                      disabled={!notifications}
+                    />
+                  </View>
+                </Card.Content>
+              </Card>
+
+              {/* Action Buttons */}
+              <View style={styles.buttonContainer}>
+                <Button
+                  mode="contained"
+                  onPress={handleSaveSettings}
+                  loading={isSaving}
+                  disabled={isSaving}
                   style={[
-                    styles.value,
-                    { color: theme.colors.primary },
-                    testMode && styles.disabledText,
+                    styles.saveButton,
+                    hasUnsavedChanges && styles.saveButtonHighlight,
                   ]}
+                  contentStyle={styles.buttonContent}
+                  icon="content-save"
+                  buttonColor={hasUnsavedChanges ? "#FF9800" : undefined}
                 >
-                  {testMode
-                    ? `10 ${t("stats.seconds")}`
-                    : `${workDuration} ${t("settings.minutes")}`}
-                </Text>
+                  {hasUnsavedChanges
+                    ? `💾 ${t("settings.saveChanges")}`
+                    : t("settings.saveSettings")}
+                </Button>
+
+                <Button
+                  mode="outlined"
+                  onPress={handleResetSettings}
+                  disabled={isSaving}
+                  style={styles.resetButton}
+                  contentStyle={styles.buttonContent}
+                  icon="restore"
+                >
+                  {t("settings.resetDefault")}
+                </Button>
               </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={5}
-                maximumValue={45}
-                step={5}
-                value={workDuration}
-                onValueChange={(value) => {
-                  triggerHapticFeedback();
-                  setWorkDuration(value);
-                }}
-                minimumTrackTintColor={theme.colors.primary}
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor={theme.colors.primary}
-                disabled={testMode}
-              />
+            </>
+          )}
 
-              <Divider style={styles.divider} />
-
-              {/* Short Break Duration */}
-              <View style={styles.settingRow}>
-                <Text
-                  variant="bodyLarge"
-                  style={[styles.label, testMode && styles.disabledText]}
-                >
-                  {t("settings.shortBreakDuration")}
-                </Text>
-                <Text
-                  variant="titleMedium"
-                  style={[
-                    styles.value,
-                    { color: "#66BB6A" },
-                    testMode && styles.disabledText,
-                  ]}
-                >
-                  {testMode
-                    ? `5 ${t("stats.seconds")}`
-                    : `${shortBreakDuration} ${t("settings.minutes")}`}
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={1}
-                maximumValue={10}
-                step={1}
-                value={shortBreakDuration}
-                onValueChange={(value) => {
-                  triggerHapticFeedback();
-                  setShortBreakDuration(value);
-                }}
-                minimumTrackTintColor="#66BB6A"
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor="#66BB6A"
-                disabled={testMode}
-              />
-
-              <Divider style={styles.divider} />
-
-              {/* Long Break Duration */}
-              <View style={styles.settingRow}>
-                <Text
-                  variant="bodyLarge"
-                  style={[styles.label, testMode && styles.disabledText]}
-                >
-                  {t("settings.longBreakDuration")}
-                </Text>
-                <Text
-                  variant="titleMedium"
-                  style={[
-                    styles.value,
-                    { color: "#5C6BC0" },
-                    testMode && styles.disabledText,
-                  ]}
-                >
-                  {testMode
-                    ? `10 ${t("stats.seconds")}`
-                    : `${longBreakDuration} ${t("settings.minutes")}`}
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={5}
-                maximumValue={30}
-                step={5}
-                value={longBreakDuration}
-                onValueChange={(value) => {
-                  triggerHapticFeedback();
-                  setLongBreakDuration(value);
-                }}
-                minimumTrackTintColor="#5C6BC0"
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor="#5C6BC0"
-                disabled={testMode}
-              />
-            </Card.Content>
-          </Card>
-
-          {/* Break Interval Section */}
+          {/* Profile Section */}
           <Card style={styles.card}>
-            <Card.Title
-              title={`🔄 ${t("settings.behaviorSettings")}`}
-              titleStyle={styles.cardTitle}
+            <List.Item
+              title="Hồ Sơ Người Dùng"
+              description="Quản lý thông tin cá nhân và vai trò"
+              left={(props) => <List.Icon {...props} icon="account" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => router.push("/profile")}
+              style={{ paddingVertical: 8 }}
             />
-            <Card.Content>
-              <View style={styles.settingRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    {t("settings.pomodorosUntilLongBreak")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.pomodorosUntilLongBreakDesc", {
-                      count: pomodorosUntilLongBreak,
-                    })}
-                  </Text>
-                </View>
-                <Text
-                  variant="titleMedium"
-                  style={[styles.value, { color: theme.colors.primary }]}
-                >
-                  {pomodorosUntilLongBreak}
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={2}
-                maximumValue={8}
-                step={1}
-                value={pomodorosUntilLongBreak}
-                onValueChange={(value) => {
-                  triggerHapticFeedback();
-                  setPomodorosUntilLongBreak(value);
-                }}
-                minimumTrackTintColor={theme.colors.primary}
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor={theme.colors.primary}
-              />
-
-              <Divider style={styles.divider} />
-
-              {/* Daily Goal Setting */}
-              <View style={styles.settingRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    🎯 {t("settings.dailyGoalLabel")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.dailyGoalDesc")}
-                  </Text>
-                </View>
-                <Text
-                  variant="titleMedium"
-                  style={[styles.value, { color: theme.colors.primary }]}
-                >
-                  {dailyGoal}
-                </Text>
-              </View>
-              <Slider
-                style={styles.slider}
-                minimumValue={1}
-                maximumValue={20}
-                step={1}
-                value={dailyGoal}
-                onValueChange={(value) => {
-                  triggerHapticFeedback();
-                  setDailyGoal(Math.round(value));
-                }}
-                minimumTrackTintColor={theme.colors.primary}
-                maximumTrackTintColor="#E0E0E0"
-                thumbTintColor={theme.colors.primary}
-              />
-            </Card.Content>
           </Card>
-
-          {/* Auto-Start Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`🚀 ${t("settings.behaviorSettings")}`}
-              titleStyle={styles.cardTitle}
-            />
-            <Card.Content>
-              {/* Auto Start Breaks */}
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    {t("settings.autoStartBreaks")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.autoStartBreaksDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={autoStartBreaks}
-                  onValueChange={setAutoStartBreaks}
-                  color={theme.colors.primary}
-                />
-              </View>
-
-              <Divider style={styles.divider} />
-
-              {/* Auto Start Pomodoros */}
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    {t("settings.autoStartPomodoros")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.autoStartPomodorosDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={autoStartPomodoros}
-                  onValueChange={setAutoStartPomodoros}
-                  color={theme.colors.primary}
-                />
-              </View>
-            </Card.Content>
-          </Card>
-
-          {/* Notifications Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`🔔 ${t("settings.notificationSettings")}`}
-              titleStyle={styles.cardTitle}
-            />
-            <Card.Content>
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    {t("settings.enableNotifications")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.enableNotificationsDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={notifications}
-                  onValueChange={setNotifications}
-                  color={theme.colors.primary}
-                />
-              </View>
-
-              <Divider style={styles.divider} />
-
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    🔊 {t("settings.soundEnabled")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.soundEnabledDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={sound}
-                  onValueChange={setSound}
-                  color={theme.colors.primary}
-                  disabled={!notifications}
-                />
-              </View>
-
-              <Divider style={styles.divider} />
-
-              <View style={styles.switchRow}>
-                <View style={styles.labelContainer}>
-                  <Text variant="bodyLarge" style={styles.label}>
-                    📳 {t("settings.vibrationEnabled")}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.helpText}>
-                    {t("settings.vibrationEnabledDesc")}
-                  </Text>
-                </View>
-                <Switch
-                  value={vibration}
-                  onValueChange={setVibration}
-                  color={theme.colors.primary}
-                  disabled={!notifications}
-                />
-              </View>
-            </Card.Content>
-          </Card>
-
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={handleSaveSettings}
-              loading={isSaving}
-              disabled={isSaving}
-              style={[
-                styles.saveButton,
-                hasUnsavedChanges && styles.saveButtonHighlight,
-              ]}
-              contentStyle={styles.buttonContent}
-              icon="content-save"
-              buttonColor={hasUnsavedChanges ? "#FF9800" : undefined}
-            >
-              {hasUnsavedChanges
-                ? `💾 ${t("settings.saveChanges")}`
-                : t("settings.saveSettings")}
-            </Button>
-
-            <Button
-              mode="outlined"
-              onPress={handleResetSettings}
-              disabled={isSaving}
-              style={styles.resetButton}
-              contentStyle={styles.buttonContent}
-              icon="restore"
-            >
-              {t("settings.resetDefault")}
-            </Button>
-          </View>
 
           {/* Guardian Section - Only show for students with pending requests */}
           {hasRole("student") && pendingRequests.length > 0 && (
@@ -1385,26 +1406,10 @@ const SettingsScreen = () => {
           {/* Account Section */}
           <Card style={styles.card}>
             <Card.Title
-              title={`👤 ${t("settings.accountSettings")}`}
+              title={`⚙️ ${t("settings.accountSettings")}`}
               titleStyle={styles.cardTitle}
             />
             <Card.Content>
-              <View style={styles.accountInfo}>
-                <Avatar.Text
-                  size={56}
-                  label={user?.username?.charAt(0).toUpperCase() || "U"}
-                  style={{ backgroundColor: theme.colors.primary }}
-                />
-                <View style={styles.accountText}>
-                  <Text variant="titleMedium" style={styles.accountName}>
-                    {user?.username || "User"}
-                  </Text>
-                  <Text variant="bodySmall" style={styles.accountEmail}>
-                    {user?.email || ""}
-                  </Text>
-                </View>
-              </View>
-
               <Divider style={styles.divider} />
 
               <Button

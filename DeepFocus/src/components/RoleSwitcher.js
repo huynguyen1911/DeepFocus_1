@@ -11,17 +11,19 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { Colors } from "../../constants/theme";
 
 const RoleSwitcher = () => {
-  const { roles, currentRole, switchRole, loading } = useRole();
+  const { roles, currentRole, switchRole, addRole, loading } = useRole();
   const { t } = useLanguage();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "light"];
   const [menuVisible, setMenuVisible] = useState(false);
   const [switching, setSwitching] = useState(false);
 
-  // Don't show if only one role
-  if (roles.length <= 1) {
-    return null;
-  }
+  // Get available role types that user doesn't have yet
+  const availableRoleTypes = ["student", "teacher", "guardian"];
+  const existingRoleTypes = roles.map((r) => r.type);
+  const addableRoles = availableRoleTypes.filter(
+    (type) => !existingRoleTypes.includes(type)
+  );
 
   const getRoleIcon = (roleType) => {
     switch (roleType) {
@@ -42,18 +44,29 @@ const RoleSwitcher = () => {
 
   const handleSwitchRole = async (roleType) => {
     if (roleType === currentRole) {
-      setMenuVisible(false);
+      closeMenu();
       return;
     }
 
     setSwitching(true);
+    closeMenu();
     const result = await switchRole(roleType);
     setSwitching(false);
-    setMenuVisible(false);
 
     if (!result.success) {
       // Error already handled by RoleContext
       console.error("Failed to switch role:", result.error);
+    }
+  };
+
+  const handleAddRole = async (roleType) => {
+    setSwitching(true);
+    closeMenu();
+    const result = await addRole(roleType);
+    setSwitching(false);
+
+    if (!result.success) {
+      console.error("Failed to add role:", result.error);
     }
   };
 
@@ -67,15 +80,18 @@ const RoleSwitcher = () => {
     );
   }
 
+  const openMenu = () => setMenuVisible(true);
+  const closeMenu = () => setMenuVisible(false);
+
   return (
     <View style={styles.container}>
       <Menu
         visible={menuVisible}
-        onDismiss={() => setMenuVisible(false)}
+        onDismiss={closeMenu}
         anchor={
           <TouchableOpacity
             style={styles.anchor}
-            onPress={() => setMenuVisible(true)}
+            onPress={openMenu}
             disabled={switching}
           >
             <View
@@ -140,6 +156,38 @@ const RoleSwitcher = () => {
             disabled={switching}
           />
         ))}
+
+        {addableRoles.length > 0 && (
+          <>
+            <View
+              style={[styles.menuDivider, { backgroundColor: theme.icon }]}
+            />
+            <View
+              style={[
+                styles.menuHeader,
+                { borderBottomWidth: 0, paddingVertical: 8 },
+              ]}
+            >
+              <Text style={[styles.menuTitle, { color: theme.icon }]}>
+                {t("roles.addNewRole") || "Thêm Role Mới"}
+              </Text>
+            </View>
+            {addableRoles.map((roleType) => (
+              <Menu.Item
+                key={`add-${roleType}`}
+                onPress={() => handleAddRole(roleType)}
+                title={getRoleLabel(roleType)}
+                leadingIcon={() => (
+                  <Text style={styles.menuIcon}>{getRoleIcon(roleType)}</Text>
+                )}
+                trailingIcon="plus"
+                style={styles.menuItem}
+                titleStyle={[styles.menuItemTitle, { color: theme.text }]}
+                disabled={switching}
+              />
+            ))}
+          </>
+        )}
       </Menu>
     </View>
   );
@@ -194,6 +242,10 @@ const styles = StyleSheet.create({
   menuIcon: {
     fontSize: 20,
     marginRight: 8,
+  },
+  menuDivider: {
+    height: 1,
+    marginVertical: 8,
   },
 });
 
