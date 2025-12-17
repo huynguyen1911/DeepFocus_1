@@ -154,12 +154,14 @@ export const SessionProvider = ({ children }) => {
       dispatch({ type: SESSION_ACTIONS.SET_LOADING, payload: true });
       const response = await sessionAPI.getActiveSession();
 
-      if (response.success && response.data?.session) {
+      if (response.success && response.data) {
+        console.log("✅ Active session loaded:", response.data._id);
         dispatch({
           type: SESSION_ACTIONS.SET_ACTIVE_SESSION,
-          payload: response.data.session,
+          payload: response.data,
         });
       } else {
+        console.log("ℹ️ No active session found");
         dispatch({ type: SESSION_ACTIONS.CLEAR_ACTIVE_SESSION });
       }
     } catch (error) {
@@ -178,12 +180,13 @@ export const SessionProvider = ({ children }) => {
 
       const response = await sessionAPI.createSession(sessionData);
 
-      if (response.success && response.data?.session) {
+      if (response.success && response.data) {
+        console.log("✅ Session started:", response.data._id);
         dispatch({
           type: SESSION_ACTIONS.ADD_SESSION,
-          payload: response.data.session,
+          payload: response.data,
         });
-        return { success: true, session: response.data.session };
+        return { success: true, session: response.data };
       }
 
       throw new Error("Failed to create session");
@@ -204,13 +207,14 @@ export const SessionProvider = ({ children }) => {
 
       const response = await sessionAPI.completeSession(sessionId, notes);
 
-      if (response.success && response.data?.session) {
+      if (response.success && response.data) {
+        console.log("✅ Session completed:", sessionId);
         dispatch({
           type: SESSION_ACTIONS.UPDATE_SESSION,
-          payload: response.data.session,
+          payload: response.data,
         });
         dispatch({ type: SESSION_ACTIONS.CLEAR_ACTIVE_SESSION });
-        return { success: true, session: response.data.session };
+        return { success: true, session: response.data };
       }
 
       throw new Error("Failed to complete session");
@@ -231,13 +235,14 @@ export const SessionProvider = ({ children }) => {
 
       const response = await sessionAPI.cancelSession(sessionId);
 
-      if (response.success && response.data?.session) {
+      if (response.success && response.data) {
+        console.log("✅ Session cancelled:", sessionId);
         dispatch({
           type: SESSION_ACTIONS.UPDATE_SESSION,
-          payload: response.data.session,
+          payload: response.data,
         });
         dispatch({ type: SESSION_ACTIONS.CLEAR_ACTIVE_SESSION });
-        return { success: true, session: response.data.session };
+        return { success: true, session: response.data };
       }
 
       throw new Error("Failed to cancel session");
@@ -258,20 +263,27 @@ export const SessionProvider = ({ children }) => {
 
       const response = await sessionAPI.getMySessions(params);
 
-      if (response.success && response.data) {
+      if (response.success) {
+        // Backend returns data directly as sessions array, not nested
+        const sessions = response.data || [];
+        const pagination = {
+          page: response.page || 1,
+          limit: response.limit || 20,
+          total: response.total || 0,
+          hasMore: response.pages > response.page,
+        };
+
         dispatch({
           type: SESSION_ACTIONS.SET_SESSIONS,
-          payload: response.data.sessions || [],
+          payload: sessions,
         });
 
-        if (response.data.pagination) {
-          dispatch({
-            type: SESSION_ACTIONS.SET_PAGINATION,
-            payload: response.data.pagination,
-          });
-        }
+        dispatch({
+          type: SESSION_ACTIONS.SET_PAGINATION,
+          payload: pagination,
+        });
 
-        return { success: true, data: response.data };
+        return { success: true, data: { sessions, pagination } };
       }
 
       throw new Error("Failed to load sessions");
@@ -292,20 +304,27 @@ export const SessionProvider = ({ children }) => {
 
       const response = await sessionAPI.getClassSessions(classId, params);
 
-      if (response.success && response.data) {
+      if (response.success) {
+        // Backend returns sessions directly in response, not nested in data
+        const sessions = response.sessions || [];
+        const pagination = {
+          page: response.page || 1,
+          limit: response.limit || 20,
+          total: response.total || 0,
+          hasMore: response.pages > response.page,
+        };
+
         dispatch({
           type: SESSION_ACTIONS.SET_SESSIONS,
-          payload: response.data.sessions || [],
+          payload: sessions,
         });
 
-        if (response.data.pagination) {
-          dispatch({
-            type: SESSION_ACTIONS.SET_PAGINATION,
-            payload: response.data.pagination,
-          });
-        }
+        dispatch({
+          type: SESSION_ACTIONS.SET_PAGINATION,
+          payload: pagination,
+        });
 
-        return { success: true, data: response.data };
+        return { success: true, data: { sessions, pagination } };
       }
 
       throw new Error("Failed to load class sessions");

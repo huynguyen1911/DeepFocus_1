@@ -19,6 +19,10 @@ const {
   updateClassStats,
   getStudentProgress,
 } = require("../controllers/classController");
+const {
+  getClassRewards,
+  getClassRewardSummary,
+} = require("../controllers/rewardController");
 
 // All routes require authentication
 router.use(authMiddleware);
@@ -102,5 +106,15 @@ router.put("/:id/update-stats", updateClassStats);
 // @desc    Get student progress in class
 // @access  Private (Members only)
 router.get("/:id/student/:studentId/progress", getStudentProgress);
+
+// @route   GET /api/classes/:id/rewards/summary
+// @desc    Get reward summary for a class
+// @access  Private (Teacher/Creator)
+router.get("/:id/rewards/summary", getClassRewardSummary);
+
+// @route   GET /api/classes/:id/rewards
+// @desc    Get all rewards for a class
+// @access  Private (Teacher/Creator)
+router.get("/:id/rewards", getClassRewards);
 
 module.exports = router;

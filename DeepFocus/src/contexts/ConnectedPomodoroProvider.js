@@ -13,6 +13,7 @@ const SessionBridge = () => {
   const sessionCreatedRef = useRef(false);
   const lastTimerStateRef = useRef(null);
   const sessionIdRef = useRef(null);
+  const isCompletingSessionRef = useRef(false);
 
   // Create session when work timer starts
   useEffect(() => {
@@ -20,15 +21,37 @@ const SessionBridge = () => {
       timerState === TIMER_STATES.WORKING &&
       isActive &&
       !sessionCreatedRef.current &&
-      !activeSession;
+      !isCompletingSessionRef.current;
 
     if (shouldCreateSession) {
       console.log("📊 Creating session for work timer");
-      createSessionForTimer();
+
+      // If there's already an active session, complete it first
+      if (activeSession && activeSession._id) {
+        console.log("⚠️ Found existing active session, completing it first");
+        isCompletingSessionRef.current = true;
+
+        completeSession(activeSession._id)
+          .then(() => {
+            console.log("✅ Old session completed, creating new one");
+            // Create new session after completing the old one
+            return createSessionForTimer();
+          })
+          .catch((error) => {
+            console.error("❌ Failed to complete old session:", error);
+            // Try to create new session anyway
+            return createSessionForTimer();
+          })
+          .finally(() => {
+            isCompletingSessionRef.current = false;
+          });
+      } else {
+        createSessionForTimer();
+      }
     }
 
     lastTimerStateRef.current = timerState;
-  }, [timerState, isActive]);
+  }, [timerState, isActive, activeSession]);
 
   // Complete session when work timer completes (timeLeft hits 0)
   useEffect(() => {

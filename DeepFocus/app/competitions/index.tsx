@@ -7,10 +7,13 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import competitionService, { Competition } from '@/src/services/competitionService';
+import { useClass } from '@/src/contexts/ClassContext';
+import { useRole } from '@/src/contexts/RoleContext';
 import { theme } from '@/src/config/theme';
 
 type CompetitionWithEntry = {
@@ -21,14 +24,23 @@ type CompetitionWithEntry = {
 };
 
 export default function CompetitionsScreen() {
+  const { classes, loadClasses } = useClass();
+  const { currentRole } = useRole();
   const [competitions, setCompetitions] = useState<CompetitionWithEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'active' | 'upcoming' | 'joined'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'upcoming' | 'joined' | 'draft'>('all');
+  const [selectedClassId, setSelectedClassId] = useState<string>('all');
+
+  useEffect(() => {
+    if (currentRole === 'teacher') {
+      loadClasses();
+    }
+  }, [currentRole]);
 
   useEffect(() => {
     loadCompetitions();
-  }, [filter]);
+  }, [filter, selectedClassId]);
 
   const loadCompetitions = async () => {
     try {
@@ -36,6 +48,7 @@ export default function CompetitionsScreen() {
       
       if (filter === 'joined') {
         const joined = await competitionService.getUserCompetitions();
+        console.log('📊 Joined competitions:', joined.length);
         data = joined.map(j => ({
           competition: j.competition,
           userEntry: j.entry,
@@ -43,13 +56,21 @@ export default function CompetitionsScreen() {
           canJoin: false,
         }));
       } else {
-        const filterParams = filter === 'all' ? {} : { status: filter };
+        const filterParams: any = filter === 'all' ? {} : { status: filter };
+        
+        // Add class filter if selected
+        if (selectedClassId && selectedClassId !== 'all') {
+          filterParams.class = selectedClassId;
+        }
+        
+        console.log('🔍 Loading competitions with filters:', filterParams);
         data = await competitionService.getAllCompetitions(filterParams);
+        console.log('📊 Loaded competitions:', data.length, data);
       }
       
       setCompetitions(data);
     } catch (error) {
-      console.error('Error loading competitions:', error);
+      console.error('❌ Error loading competitions:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -65,6 +86,7 @@ export default function CompetitionsScreen() {
     switch (status) {
       case 'active': return theme.colors.success;
       case 'upcoming': return theme.colors.info;
+      case 'draft': return '#9E9E9E';
       case 'completed': return theme.colors.onSurface;
       default: return theme.colors.onSurface;
     }
@@ -74,6 +96,7 @@ export default function CompetitionsScreen() {
     switch (status) {
       case 'active': return 'play-circle';
       case 'upcoming': return 'time';
+      case 'draft': return 'create-outline';
       case 'completed': return 'checkmark-circle';
       default: return 'information-circle';
     }
@@ -123,6 +146,16 @@ export default function CompetitionsScreen() {
           </View>
         </View>
 
+        {/* Show class name if it's a class competition */}
+        {competition.class && (
+          <View style={styles.classRow}>
+            <Ionicons name="school" size={14} color={theme.colors.primary} />
+            <Text style={styles.classText}>
+              {competition.class.name || 'Class Competition'}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.dateRow}>
           <Ionicons name="calendar" size={14} color={theme.colors.onSurface} />
           <Text style={styles.dateText}>
@@ -161,11 +194,14 @@ export default function CompetitionsScreen() {
     <View style={styles.container}>
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
-        {(['all', 'active', 'upcoming', 'joined'] as const).map((f) => (
+        {(currentRole === 'teacher' 
+          ? ['all', 'active', 'upcoming', 'draft', 'joined'] 
+          : ['all', 'active', 'upcoming', 'joined']
+        ).map((f) => (
           <TouchableOpacity
             key={f}
             style={[styles.filterButton, filter === f && styles.filterButtonActive]}
-            onPress={() => setFilter(f)}
+            onPress={() => setFilter(f as any)}
           >
             <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -173,6 +209,56 @@ export default function CompetitionsScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Class Filter (for teachers) */}
+      {currentRole === 'teacher' && classes.length > 0 && (
+        <View style={styles.classFilterSection}>
+          <Text style={styles.classFilterLabel}>
+            <Ionicons name="school" size={16} color={theme.colors.onSurface} /> Filter by Class
+          </Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.classFilterScroll}
+          >
+            <TouchableOpacity
+              style={[
+                styles.classFilterChip,
+                selectedClassId === 'all' && styles.classFilterChipActive,
+              ]}
+              onPress={() => setSelectedClassId('all')}
+            >
+              <Text style={[
+                styles.classFilterChipText,
+                selectedClassId === 'all' && styles.classFilterChipTextActive,
+              ]}>
+                All Classes
+              </Text>
+            </TouchableOpacity>
+            {classes.map((cls: any) => {
+              const classId = cls._id || cls.id;
+              const isSelected = selectedClassId === classId;
+              return (
+                <TouchableOpacity
+                  key={classId}
+                  style={[
+                    styles.classFilterChip,
+                    isSelected && styles.classFilterChipActive,
+                  ]}
+                  onPress={() => setSelectedClassId(classId)}
+                >
+                  <Text style={[
+                    styles.classFilterChipText,
+                    isSelected && styles.classFilterChipTextActive,
+                  ]}>
+                    {cls.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Competitions List */}
       <FlatList
@@ -185,8 +271,22 @@ export default function CompetitionsScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="trophy-outline" size={64} color={theme.colors.onSurface} />
-            <Text style={styles.emptyText}>No competitions found</Text>
+            <Ionicons name="trophy-outline" size={80} color={theme.colors.primary} style={{ opacity: 0.3 }} />
+            <Text style={styles.emptyTitle}>No Competitions Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              {currentRole === 'teacher' 
+                ? 'Create your first competition to motivate students'
+                : 'Check back later for new competitions to join'}
+            </Text>
+            {currentRole === 'teacher' && (
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => router.push('/competitions/create')}
+              >
+                <Ionicons name="add-circle" size={20} color={theme.colors.onPrimary} />
+                <Text style={styles.emptyButtonText}>Create Competition</Text>
+              </TouchableOpacity>
+            )}
           </View>
         }
       />
@@ -308,10 +408,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.onSurface,
   },
+  classRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  classText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  classFilterSection: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  classFilterLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.onSurface,
+    marginBottom: 8,
+  },
+  classFilterScroll: {
+    gap: 8,
+    paddingRight: 16,
+  },
+  classFilterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceVariant,
+  },
+  classFilterChipActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  classFilterChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.onSurface,
+  },
+  classFilterChipTextActive: {
+    color: theme.colors.onPrimary,
   },
   joinedBadge: {
     flexDirection: 'row',
@@ -336,12 +481,37 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 48,
+    paddingVertical: 64,
+    paddingHorizontal: 32,
   },
-  emptyText: {
-    fontSize: 16,
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: theme.colors.onSurface,
     marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: theme.colors.onSurface,
+    opacity: 0.7,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 24,
+  },
+  emptyButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.onPrimary,
   },
   fab: {
     position: 'absolute',

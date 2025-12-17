@@ -339,7 +339,7 @@ const getClassSessions = async (req, res) => {
     };
 
     const sessions = await Session.find(query)
-      .populate("user", "username focusProfile.fullName email")
+      .populate("user", "username focusProfile email")
       .populate("task", "title description")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))

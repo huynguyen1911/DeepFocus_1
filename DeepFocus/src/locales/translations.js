@@ -449,6 +449,7 @@ export const translations = {
       minutes: "phút",
       hours: "giờ",
       remove: "Xóa",
+      delete: "Xóa",
       thisMember: "thành viên này",
     },
 
@@ -639,6 +640,7 @@ export const translations = {
       approve: "Duyệt",
       reject: "Từ Chối",
       remove: "Xóa",
+      removeMember: "Xóa thành viên",
 
       // Messages
       createSuccess: "Đã tạo lớp thành công!",
@@ -1250,6 +1252,7 @@ export const translations = {
       minutes: "min",
       hours: "hr",
       remove: "Remove",
+      delete: "Delete",
       thisMember: "this member",
     },
 
@@ -1435,6 +1438,7 @@ export const translations = {
       approve: "Approve",
       reject: "Reject",
       remove: "Remove",
+      removeMember: "Remove Member",
 
       // Messages
       createSuccess: "Class created successfully!",

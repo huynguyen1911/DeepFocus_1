@@ -1,17 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import {
   TextInput,
   Button,
   useTheme,
   Text,
-  Portal,
-  Dialog,
   IconButton,
 } from "react-native-paper";
 import { router } from "expo-router";
@@ -28,6 +29,14 @@ export default function CreateClassScreen() {
   const [description, setDescription] = useState("");
   const [successDialogVisible, setSuccessDialogVisible] = useState(false);
   const [createdClass, setCreatedClass] = useState<any>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const isCreatingRef = useRef(false);
+
+  // Debug dialog visibility
+  useEffect(() => {
+    console.log("📱 Dialog visibility changed:", successDialogVisible);
+    console.log("📱 Created class:", createdClass?.joinCode);
+  }, [successDialogVisible, createdClass]);
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -35,23 +44,44 @@ export default function CreateClassScreen() {
       return;
     }
 
+    // Prevent duplicate calls - check ref first
+    if (isCreatingRef.current || isCreating) {
+      console.log("⚠️ Create class already in progress, ignoring duplicate call");
+      return;
+    }
+
     try {
+      isCreatingRef.current = true;
+      setIsCreating(true);
+      console.log("🔵 Starting class creation...");
+      
       const result = await createClass({
         name: name.trim(),
         description: description.trim(),
       });
 
       if (result?.success) {
+        console.log("✅ Class created successfully:", result.class?.id);
         setCreatedClass(result.class);
-        setSuccessDialogVisible(true);
+        
+        // Use setTimeout to ensure state updates complete before showing dialog
+        setTimeout(() => {
+          console.log("📱 Showing success dialog");
+          setSuccessDialogVisible(true);
+        }, 100);
       } else {
         throw new Error(result?.error || t("classes.createError"));
       }
     } catch (error: any) {
+      console.error("❌ Create class error:", error);
       Alert.alert(
         t("common.error"),
         error.response?.data?.message || error.message || t("classes.createError")
       );
+    } finally {
+      isCreatingRef.current = false;
+      setIsCreating(false);
+      console.log("🔵 Class creation finished");
     }
   };
 
@@ -115,8 +145,8 @@ export default function CreateClassScreen() {
           <Button
             mode="contained"
             onPress={handleCreate}
-            loading={loading}
-            disabled={loading || !name.trim()}
+            loading={isCreating || loading}
+            disabled={isCreating || loading || !name.trim()}
             style={styles.button}
           >
             {t("classes.create")}
@@ -124,56 +154,73 @@ export default function CreateClassScreen() {
         </View>
       </ScrollView>
 
-      <Portal>
-        <Dialog
-          visible={successDialogVisible}
-          onDismiss={handleDone}
-          style={styles.dialog}
-        >
-          <Dialog.Icon icon="check-circle" size={64} />
-          <Dialog.Title style={styles.dialogTitle}>
-            {t("classes.createSuccess")}
-          </Dialog.Title>
-          <Dialog.Content>
-            <View style={styles.dialogContent}>
-              <Text variant="bodyMedium" style={styles.dialogText}>
-                {t("classes.classCreatedMessage")}
+      <Modal
+        visible={successDialogVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleDone}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
+            <IconButton
+              icon="check-circle"
+              size={64}
+              iconColor={theme.colors.primary}
+              style={styles.modalIcon}
+            />
+            
+            <Text variant="headlineSmall" style={styles.modalTitle}>
+              {t("classes.createSuccess")}
+            </Text>
+
+            <Text variant="bodyMedium" style={styles.modalText}>
+              {t("classes.classCreatedMessage")}
+            </Text>
+
+            <View style={styles.joinCodeBox}>
+              <Text variant="labelMedium" style={styles.joinCodeLabel}>
+                {t("classes.joinCode")}
               </Text>
-
-              <View style={styles.joinCodeBox}>
-                <Text variant="labelMedium" style={styles.joinCodeLabel}>
-                  {t("classes.joinCode")}
+              <View style={styles.joinCodeRow}>
+                <Text variant="displaySmall" style={styles.joinCode}>
+                  {createdClass?.joinCode}
                 </Text>
-                <View style={styles.joinCodeRow}>
-                  <Text variant="displaySmall" style={styles.joinCode}>
-                    {createdClass?.joinCode}
-                  </Text>
-                  <IconButton
-                    icon="content-copy"
-                    size={24}
-                    onPress={handleCopyCode}
-                  />
-                </View>
-                <Text variant="bodySmall" style={styles.expiryText}>
-                  {t("classes.codeExpiry")}:{" "}
-                  {createdClass?.joinCodeExpiry &&
-                    formatExpiryDate(createdClass.joinCodeExpiry)}
-                </Text>
+                <IconButton
+                  icon="content-copy"
+                  size={24}
+                  onPress={handleCopyCode}
+                />
               </View>
-
-              <Text variant="bodySmall" style={styles.shareText}>
-                {t("classes.shareCodeMessage")}
+              <Text variant="bodySmall" style={styles.expiryText}>
+                {t("classes.codeExpiry")}:{" "}
+                {createdClass?.joinCodeExpiry &&
+                  formatExpiryDate(createdClass.joinCodeExpiry)}
               </Text>
             </View>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={handleCopyCode}>{t("classes.copyCode")}</Button>
-            <Button onPress={handleDone} mode="contained">
-              {t("common.done")}
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+
+            <Text variant="bodySmall" style={styles.shareText}>
+              {t("classes.shareCodeMessage")}
+            </Text>
+
+            <View style={styles.modalActions}>
+              <Button 
+                mode="outlined" 
+                onPress={handleCopyCode}
+                style={styles.actionButton}
+              >
+                {t("classes.copyCode")}
+              </Button>
+              <Button 
+                mode="contained" 
+                onPress={handleDone}
+                style={styles.actionButton}
+              >
+                {t("common.done")}
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -206,19 +253,38 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 8,
   },
-  dialog: {
-    maxWidth: 400,
-    alignSelf: "center",
-  },
-  dialogTitle: {
-    textAlign: "center",
-  },
-  dialogContent: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
     alignItems: "center",
+    padding: 20,
   },
-  dialogText: {
+  modalContent: {
+    borderRadius: 16,
+    padding: 24,
+    maxWidth: 400,
+    width: "100%",
+    alignItems: "center",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modalIcon: {
+    margin: 0,
+  },
+  modalTitle: {
+    textAlign: "center",
+    marginTop: 8,
+    marginBottom: 8,
+    fontWeight: "bold",
+  },
+  modalText: {
     textAlign: "center",
     marginBottom: 16,
+    opacity: 0.8,
   },
   joinCodeBox: {
     backgroundColor: "rgba(0,0,0,0.05)",
@@ -249,5 +315,16 @@ const styles = StyleSheet.create({
   shareText: {
     textAlign: "center",
     opacity: 0.7,
+    marginBottom: 16,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    width: "100%",
+    marginTop: 8,
+  },
+  actionButton: {
+    flex: 1,
   },
 });

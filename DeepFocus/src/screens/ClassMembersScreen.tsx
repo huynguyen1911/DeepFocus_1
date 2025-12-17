@@ -47,6 +47,15 @@ export default function ClassMembersScreen() {
   const isTeacher = currentRole === "teacher";
 
   const loadMembers = useCallback(async () => {
+    if (!id || id === 'undefined') {
+      Alert.alert(
+        t("common.error"),
+        t("classes.invalidClassId") || "Invalid class ID"
+      );
+      router.back();
+      return;
+    }
+    
     try {
       await getClassDetails(id);
     } catch (error: any) {
@@ -59,7 +68,7 @@ export default function ClassMembersScreen() {
   }, [id, getClassDetails, t]);
 
   useEffect(() => {
-    if (id) {
+    if (id && id !== 'undefined') {
       loadMembers();
     }
   }, [id, loadMembers]);
@@ -167,12 +176,12 @@ export default function ClassMembersScreen() {
           <View style={styles.memberInfo}>
             <Avatar.Text
               size={48}
-              label={user.fullName?.substring(0, 2).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || "??"}
+              label={user.focusProfile?.fullName?.substring(0, 2).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || "??"}
               style={{ backgroundColor: theme.colors.primary }}
             />
             <View style={styles.memberDetails}>
               <Text variant="titleMedium" style={styles.memberName}>
-                {user.fullName || user.username || t("common.unknown")}
+                {user.focusProfile?.fullName || user.username || t("common.unknown")}
               </Text>
               <Text variant="bodySmall" style={styles.memberEmail}>
                 {user.email || ""}
@@ -364,7 +373,7 @@ export default function ClassMembersScreen() {
           <Dialog.Content>
             <Text variant="bodyMedium">
               {t("members.removeConfirm", {
-                name: selectedMember?.userId?.fullName || 
+                name: selectedMember?.userId?.focusProfile?.fullName || 
                       selectedMember?.userId?.username || 
                       t("common.thisMember"),
               })}

@@ -80,7 +80,9 @@ export const ClassProvider = ({ children }) => {
       const response = await classAPI.createClass(classData);
 
       if (response?.success) {
-        const newClass = response.data;
+        // Backend returns { data: { class: {...} } }
+        const newClass = response.data?.class || response.data;
+        console.log("✅ Class created:", newClass._id || newClass.id);
         setClasses((prev) => [newClass, ...prev]);
         return { success: true, class: newClass };
       } else {
@@ -123,9 +125,31 @@ export const ClassProvider = ({ children }) => {
     try {
       setError(null);
 
+      if (!classId || classId === "undefined") {
+        throw new Error("Invalid class ID");
+      }
+
       const response = await classAPI.getClass(classId);
 
       if (response?.success) {
+        console.log(
+          "📋 Class details received:",
+          JSON.stringify(
+            {
+              members: response.data?.members?.map((m) => ({
+                _id: m._id,
+                role: m.role,
+                user: {
+                  _id: m.user?._id,
+                  email: m.user?.email,
+                  focusProfile: m.user?.focusProfile,
+                },
+              })),
+            },
+            null,
+            2
+          )
+        );
         setCurrentClass(response.data);
         return { success: true, class: response.data };
       } else {

@@ -443,9 +443,226 @@ const getRewardSummary = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get all rewards for a class
+ * @route   GET /api/classes/:classId/rewards
+ * @access  Private (Teacher/Guardian)
+ */
+const getClassRewards = async (req, res) => {
+  try {
+    const classId = req.params.id; // Route uses :id
+    const userId = req.user._id;
+    const { page = 1, limit = 20, type, category, studentId } = req.query;
+
+    // Verify class exists
+    const classData = await Class.findById(classId);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Verify user is teacher/creator of the class
+    if (classData.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only class teacher can view all rewards",
+      });
+    }
+
+    // Build query
+    const query = { class: classId };
+    if (type) query.type = type;
+    if (category) query.category = category;
+    if (studentId) query.student = studentId;
+
+    // Get rewards with pagination
+    const rewards = await Reward.find(query)
+      .populate("student", "fullName email")
+      .populate("givenBy", "fullName email")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    // Get total count
+    const count = await Reward.countDocuments(query);
+
+    // Calculate summary statistics
+    const stats = await Reward.aggregate([
+      { $match: { class: new mongoose.Types.ObjectId(classId) } },
+      {
+        $group: {
+          _id: "$type",
+          total: { $sum: 1 },
+          totalPoints: { $sum: "$points" },
+        },
+      },
+    ]);
+
+    const summary = {
+      totalRewards: stats.find((s) => s._id === "reward")?.total || 0,
+      totalPenalties: stats.find((s) => s._id === "penalty")?.total || 0,
+      totalRewardPoints:
+        stats.find((s) => s._id === "reward")?.totalPoints || 0,
+      totalPenaltyPoints:
+        stats.find((s) => s._id === "penalty")?.totalPoints || 0,
+    };
+
+    res.json({
+      success: true,
+      data: rewards,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit),
+        limit: parseInt(limit),
+      },
+      summary,
+    });
+  } catch (error) {
+    console.error("Error getting class rewards:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get class rewards",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    Get reward summary for a class
+ * @route   GET /api/classes/:classId/rewards/summary
+ * @access  Private (Teacher/Guardian)
+ */
+const getClassRewardSummary = async (req, res) => {
+  try {
+    const classId = req.params.id; // Route uses :id
+    const userId = req.user._id;
+
+    // Verify class exists
+    const classData = await Class.findById(classId);
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Verify user is teacher/creator of the class
+    if (classData.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only class teacher can view reward summary",
+      });
+    }
+
+    // Get overall statistics
+    const overallStats = await Reward.aggregate([
+      { $match: { class: new mongoose.Types.ObjectId(classId) } },
+      {
+        $group: {
+          _id: "$type",
+          count: { $sum: 1 },
+          totalPoints: { $sum: "$points" },
+        },
+      },
+    ]);
+
+    const overall = {
+      totalRewards: overallStats.find((s) => s._id === "reward")?.count || 0,
+      totalPenalties: overallStats.find((s) => s._id === "penalty")?.count || 0,
+      totalRewardPoints:
+        overallStats.find((s) => s._id === "reward")?.totalPoints || 0,
+      totalPenaltyPoints: Math.abs(
+        overallStats.find((s) => s._id === "penalty")?.totalPoints || 0
+      ),
+      netPoints: overallStats.reduce((sum, s) => sum + s.totalPoints, 0),
+    };
+
+    // Get top students by points
+    const topStudents = await Reward.aggregate([
+      { $match: { class: new mongoose.Types.ObjectId(classId) } },
+      {
+        $group: {
+          _id: "$student",
+          totalPoints: { $sum: "$points" },
+          rewardCount: {
+            $sum: { $cond: [{ $eq: ["$type", "reward"] }, 1, 0] },
+          },
+          penaltyCount: {
+            $sum: { $cond: [{ $eq: ["$type", "penalty"] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { totalPoints: -1 } },
+      { $limit: 10 },
+      {
+        $lookup: {
+          from: "users",
+          localField: "_id",
+          foreignField: "_id",
+          as: "student",
+        },
+      },
+      { $unwind: "$student" },
+      {
+        $project: {
+          studentId: "$_id",
+          studentName: "$student.fullName",
+          totalPoints: 1,
+          rewardCount: 1,
+          penaltyCount: 1,
+        },
+      },
+    ]);
+
+    // Get breakdown by category
+    const categoryBreakdown = await Reward.aggregate([
+      { $match: { class: new mongoose.Types.ObjectId(classId) } },
+      {
+        $group: {
+          _id: { category: "$category", type: "$type" },
+          count: { $sum: 1 },
+          totalPoints: { $sum: "$points" },
+        },
+      },
+      { $sort: { "_id.category": 1 } },
+    ]);
+
+    // Get recent activity
+    const recentActivity = await Reward.find({ class: classId })
+      .populate("student", "fullName")
+      .populate("givenBy", "fullName")
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        overall,
+        topStudents,
+        categoryBreakdown,
+        recentActivity,
+      },
+    });
+  } catch (error) {
+    console.error("Error getting class reward summary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get class reward summary",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createReward,
   getStudentRewards,
   cancelReward,
   getRewardSummary,
+  getClassRewards,
+  getClassRewardSummary,
 };

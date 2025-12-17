@@ -17,6 +17,7 @@ import { useAlert } from '../contexts/AlertContext';
 import { useRole } from '../contexts/RoleContext';
 import AlertBadge from '../components/AlertBadge';
 import { taskAPI, statsAPI } from '../services/api';
+import AITip from '../../components/ai-tip';
 
 const HomeScreen = () => {
   const theme = useTheme();
@@ -41,6 +42,7 @@ const HomeScreen = () => {
   const [filterMode, setFilterMode] = useState("all");
   const scrollViewRef = useRef<ScrollView>(null);
   const timerSectionRef = useRef<View>(null);
+  const [showAITip, setShowAITip] = useState(true);
   const [stats, setStats] = useState({
     totalTasks: 0,
     completedTasks: 0,
@@ -534,6 +536,22 @@ const HomeScreen = () => {
               />
             </View>
           </View>
+
+          {/* AI Tip - Dashboard */}
+          {showAITip && (
+            <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+              <AITip 
+                context="dashboard"
+                userData={{
+                  currentStreak: 5,
+                  totalSessions: stats.totalPomodoros,
+                  avgFocusScore: 82,
+                  recentTrend: 'improving'
+                }}
+                onDismiss={() => setShowAITip(false)}
+              />
+            </View>
+          )}
 
           {/* Task List */}
           <View style={styles.taskListContainer}>

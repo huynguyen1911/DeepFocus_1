@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,17 +7,34 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import competitionService from '@/src/services/competitionService';
+import { useClass } from '@/src/contexts/ClassContext';
+import { useRole } from '@/src/contexts/RoleContext';
 import { theme } from '@/src/config/theme';
 
 export default function CreateCompetitionScreen() {
+  const { classes, loadClasses } = useClass();
+  const { currentRole } = useRole();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [target, setTarget] = useState('100');
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [scope, setScope] = useState<'global' | 'class'>('global');
   const [loading, setLoading] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+
+  useEffect(() => {
+    if (currentRole === 'teacher') {
+      loadClasses().finally(() => setLoadingClasses(false));
+    } else {
+      setLoadingClasses(false);
+    }
+  }, [currentRole]);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -43,11 +60,11 @@ export default function CreateCompetitionScreen() {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 8); // End in 7 days
 
-      const competition = await competitionService.createCompetition({
+      const competitionData: any = {
         title: title.trim(),
         description: description.trim(),
         type: 'individual',
-        scope: 'global',
+        scope: scope,
         timing: {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -55,12 +72,19 @@ export default function CreateCompetitionScreen() {
         goal: {
           metric: 'total_pomodoros',
           target: targetValue,
-          unit: 'pomodoros',
+          unit: 'count',
         },
         rules: {
           allowLateJoin: true,
         },
-      });
+      };
+
+      // If class scope, add classId
+      if (scope === 'class' && selectedClassId) {
+        competitionData.class = selectedClassId;
+      }
+
+      const competition = await competitionService.createCompetition(competitionData);
 
       Alert.alert('Success', 'Competition created successfully!', [
         {
@@ -75,6 +99,14 @@ export default function CreateCompetitionScreen() {
       setLoading(false);
     }
   };
+
+  if (loadingClasses) {
+    return (
+      <View style={[styles.container, styles.centerContainer]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -99,6 +131,101 @@ export default function CreateCompetitionScreen() {
           numberOfLines={4}
         />
 
+        {/* Scope Selection */}
+        {currentRole === 'teacher' && classes.length > 0 && (
+          <>
+            <Text style={styles.label}>Scope *</Text>
+            <View style={styles.scopeButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.scopeButton,
+                  scope === 'global' && styles.scopeButtonActive,
+                ]}
+                onPress={() => {
+                  setScope('global');
+                  setSelectedClassId('');
+                }}
+              >
+                <Ionicons 
+                  name="globe" 
+                  size={20} 
+                  color={scope === 'global' ? theme.colors.onPrimary : theme.colors.onSurface} 
+                />
+                <Text style={[
+                  styles.scopeButtonText,
+                  scope === 'global' && styles.scopeButtonTextActive,
+                ]}>
+                  Global
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.scopeButton,
+                  scope === 'class' && styles.scopeButtonActive,
+                ]}
+                onPress={() => setScope('class')}
+              >
+                <Ionicons 
+                  name="school" 
+                  size={20} 
+                  color={scope === 'class' ? theme.colors.onPrimary : theme.colors.onSurface} 
+                />
+                <Text style={[
+                  styles.scopeButtonText,
+                  scope === 'class' && styles.scopeButtonTextActive,
+                ]}>
+                  Class Only
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Class Selection (only if scope is 'class') */}
+            {scope === 'class' && (
+              <>
+                <Text style={styles.label}>Select Class *</Text>
+                <View style={styles.classCards}>
+                  {classes.map((cls: any) => {
+                    const classId = cls._id || cls.id;
+                    const isSelected = selectedClassId === classId;
+                    return (
+                      <TouchableOpacity
+                        key={classId}
+                        style={[
+                          styles.classCard,
+                          isSelected && styles.classCardActive,
+                        ]}
+                        onPress={() => setSelectedClassId(classId)}
+                      >
+                        <View style={styles.classCardContent}>
+                          <Ionicons 
+                            name={isSelected ? "checkmark-circle" : "ellipse-outline"} 
+                            size={24} 
+                            color={isSelected ? theme.colors.primary : theme.colors.onSurface} 
+                          />
+                          <View style={styles.classCardInfo}>
+                            <Text style={[
+                              styles.classCardName,
+                              isSelected && styles.classCardNameActive,
+                            ]}>
+                              {cls.name}
+                            </Text>
+                            {cls.studentCount > 0 && (
+                              <Text style={styles.classCardMeta}>
+                                {cls.studentCount} students
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+          </>
+        )}
+
         <Text style={styles.label}>Target (Pomodoros) *</Text>
         <TextInput
           style={styles.input}
@@ -112,14 +239,14 @@ export default function CreateCompetitionScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={24} color={theme.colors.info} />
           <Text style={styles.infoText}>
-            Competition will start tomorrow and last for 7 days. Type: Individual, Scope: Global
+            Competition will start tomorrow and last for 7 days. Type: Individual, Scope: {scope === 'class' ? `Class only${selectedClassId ? ` (${classes.find((c: any) => (c._id || c.id) === selectedClassId)?.name})` : ''}` : 'Global'}
           </Text>
         </View>
 
         <TouchableOpacity
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          style={[styles.createButton, (loading || (scope === 'class' && !selectedClassId)) && styles.createButtonDisabled]}
           onPress={handleCreate}
-          disabled={loading}
+          disabled={loading || (scope === 'class' && !selectedClassId)}
         >
           <Text style={styles.createButtonText}>
             {loading ? 'Creating...' : 'Create Competition'}
@@ -157,6 +284,76 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  scopeButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  scopeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.surfaceVariant,
+    borderRadius: 12,
+    padding: 16,
+  },
+  scopeButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  scopeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.onSurface,
+  },
+  scopeButtonTextActive: {
+    color: theme.colors.onPrimary,
+  },
+  classCards: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  classCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 2,
+    borderColor: theme.colors.surfaceVariant,
+    borderRadius: 12,
+    padding: 16,
+  },
+  classCardActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primaryContainer,
+  },
+  classCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  classCardInfo: {
+    flex: 1,
+  },
+  classCardName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.onSurface,
+    marginBottom: 2,
+  },
+  classCardNameActive: {
+    color: theme.colors.primary,
+  },
+  classCardMeta: {
+    fontSize: 12,
+    color: theme.colors.onSurface,
+    opacity: 0.7,
+  },
+  centerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoCard: {
     flexDirection: 'row',

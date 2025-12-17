@@ -84,10 +84,10 @@ const getClass = async (req, res) => {
     const userId = req.user._id;
 
     const classData = await Class.findById(id)
-      .populate("createdBy", "focusProfile.fullName email")
+      .populate("createdBy", "focusProfile email")
       .populate({
         path: "members.user",
-        select: "focusProfile.fullName email",
+        select: "focusProfile email",
       });
 
     if (!classData) {
@@ -108,6 +108,25 @@ const getClass = async (req, res) => {
         message: "You are not a member of this class",
       });
     }
+
+    // Debug: Log member data
+    console.log(
+      "📋 Class members data:",
+      JSON.stringify(
+        classData.members.map((m) => ({
+          _id: m._id,
+          role: m.role,
+          status: m.status,
+          user: {
+            _id: m.user?._id,
+            email: m.user?.email,
+            focusProfile: m.user?.focusProfile,
+          },
+        })),
+        null,
+        2
+      )
+    );
 
     res.json({
       success: true,
@@ -245,8 +264,8 @@ const getClasses = async (req, res) => {
     if (userRole === "teacher") {
       // Teacher: get classes they created
       const classes = await Class.find({ createdBy: userId })
-        .populate("createdBy", "focusProfile.fullName email")
-        .populate("members.user", "focusProfile.fullName email")
+        .populate("createdBy", "focusProfile email")
+        .populate("members.user", "focusProfile email")
         .sort({ createdAt: -1 });
 
       const classesWithStats = classes.map((cls) => {
@@ -283,8 +302,8 @@ const getClasses = async (req, res) => {
         "members.user": userId,
         "members.status": { $in: ["active", "pending"] },
       })
-        .populate("createdBy", "focusProfile.fullName email")
-        .populate("members.user", "focusProfile.fullName email")
+        .populate("createdBy", "focusProfile email")
+        .populate("members.user", "focusProfile email")
         .sort({ createdAt: -1 });
 
       const studentClasses = classes.map((cls) => {
@@ -339,8 +358,8 @@ const getTeacherClasses = async (req, res) => {
     }
 
     const classes = await Class.find({ createdBy: userId })
-      .populate("createdBy", "fullName email")
-      .populate("members.user", "fullName email")
+      .populate("createdBy", "focusProfile email")
+      .populate("members.user", "focusProfile email")
       .sort({ createdAt: -1 });
 
     // Add stats for each class
@@ -391,8 +410,15 @@ const getStudentClasses = async (req, res) => {
   try {
     const userId = req.user._id;
 
-    // Verify user is a student
-    if (req.user.defaultRole !== "student") {
+    // Verify user has student role (check both defaultRole and roles array)
+    const hasStudentRole =
+      req.user.defaultRole === "student" ||
+      (req.user.roles &&
+        req.user.roles.some(
+          (role) => role.type === "student" && role.isActive
+        ));
+
+    if (!hasStudentRole) {
       return res.status(403).json({
         success: false,
         message: "Only students can access this route",
@@ -403,8 +429,8 @@ const getStudentClasses = async (req, res) => {
       "members.user": userId,
       "members.status": { $in: ["active", "pending"] },
     })
-      .populate("createdBy", "fullName email")
-      .populate("members.user", "fullName email")
+      .populate("createdBy", "focusProfile email")
+      .populate("members.user", "focusProfile email")
       .sort({ createdAt: -1 });
 
     // Filter to only return relevant class info for student

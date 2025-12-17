@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, TouchableOpacity } from 'react-native';
 import { Card, Text, useTheme, Button, Divider, IconButton } from 'react-native-paper';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useClass } from '../contexts/ClassContext';
 import { useGuardian } from '../contexts/GuardianContext';
@@ -69,6 +69,14 @@ const TeacherDashboard = () => {
   useEffect(() => {
     loadClasses();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🏠 Teacher Home screen focused, refreshing classes...');
+      loadClasses();
+    }, [])
+  );
 
   // Recalculate stats when classes change
   useEffect(() => {
@@ -243,11 +251,21 @@ const TeacherDashboard = () => {
               </Button>
             </View>
           ) : (
-            classes.slice(0, 3).map((classItem: any) => (
+            classes
+              .filter((classItem: any) => classItem && (classItem._id || classItem.id))
+              .slice(0, 3)
+              .map((classItem: any) => (
               <TouchableOpacity
-                key={classItem._id}
+                key={classItem._id || classItem.id}
                 style={styles.classItem}
-                onPress={() => router.push(`/classes/${classItem._id}`)}
+                onPress={() => {
+                  const classId = classItem._id || classItem.id;
+                  if (classId && classId !== 'undefined') {
+                    router.push(`/classes/${classId}`);
+                  } else {
+                    console.warn('⚠️ Invalid class ID:', classItem);
+                  }
+                }}
               >
                 <View style={styles.classInfo}>
                   <Text variant="titleMedium" style={styles.className}>

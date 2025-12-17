@@ -50,12 +50,20 @@ export default function ClassDetailScreen() {
   const isCreator = isTeacher; // If teacher and can access class details, they are the creator
 
   useEffect(() => {
-    if (id) {
+    if (id && id !== 'undefined') {
       loadClassDetails();
+    } else if (!id || id === 'undefined') {
+      Alert.alert(
+        t("common.error"),
+        t("classes.invalidClassId") || "Invalid class ID"
+      );
+      router.back();
     }
   }, [id]);
 
   const loadClassDetails = async () => {
+    if (!id || id === 'undefined') return;
+    
     try {
       await getClassDetails(id);
     } catch (error: any) {
@@ -328,9 +336,9 @@ export default function ClassDetailScreen() {
               </Text>
             </Card.Content>
             {pendingMembers.map((member: any, index: number) => (
-              <React.Fragment key={member._id}>
+              <View key={member._id}>
                 <List.Item
-                  title={member.user?.fullName || t("common.unknown")}
+                  title={member.user?.focusProfile?.fullName || t("common.unknown")}
                   description={member.user?.email}
                   left={(props) => <List.Icon {...props} icon="account-clock" />}
                   right={() => (
@@ -349,7 +357,7 @@ export default function ClassDetailScreen() {
                   )}
                 />
                 {index < pendingMembers.length - 1 && <Divider />}
-              </React.Fragment>
+              </View>
             ))}
           </Card>
         )}
@@ -368,10 +376,23 @@ export default function ClassDetailScreen() {
           ) : (
             approvedMembers.map((member: any, index: number) => {
               const isCreatorMember = member.role === "teacher";
+              const fullName = member.user?.focusProfile?.fullName;
+              const memberName = (fullName && fullName.trim()) || t("common.unknown");
+              
+              if (__DEV__) {
+                console.log("🔍 Rendering member:", {
+                  email: member.user?.email,
+                  fullNameRaw: fullName,
+                  fullNameType: typeof fullName,
+                  fullNameLength: fullName?.length,
+                  displayName: memberName
+                });
+              }
+              
               return (
-                <React.Fragment key={member._id}>
+                <View key={member._id}>
                   <List.Item
-                    title={member.user?.fullName || t("common.unknown")}
+                    title={memberName}
                     description={member.user?.email}
                     left={(props) => (
                       <List.Icon
@@ -397,7 +418,7 @@ export default function ClassDetailScreen() {
                     )}
                   />
                   {index < approvedMembers.length - 1 && <Divider />}
-                </React.Fragment>
+                </View>
               );
             })
           )}
@@ -452,7 +473,7 @@ export default function ClassDetailScreen() {
             <Text>{t("classes.removeConfirm")}</Text>
             {selectedMember && (
               <Text variant="bodyLarge" style={styles.memberName}>
-                {selectedMember.fullName || selectedMember.user?.fullName}
+                {selectedMember.focusProfile?.fullName || selectedMember.user?.focusProfile?.fullName}
               </Text>
             )}
           </Dialog.Content>

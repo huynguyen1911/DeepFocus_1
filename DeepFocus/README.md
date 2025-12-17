@@ -35,6 +35,39 @@ DeepFocus là một ứng dụng Pomodoro Timer được phát triển bằng Re
   - Role-based access control
   - Chỉ creator mới có quyền quản lý lớp
 
+### Phase 3: Focus Training System 🧠
+
+- 🤖 **AI Planner**: Tạo kế hoạch training tự động dựa trên schedule
+- 📅 **Calendar View**: Theo dõi training days với visual indicators
+- 💪 **Progressive Difficulty**: Tăng độ khó từng tuần
+- 📊 **Statistics**: Theo dõi streak, completion rate, performance
+- 🎯 **Day Detail**: Chi tiết từng ngày training với missions
+
+### Phase 4: Post-Session Feedback 📝
+
+- ⭐ **Session Feedback**: Đánh giá 5 sao sau mỗi phiên
+- 😊 **Emotion Tracking**: Chọn cảm xúc và ghi chú distractions
+- 🧠 **AI Insights**: Phân tích hiệu suất và đưa ra recommendations
+- 🏆 **Achievements**: 12 badges với progress tracking
+- 📈 **Performance Charts**: 4 loại charts (Line, Bar, Area, Distraction)
+
+### Phase 5: Weekly Review & Progress 📊
+
+- 📅 **Weekly Review**: Tổng kết tuần với highlights và comparisons
+- 🗓️ **Monthly Progress**: Calendar heatmap 31 ngày + weekly breakdown
+- 🎯 **Goals**: Đặt mục tiêu Daily/Weekly/Monthly với rewards
+
+### Phase 6: AI Personality & Adaptive Coaching 🤖
+
+- 🎭 **AI Coach Avatar**: Personality system với animated reactions
+- 💡 **Contextual Tips**: Tips thông minh dựa trên ngữ cảnh (5 contexts)
+- 🎯 **Motivational Engine**: 5 loại messages (30+ unique messages)
+- 🧠 **Adaptive Coaching**:
+  - Pattern recognition từ session history
+  - Personalized recommendations với confidence scores
+  - Optimal time prediction
+  - 7 loại recommendations (timing, duration, difficulty, etc.)
+
 ## 📋 Yêu cầu hệ thống
 
 - Node.js (phiên bản 16 trở lên)
@@ -290,9 +323,25 @@ npm test
 npm test -- ClassContext.test.js
 ```
 
-## 📚 API Documentation
+## 📚 Documentation
+
+### API Documentation
 
 Xem chi tiết API documentation tại: [docs/API.md](./docs/API.md)
+
+### Phase Documentation
+
+- **Phase 1-3**: [docs/PHASE_4_IMPLEMENTATION_SUMMARY.md](./docs/PHASE_4_IMPLEMENTATION_SUMMARY.md)
+- **Phase 4**: Post-Session Feedback (included in Phase 4 summary)
+- **Phase 5**: Weekly Review & Progress (included in Phase 4 summary)
+- **Phase 6**: [docs/PHASE6_AI_PERSONALITY.md](./docs/PHASE6_AI_PERSONALITY.md) - AI Personality & Adaptive Coaching
+
+### Testing Guides
+
+- **Phase 1 Onboarding**: [docs/01-Phase1-Onboarding/ONBOARDING_TEST_GUIDE.md](./docs/01-Phase1-Onboarding/ONBOARDING_TEST_GUIDE.md)
+- **Pomodoro**: [docs/POMODORO_TESTING_GUIDE.md](./docs/POMODORO_TESTING_GUIDE.md)
+- **Date Range Selector**: [docs/DATE_RANGE_SELECTOR_TESTING.md](./docs/DATE_RANGE_SELECTOR_TESTING.md)
+- **Offline Support**: [docs/OFFLINE_SUPPORT.md](./docs/OFFLINE_SUPPORT.md)
 
 ### Quick API Reference
 

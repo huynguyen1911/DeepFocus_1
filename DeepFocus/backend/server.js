@@ -81,6 +81,7 @@ app.use("/api/achievements", require("./routes/achievements"));
 app.use("/api/competitions", require("./routes/competitions"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/reports", require("./routes/reports"));
+app.use("/api/focus-training", require("./routes/focusTraining"));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

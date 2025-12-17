@@ -170,25 +170,34 @@ const ClassAnalytics = () => {
             {language === 'vi' ? '📚 Chọn lớp học' : '📚 Select Class'}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classScroll}>
-            {classes.map((classItem: any) => (
-              <TouchableOpacity
-                key={classItem._id}
-                style={[
-                  styles.classChip,
-                  selectedClassId === classItem._id && styles.classChipSelected,
-                ]}
-                onPress={() => setSelectedClassId(classItem._id)}
-              >
-                <Text
-                  style={[
-                    styles.classChipText,
-                    selectedClassId === classItem._id && styles.classChipTextSelected,
-                  ]}
-                >
-                  {classItem.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {classes
+              .filter((classItem: any) => classItem && (classItem._id || classItem.id))
+              .map((classItem: any) => {
+                const classId = classItem._id || classItem.id;
+                return (
+                  <TouchableOpacity
+                    key={classId}
+                    style={[
+                      styles.classChip,
+                      selectedClassId === classId && styles.classChipSelected,
+                    ]}
+                    onPress={() => {
+                      if (classId && classId !== 'undefined') {
+                        setSelectedClassId(classId);
+                      }
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.classChipText,
+                        selectedClassId === classId && styles.classChipTextSelected,
+                      ]}
+                    >
+                      {classItem.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
           </ScrollView>
         </Card.Content>
       </Card>
@@ -344,9 +353,14 @@ const ClassAnalytics = () => {
             <Card.Content>
               <Button
                 mode="contained"
-                onPress={() => router.push(`/classes/${selectedClassId}`)}
+                onPress={() => {
+                  if (selectedClassId) {
+                    router.push(`/classes/${selectedClassId}`);
+                  }
+                }}
                 icon="eye"
                 style={styles.actionButton}
+                disabled={!selectedClassId}
               >
                 {language === 'vi' ? 'Xem chi tiết lớp' : 'View Class Details'}
               </Button>
