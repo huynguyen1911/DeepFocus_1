@@ -180,7 +180,7 @@ const AIAnalysisScreen = ({ route, navigation }) => {
         {/* Animation */}
         <View style={styles.animationContainer}>
           <LottieView
-            source={require("../../assets/animations/ai-thinking.json")}
+            source={require("../../../assets/animations/ai-thinking.json")}
             autoPlay
             loop
             style={styles.animation}

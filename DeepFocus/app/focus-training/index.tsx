@@ -14,21 +14,99 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import LottieView from "lottie-react-native";
 import focusTrainingApi from "../../src/services/focusTrainingApi";
+import { useFocusTraining } from "@/src/contexts/FocusTrainingContext";
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withTiming,
+  withSequence,
+  FadeInDown
+} from 'react-native-reanimated';
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get('window');
 
 export default function FocusTrainingIndexScreen() {
+  const { isBackgroundProcessing, assessmentId, completePlanGeneration, isGeneratingPlan } = useFocusTraining();
   const [loading, setLoading] = useState(true);
   const [hasActivePlan, setHasActivePlan] = useState(false);
   const [todayTraining, setTodayTraining] = useState(null);
   const [planData, setPlanData] = useState(null);
+  
+  // Animation for pending card
+  const shimmerTranslate = useSharedValue(-width);
+  const pulseScale = useSharedValue(1);
+
+  // Animated styles - MUST be before any conditional returns
+  const shimmerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: shimmerTranslate.value }],
+    };
+  });
+
+  const pulseStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: pulseScale.value }],
+    };
+  });
+
+  useEffect(() => {
+    // Shimmer animation for skeleton loader
+    shimmerTranslate.value = withRepeat(
+      withTiming(width, { duration: 1500 }),
+      -1,
+      false
+    );
+    
+    // Pulse animation for icon
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.1, { duration: 800 }),
+        withTiming(1, { duration: 800 })
+      ),
+      -1,
+      false
+    );
+  }, []);
 
   useEffect(() => {
     checkStatus();
   }, []);
+
+  // Poll for plan completion if in background processing mode
+  useEffect(() => {
+    if (isBackgroundProcessing && assessmentId) {
+      const pollInterval = setInterval(async () => {
+        try {
+          console.log('🔍 Polling for plan completion...');
+          const response = await focusTrainingApi.checkPlanGeneration(assessmentId);
+          
+          if (response.status === 'completed' && response.plan) {
+            console.log('✅ Plan generation completed!');
+            clearInterval(pollInterval);
+            
+            // Update context
+            await completePlanGeneration(response.plan);
+            
+            // Refresh UI
+            checkStatus();
+            
+            // TODO: Show push notification
+            // scheduleNotification('✨ Kế hoạch DeepFocus của bạn đã sẵn sàng!');
+          }
+        } catch (error) {
+          console.log('⚠️ Polling error:', error.message);
+        }
+      }, 3000); // Poll every 3 seconds
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [isBackgroundProcessing, assessmentId]);
 
   // Refresh when screen comes into focus (e.g., after creating plan)
   useFocusEffect(
@@ -40,6 +118,13 @@ export default function FocusTrainingIndexScreen() {
 
   const checkStatus = async () => {
     try {
+      // Don't check if plan is currently being generated
+      if (isGeneratingPlan) {
+        console.log('⏳ Plan is being generated, skipping status check');
+        setLoading(false);
+        return;
+      }
+      
       // Check if user has active plan
       console.log('🔍 Checking for active plan...');
       const planResponse = await focusTrainingApi.getActivePlan();
@@ -57,7 +142,15 @@ export default function FocusTrainingIndexScreen() {
         
         if (todayData && todayData.trainingDay) {
           console.log('✅ Today training:', todayData.trainingDay._id);
-          setTodayTraining(todayData.trainingDay);
+          
+          // Calculate completed challenges count
+          const trainingDay = todayData.trainingDay;
+          const completedCount = trainingDay.challenges?.filter(c => c.completed).length || 0;
+          
+          setTodayTraining({
+            ...trainingDay,
+            completedChallenges: completedCount
+          });
         } else {
           console.log('⚠️ No training for today');
           setTodayTraining(null);
@@ -82,94 +175,204 @@ export default function FocusTrainingIndexScreen() {
     );
   }
 
-  // No active plan - Show welcome screen
+  // Render Pending Card when plan is generating in background
+  const renderPendingCard = () => (
+    <View style={styles.pendingCardContainer}>
+      <LinearGradient
+        colors={["#667eea", "#764ba2"]}
+        style={styles.pendingCard}
+      >
+        <Animated.View style={[styles.pendingIconContainer, pulseStyle]}>
+          <Text style={styles.pendingIcon}>🤖</Text>
+        </Animated.View>
+        
+        <View style={styles.pendingContent}>
+          <Text style={styles.pendingTitle}>AI đang phân tích dữ liệu của bạn...</Text>
+          <Text style={styles.pendingSubtext}>
+            Chúng tôi đang thiết kế lộ trình DeepFocus cá nhân hóa. 
+            Quá trình này có thể mất vài phút.
+          </Text>
+        </View>
+
+        {/* Skeleton loader with shimmer effect */}
+        <View style={styles.skeletonContainer}>
+          <View style={styles.skeletonBar} />
+          <View style={[styles.skeletonBar, styles.skeletonBarShort]} />
+          <View style={styles.skeletonBar} />
+          <Animated.View style={[styles.shimmer, shimmerStyle]} />
+        </View>
+
+        <View style={styles.pendingFooter}>
+          <ActivityIndicator size="small" color="#fff" />
+          <Text style={styles.pendingFooterText}>
+            Bạn sẽ nhận thông báo khi kế hoạch hoàn tất
+          </Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+
+  // No active plan - Show welcome screen with animations
   if (!hasActivePlan) {
     return (
-      <ScrollView style={styles.container}>
-        <LinearGradient colors={["#6366f1", "#8b5cf6"]} style={styles.heroSection}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+      <View style={styles.welcomeContainer}>
+        <LinearGradient colors={["#667eea", "#764ba2"]} style={styles.welcomeGradient}>
+          {/* Floating Back Button - Glassmorphism */}
+          <TouchableOpacity
+            style={styles.floatingBackButton}
             onPress={() => router.push('/(tabs)')}
+            activeOpacity={0.7}
           >
-            <Text style={styles.backButtonText}>← Home</Text>
+            <Text style={styles.floatingBackIcon}>←</Text>
           </TouchableOpacity>
-          
-          <Text style={styles.heroIcon}>🧠</Text>
-          <Text style={styles.heroTitle}>AI Focus Training</Text>
-          <Text style={styles.heroSubtitle}>
-            Build sustainable focus habits with AI-powered personalized training
-          </Text>
-        </LinearGradient>
 
-        <View style={styles.content}>
-          {/* Features */}
-          <View style={styles.featuresSection}>
-            <FeatureCard
-              icon="🎯"
-              title="AI Assessment"
-              description="Get personalized analysis of your focus level"
-            />
-            <FeatureCard
-              icon="📅"
-              title="Custom Plan"
-              description="4-8 week progressive training tailored to you"
-            />
-            <FeatureCard
-              icon="💪"
-              title="Daily Challenges"
-              description="Variety of exercises to build focus muscle"
-            />
-            <FeatureCard
-              icon="📊"
-              title="Track Progress"
-              description="See your improvement over time"
-            />
-          </View>
-
-          {/* Call to Action */}
-          <View style={styles.ctaSection}>
-            <Text style={styles.ctaTitle}>Ready to get started?</Text>
-            <Text style={styles.ctaSubtitle}>
-              Take a quick 2-minute assessment to create your personalized plan
-            </Text>
-            
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={() => router.push("/focus-training/assessment")}
+          <SafeAreaView edges={['top']} style={styles.safeAreaView}>
+            <ScrollView 
+              style={styles.welcomeScroll}
+              contentContainerStyle={styles.welcomeScrollContent}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={styles.ctaButtonText}>Start Assessment</Text>
+              {/* Show Pending Card if generating in background */}
+              {isBackgroundProcessing && renderPendingCard()}
+              
+              {/* Illustration Section with Glow Effect */}
+              <View style={styles.illustrationContainer}>
+                {/* Glow effect behind illustration */}
+                <View style={styles.illustrationGlow} />
+                <LottieView
+                  source={require("../../assets/animations/focus-study.json")}
+                  autoPlay
+                  loop
+                  style={styles.lottieAnimation}
+                />
+                <View style={styles.titleContainer}>
+                  <Text style={styles.titleEmoji}>✨</Text>
+                  <Text style={styles.welcomeMainTitle}>Focus Training</Text>
+                </View>
+                <Text style={styles.welcomeMainSubtitle}>
+                  Xây dựng thói quen tập trung bền vững{'\n'}
+                  với AI coaching cá nhân hóa
+                </Text>
+              </View>
+
+            {/* Features Highlight */}
+            <View style={styles.featureHighlight}>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureEmoji}>🎯</Text>
+                <Text style={styles.featureText}>Đánh giá AI cá nhân hóa</Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureEmoji}>📅</Text>
+                <Text style={styles.featureText}>Kế hoạch 4-8 tuần tùy chỉnh</Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureEmoji}>💪</Text>
+                <Text style={styles.featureText}>Thử thách hàng ngày đa dạng</Text>
+              </View>
+              <View style={styles.featureRow}>
+                <Text style={styles.featureEmoji}>📊</Text>
+                <Text style={styles.featureText}>Theo dõi tiến độ chi tiết</Text>
+              </View>
+            </View>
+
+            {/* How it Works - Vertical Timeline with Line Through Icons */}
+            <View style={styles.timeline}>
+              <Text style={styles.timelineTitle}>Cách thức hoạt động</Text>
+              
+              {/* Step 1 */}
+              <Animated.View 
+                style={styles.timelineStepRow}
+                entering={FadeInDown.delay(100).duration(600)}
+              >
+                <View style={styles.timelineLeft}>
+                  <View style={styles.stepIconCircle}>
+                    <Text style={styles.stepIcon}>📝</Text>
+                  </View>
+                  <View style={styles.verticalLine} />
+                </View>
+                <View style={styles.timelineRight}>
+                  <Text style={styles.stepTitle}>Đánh giá</Text>
+                  <Text style={styles.stepDesc}>Trả lời về thói quen tập trung</Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 2 */}
+              <Animated.View 
+                style={styles.timelineStepRow}
+                entering={FadeInDown.delay(200).duration(600)}
+              >
+                <View style={styles.timelineLeft}>
+                  <View style={styles.stepIconCircle}>
+                    <Text style={styles.stepIcon}>🤖</Text>
+                  </View>
+                  <View style={styles.verticalLine} />
+                </View>
+                <View style={styles.timelineRight}>
+                  <Text style={styles.stepTitle}>AI phân tích</Text>
+                  <Text style={styles.stepDesc}>Nhận gợi ý cá nhân hóa</Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 3 */}
+              <Animated.View 
+                style={styles.timelineStepRow}
+                entering={FadeInDown.delay(300).duration(600)}
+              >
+                <View style={styles.timelineLeft}>
+                  <View style={styles.stepIconCircle}>
+                    <Text style={styles.stepIcon}>🎯</Text>
+                  </View>
+                  <View style={styles.verticalLine} />
+                </View>
+                <View style={styles.timelineRight}>
+                  <Text style={styles.stepTitle}>Thực hành</Text>
+                  <Text style={styles.stepDesc}>Hoàn thành thử thách hàng ngày</Text>
+                </View>
+              </Animated.View>
+
+              {/* Step 4 - No line after last step */}
+              <Animated.View 
+                style={styles.timelineStepRow}
+                entering={FadeInDown.delay(400).duration(600)}
+              >
+                <View style={styles.timelineLeft}>
+                  <View style={styles.stepIconCircle}>
+                    <Text style={styles.stepIcon}>📈</Text>
+                  </View>
+                </View>
+                <View style={styles.timelineRight}>
+                  <Text style={styles.stepTitle}>Tiến bộ</Text>
+                  <Text style={styles.stepDesc}>Thấy sự cải thiện rõ rệt</Text>
+                </View>
+              </Animated.View>
+            </View>
+          </ScrollView>
+
+          {/* Sticky Footer - CTA Button */}
+          <View style={styles.stickyFooter}>
+            <View style={styles.timeNote}>
+              <Text style={styles.timeNoteText}>⏱️ Chỉ mất 2-3 phút thôi</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.welcomeCtaButton}
+              onPress={() => router.push("/focus-training/assessment")}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={["#F093FB", "#F5576C"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.ctaGradient}
+              >
+                <Text style={styles.welcomeCtaText}>Bắt Đầu Đánh Giá</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          {/* How it Works */}
-          <View style={styles.stepsSection}>
-            <Text style={styles.stepsTitle}>How it works</Text>
-            
-            <StepCard
-              number={1}
-              title="Take Assessment"
-              description="Answer questions about your focus habits"
-            />
-            <StepCard
-              number={2}
-              title="Get AI Analysis"
-              description="Receive personalized recommendations"
-            />
-            <StepCard
-              number={3}
-              title="Follow Plan"
-              description="Complete daily challenges at your pace"
-            />
-            <StepCard
-              number={4}
-              title="Track Progress"
-              description="See your focus improve week by week"
-            />
-          </View>
-        </View>
-      </ScrollView>
-    );
-  }
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
+  );
+}
 
   // Has active plan - Show dashboard
   return (
@@ -230,6 +433,12 @@ export default function FocusTrainingIndexScreen() {
                             todayTraining.challenges?.length) *
                           100
                         }%`,
+                        backgroundColor: 
+                          todayTraining.completedChallenges === todayTraining.challenges?.length
+                            ? '#10b981' // Green when 100% complete
+                            : todayTraining.completedChallenges > 0
+                            ? '#3b82f6' // Blue when in progress
+                            : '#9ca3af', // Gray when not started
                       },
                     ]}
                   />
@@ -361,7 +570,6 @@ function MenuItem({ icon, title, subtitle, onPress }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
   },
   centerContainer: {
     flex: 1,
@@ -374,38 +582,308 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6b7280",
   },
-  heroSection: {
-    paddingTop: 80,
-    paddingBottom: 60,
-    paddingHorizontal: 24,
-    alignItems: "center",
+  // Pending Card Styles (Background Processing)
+  pendingCardContainer: {
+    marginBottom: 24,
   },
-  heroIcon: {
-    fontSize: 64,
+  pendingCard: {
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  pendingIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
+    alignSelf: 'center',
   },
-  heroTitle: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 12,
-    textAlign: "center",
+  pendingIcon: {
+    fontSize: 36,
   },
-  heroSubtitle: {
-    fontSize: 16,
-    color: "#e0e7ff",
-    textAlign: "center",
-    lineHeight: 24,
+  pendingContent: {
+    marginBottom: 20,
   },
-  backButton: {
-    padding: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 8,
-  },
-  backButtonText: {
+  pendingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#fff',
-    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  pendingSubtext: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  skeletonContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  skeletonBar: {
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  skeletonBarShort: {
+    width: '60%',
+  },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: width * 0.3,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    opacity: 0.5,
+  },
+  pendingFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  pendingFooterText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontStyle: 'italic',
+  },
+  // Welcome Screen Styles (inspired by AI Planner)
+  welcomeContainer: {
+    flex: 1,
+  },
+  welcomeGradient: {
+    flex: 1,
+  },
+  safeAreaView: {
+    flex: 1,
+  },
+  // Floating Back Button - Glassmorphism (Top-left safe area)
+  floatingBackButton: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+    backdropFilter: 'blur(10px)',
+  },
+  floatingBackIcon: {
+    fontSize: 24,
+    color: '#FFFFFF',
     fontWeight: '600',
+  },
+  welcomeScroll: {
+    flex: 1,
+  },
+  welcomeScrollContent: {
+    paddingTop: 80,
+    paddingBottom: 40,
+    paddingHorizontal: 30,
+  },
+  illustrationContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+    position: 'relative',
+  },
+  // Glow effect behind illustration
+  illustrationGlow: {
+    position: 'absolute',
+    top: '30%',
+    width: width * 0.5,
+    height: width * 0.5,
+    borderRadius: width * 0.25,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 30,
+    elevation: 10,
+  },
+  lottieAnimation: {
+    width: width * 0.6,
+    height: width * 0.6,
+    marginBottom: 20,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  titleEmoji: {
+    fontSize: 32,
+    marginRight: 8,
+  },
+  welcomeMainTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+  },
+  welcomeMainSubtitle: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 26,
+    opacity: 0.95,
+  },
+  featureHighlight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  featureText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  welcomeCtaButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginBottom: 16,
+    shadowColor: '#F5576C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  ctaGradient: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  welcomeCtaText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  timeNote: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  timeNoteText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.9,
+  },
+  // Vertical Timeline - Icon + Line on Left, Content on Right
+  timeline: {
+    paddingVertical: 20,
+  },
+  timelineTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 30,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  timelineStepRow: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    paddingHorizontal: 10,
+  },
+  timelineLeft: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  stepIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 2,
+  },
+  verticalLine: {
+    width: 3,
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  timelineRight: {
+    flex: 1,
+    paddingTop: 8,
+  },
+  stepIcon: {
+    fontSize: 28,
+  },
+  stepTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  stepDesc: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.9,
+    lineHeight: 20,
+  },
+  // Sticky Footer for CTA
+  stickyFooter: {
+    paddingHorizontal: 30,
+    paddingBottom: 20,
+    paddingTop: 16,
+    backgroundColor: 'rgba(102, 126, 234, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  welcomeCtaButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#F5576C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   header: {
     paddingTop: 60,
@@ -451,7 +929,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   featureCard: {
-    width: (width - 44) / 2,
+    flex: 1,
+    minWidth: '45%',
+    maxWidth: '48%',
     backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,

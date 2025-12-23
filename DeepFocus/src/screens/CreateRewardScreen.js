@@ -22,6 +22,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useReward } from "../contexts/RewardContext";
 import { useClass } from "../contexts/ClassContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
 
 /**
  * CreateRewardScreen - Form to create rewards/penalties
@@ -31,6 +32,7 @@ export default function CreateRewardScreen() {
   const theme = useTheme();
   const { classId } = useLocalSearchParams();
   const { user } = useAuth();
+  const { currentRole } = useRole();
   const { createReward, isLoading } = useReward();
   const { classes, loadClasses } = useClass();
 
@@ -46,6 +48,22 @@ export default function CreateRewardScreen() {
   const [classMenuVisible, setClassMenuVisible] = useState(false);
   const [studentMenuVisible, setStudentMenuVisible] = useState(false);
   const [students, setStudents] = useState([]);
+
+  // Check permission - only teacher/guardian can create rewards
+  useEffect(() => {
+    if (currentRole !== "teacher" && currentRole !== "guardian") {
+      Alert.alert(
+        "Không có quyền",
+        "Chỉ giáo viên và phụ huynh mới có thể tạo phần thưởng.",
+        [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]
+      );
+    }
+  }, [currentRole]);
 
   useEffect(() => {
     loadClasses();

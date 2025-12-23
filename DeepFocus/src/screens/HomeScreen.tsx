@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, StyleSheet, Alert, RefreshControl, ScrollView, KeyboardAvoidingView, Platform, Modal, TouchableOpacity, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Text, useTheme, Divider, IconButton, Menu, FAB, Searchbar, SegmentedButtons, Portal, List } from 'react-native-paper';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -350,41 +351,42 @@ const HomeScreen = () => {
 
   // Student role: show normal Pomodoro home screen
   return (
-    <KeyboardAvoidingView 
-      style={{ flex: 1 }} 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
+    <SafeAreaView 
+      style={{ flex: 1, backgroundColor: '#FAFAFA' }}
+      edges={['top', 'left', 'right']}
     >
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <View>
-              <Text variant="titleMedium" style={{ color: theme.colors.onPrimary }}>
-                DeepFocus
+            <View style={styles.greetingContainer}>
+              <Text variant="headlineSmall" style={{ color: '#6C63FF', fontWeight: 'bold' }}>
+                {greeting}
               </Text>
-              <Text variant="bodySmall" style={{ color: theme.colors.onPrimary, opacity: 0.8 }}>
-                {t('home.hello', { name: user?.username || 'User' })}
+              <Text variant="bodyMedium" style={{ color: '#636E72', marginTop: 2 }}>
+                {t('home.hello', { name: user?.username || 'User' })} 👋
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <View style={{ position: 'relative' }}>
                 <IconButton
-                  icon="bell"
-                  iconColor={theme.colors.onPrimary}
-                  size={28}
+                  icon="bell-outline"
+                  iconColor="#636E72"
+                  size={24}
                   onPress={() => router.push('/alerts')}
+                  style={{ margin: 0 }}
                 />
                 {unreadCount > 0 && (
-                  <View style={{ position: 'absolute', top: 4, right: 4 }}>
+                  <View style={{ position: 'absolute', top: 6, right: 6 }}>
                     <AlertBadge count={unreadCount} size="small" />
                   </View>
                 )}
               </View>
               <IconButton
-                icon="account-circle"
-                iconColor={theme.colors.onPrimary}
-                size={28}
+                icon="account-circle-outline"
+                iconColor="#636E72"
+                size={24}
                 onPress={() => setMenuVisible(true)}
+                style={{ margin: 0 }}
               />
             </View>
           </View>
@@ -393,114 +395,57 @@ const HomeScreen = () => {
       <ScrollView 
         ref={scrollViewRef}
         style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[theme.colors.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#6C63FF']} />
         }
       >
-        {/* Home Section - Full viewport */}
-        <View style={styles.homeSection}>
-          <Card style={styles.welcomeCard}>
-            <Card.Content style={styles.cardContent}>
-              <Text variant="titleLarge" style={[styles.greetingText, { color: theme.colors.onSurface }]}>{greeting}</Text>
-              <Text variant="headlineMedium" style={[styles.welcomeText, { color: theme.colors.primary }]}>{t('home.welcomeUser', { name: user?.username })}</Text>
-              <Text variant="titleMedium" style={[styles.subtitleText, { color: theme.colors.onSurface }]}>{t('home.appTitle')}</Text>
-              <Divider style={styles.divider} />
-              <Text variant="bodyMedium" style={[styles.descriptionText, { color: theme.colors.onSurfaceVariant }]}>{t('home.description')}</Text>
-            </Card.Content>
-          </Card>
-          
+        {/* Hero Section - Timer First */}
+        <View style={styles.heroSection}>
           <View 
             ref={timerSectionRef}
             style={styles.timerSection}
             collapsable={false}
           >
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{`${t('home.title')} - ${t('home.subtitle')}`}</Text>
             <Timer />
           </View>
           
-          <View style={styles.statsSection}>
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('home.yourStats')}</Text>
-            
-            {/* Daily Progress */}
+          {/* Daily Progress - Compact */}
+          <View style={styles.progressSection}>
             <DailyPomodoroProgress 
               completedToday={todayPomodoros} 
               goal={settings?.dailyGoal || 8} 
               totalWorkTime={todayWorkTime}
             />
-            
-            <View style={styles.statsContainer}>
-              <Card style={styles.statCard}>
-                <Card.Content style={styles.statContent}>
-                    <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.primary }]}>{stats.totalPomodoros}</Text>
-                    <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('stats.totalPomodoros')}</Text>
-                </Card.Content>
-              </Card>
-              <Card style={styles.statCard}>
-                <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: theme.colors.secondary }]}>{stats.totalWorkTime}m</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('stats.focusTime')}</Text>
-                </Card.Content>
-              </Card>
-            </View>
-            <View style={styles.statsContainer}>
-              <Card style={styles.statCard}>
-                <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: '#4CAF50' }]}>{stats.completedTasks}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('tasks.completed')}</Text>
-                </Card.Content>
-              </Card>
-              <Card style={styles.statCard}>
-                <Card.Content style={styles.statContent}>
-                  <Text variant="headlineSmall" style={[styles.statNumber, { color: '#FF9800' }]}>{stats.pendingTasks}</Text>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>{t('tasks.inProgress')}</Text>
-                </Card.Content>
-              </Card>
-            </View>
           </View>
 
-          {/* Gamification Quick Access */}
+          {/* Gamification - Compact */}
           <View style={styles.gamificationSection}>
-            <Text variant="titleLarge" style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Gamification</Text>
-            
-            <View style={styles.gamificationCards}>
+            <View style={styles.gamificationRow}>
               <TouchableOpacity 
-                style={[styles.gamificationCard, { backgroundColor: theme.colors.primaryContainer }]}
+                style={styles.gamificationChip}
                 onPress={() => router.push('/achievements')}
               >
-                <View style={styles.gamificationIcon}>
-                  <Text style={styles.gamificationEmoji}>🏆</Text>
-                </View>
-                <Text variant="titleMedium" style={[styles.gamificationTitle, { color: theme.colors.onPrimaryContainer }]}>
-                  Achievements
-                </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onPrimaryContainer, textAlign: 'center' }}>
-                  View your unlocked achievements
-                </Text>
+                <Text style={styles.chipEmoji}>🏆</Text>
+                <Text style={[styles.chipText, { color: '#6C63FF' }]}>Achievements</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.gamificationCard, { backgroundColor: theme.colors.secondaryContainer }]}
+                style={styles.gamificationChip}
                 onPress={() => router.push('/competitions')}
               >
-                <View style={styles.gamificationIcon}>
-                  <Text style={styles.gamificationEmoji}>⚔️</Text>
-                </View>
-                <Text variant="titleMedium" style={[styles.gamificationTitle, { color: theme.colors.onSecondaryContainer }]}>
-                  Competitions
-                </Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSecondaryContainer, textAlign: 'center' }}>
-                  Join challenges and compete
-                </Text>
+                <Text style={styles.chipEmoji}>⚔️</Text>
+                <Text style={[styles.chipText, { color: '#6C63FF' }]}>Competitions</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
 
-        {/* Task Section - Below home section */}
+        {/* Task Section - Clean and Simple */}
         <View style={styles.taskSection}>
           <View style={styles.taskSectionHeader}>
-            <Text variant="titleLarge" style={[styles.taskSectionTitle, { color: theme.colors.onBackground }]}>
+            <Text variant="headlineSmall" style={[styles.taskSectionTitle, { color: '#1E293B', fontWeight: 'bold' }]}>
               {t('home.myTasks')}
             </Text>
           </View>
@@ -537,9 +482,9 @@ const HomeScreen = () => {
             </View>
           </View>
 
-          {/* AI Tip - Dashboard */}
+          {/* AI Tip - Compact */}
           {showAITip && (
-            <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+            <View style={styles.aiTipContainer}>
               <AITip 
                 context="dashboard"
                 userData={{
@@ -613,7 +558,13 @@ const HomeScreen = () => {
         </View>
       )}
       
-      <FAB icon="plus" style={styles.fab} onPress={() => router.push('/add-task')} color="#fff" />
+      <FAB 
+        icon="plus" 
+        style={[styles.fab, { backgroundColor: '#6C63FF' }]} 
+        onPress={() => router.push('/add-task')} 
+        color="#fff"
+        mode="elevated"
+      />
       
       {/* Custom Menu Modal - more reliable than React Native Paper Menu */}
       <Modal
@@ -653,131 +604,109 @@ const HomeScreen = () => {
         </Pressable>
       </Modal>
     </View>
-    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { 
-    backgroundColor: '#FF5252', 
-    paddingHorizontal: 20, 
-    paddingVertical: 16, 
-    elevation: 4 
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16, 
+    paddingTop: 8,
+    paddingBottom: 16, 
+    marginBottom: 12,
+    elevation: 1,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    borderBottomWidth: 0,
   },
   headerContent: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center' 
   },
-  scrollView: { flex: 1 },
-  homeSection: { padding: 20, paddingBottom: 40 },
-  welcomeCard: { 
-    elevation: 4, 
-    borderRadius: 12, 
-    marginBottom: 24 
-  },
-  cardContent: { 
-    padding: 24, 
-    alignItems: 'center' 
-  },
-  greetingText: { 
-    marginBottom: 4, 
-    fontWeight: '500' 
-  },
-  welcomeText: { 
-    textAlign: 'center', 
-    fontWeight: 'bold', 
-    marginBottom: 8 
-  },
-  subtitleText: { 
-    textAlign: 'center', 
-    marginBottom: 16, 
-    fontWeight: '500' 
-  },
-  divider: { 
-    width: '50%', 
-    marginVertical: 16 
-  },
-  descriptionText: { 
-    textAlign: 'center', 
-    lineHeight: 20 
-  },
-  timerSection: { marginBottom: 32 },
-  sectionTitle: { 
-    fontWeight: 'bold', 
-    marginBottom: 16, 
-    textAlign: 'center' 
-  },
-  statsSection: { marginBottom: 20 },
-  statsContainer: { 
-    flexDirection: 'row', 
-    gap: 16 
-  },
-  statCard: { 
-    flex: 1, 
-    elevation: 2, 
-    borderRadius: 8 
-  },
-  statContent: { 
-    alignItems: 'center', 
-    padding: 16 
-  },
-  statNumber: { 
-    fontWeight: 'bold', 
-    marginBottom: 4 
-  },
-  gamificationSection: { 
-    marginBottom: 20, 
-    marginTop: 12 
-  },
-  gamificationCards: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  gamificationCard: {
+  greetingContainer: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    elevation: 2,
-    minHeight: 140,
   },
-  gamificationIcon: {
+  scrollView: { flex: 1, backgroundColor: '#FAFAFA' },
+  heroSection: { 
+    backgroundColor: '#fff',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  timerSection: { 
+    marginBottom: 8,
+    paddingHorizontal: 16,
+  },
+  progressSection: { 
+    paddingHorizontal: 0,
     marginBottom: 8,
   },
-  gamificationEmoji: {
-    fontSize: 40,
+  gamificationSection: { 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    marginBottom: 2,
   },
-  gamificationTitle: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textAlign: 'center',
+  gamificationRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+  },
+  gamificationChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#F3F0FF',
+    borderWidth: 1,
+    borderColor: '#E8E4FF',
+    elevation: 1,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  chipEmoji: {
+    fontSize: 20,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6C63FF',
   },
   taskSection: {
-    backgroundColor: '#F5F5F5',
-    paddingTop: 20,
-    paddingBottom: 80,
-    minHeight: 400,
+    backgroundColor: '#FAFAFA',
+    paddingTop: 12,
+    paddingBottom: 20,
+    minHeight: 300,
   },
   taskSectionHeader: {
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    marginBottom: 12,
-    elevation: 2,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   taskSectionTitle: {
-    fontWeight: 'bold',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   searchFilterContainer: { 
     backgroundColor: '#fff', 
     paddingHorizontal: 16, 
-    paddingTop: 8,
+    paddingTop: 12,
     paddingBottom: 12, 
-    marginBottom: 16,
-    elevation: 1,
+    marginBottom: 8,
+  },
+  aiTipContainer: {
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
   searchBar: { 
     elevation: 2, 
@@ -862,7 +791,13 @@ const styles = StyleSheet.create({
     position: 'absolute', 
     right: 16, 
     bottom: 16, 
-    backgroundColor: '#FF5252' 
+    backgroundColor: '#6C63FF',
+    borderRadius: 28,
+    elevation: 6,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   menuOverlay: {
     flex: 1,

@@ -103,21 +103,19 @@ export default function EnhancedDayDetailScreen() {
     
     const challenge = trainingDay.challenges[challengeIndex];
     
-    // If it's a focus session, open session screen
-    if (challenge.type === 'focus_session') {
-      router.push({
-        pathname: '/focus-training/session',
-        params: {
-          challengeId: challenge._id || challengeIndex,
-          duration: challenge.duration,
-          type: challenge.type,
-          dayId: trainingDay._id
+    // All challenges are completed by marking checkbox
+    // User should use the main timer on home screen for actual focus sessions
+    Alert.alert(
+      'Hoàn thành thử thách?',
+      `Bạn đã hoàn thành "${challenge.title}"?\n\n💡 Tip: Sử dụng timer ở trang chủ để theo dõi thời gian tập trung.`,
+      [
+        { text: 'Chưa', style: 'cancel' },
+        { 
+          text: 'Đã hoàn thành', 
+          onPress: () => handleCompleteChallenge(challengeIndex)
         }
-      });
-    } else {
-      // For other types (breathing, mindfulness, etc.), complete directly
-      handleCompleteChallenge(challengeIndex);
-    }
+      ]
+    );
   };
 
   const handleCompleteChallenge = async (challengeIndex: number) => {
@@ -132,9 +130,12 @@ export default function EnhancedDayDetailScreen() {
         { score: 85 }
       );
 
+      // Reload training day to get updated data
       await loadTrainingDay();
       
-      const { points, dayCompleted } = response.data;
+      // Check if response has the expected data structure
+      const points = response?.data?.points || response?.data?.trainingDay?.totalPoints || 0;
+      const dayCompleted = response?.data?.dayCompleted || response?.data?.trainingDay?.completed || false;
       
       if (dayCompleted) {
         showCelebrationAnimation();
@@ -152,7 +153,8 @@ export default function EnhancedDayDetailScreen() {
           );
         }, 500);
       } else {
-        Alert.alert('✅ Hoàn thành', `Bạn đã nhận được +${points - trainingDay.totalPoints} điểm!`);
+        // Just show simple success message without point calculation
+        Alert.alert('✅ Hoàn thành', 'Thử thách đã được đánh dấu hoàn thành!');
       }
     } catch (error) {
       console.error('Error completing challenge:', error);
@@ -489,12 +491,12 @@ export default function EnhancedDayDetailScreen() {
                           ) : (
                             <>
                               <MaterialCommunityIcons 
-                                name={challenge.type === 'focus_session' ? 'play-circle' : 'check-bold'} 
+                                name="check-bold"
                                 size={20} 
                                 color="#fff" 
                               />
                               <Text style={styles.completeButtonText}>
-                                {challenge.type === 'focus_session' ? 'Bắt đầu phiên' : 'Hoàn thành thử thách'}
+                                Đánh dấu hoàn thành
                               </Text>
                             </>
                           )}

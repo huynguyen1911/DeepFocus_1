@@ -157,7 +157,7 @@ const PersonalizedPlanScreen = ({ route, navigation }) => {
         pointerEvents="none"
       >
         <LottieView
-          source={require("../../assets/animations/confetti.json")}
+          source={require("../../../assets/animations/confetti.json")}
           autoPlay
           loop={false}
           style={styles.confettiAnimation}

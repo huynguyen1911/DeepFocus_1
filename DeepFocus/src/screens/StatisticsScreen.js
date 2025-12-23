@@ -10,12 +10,14 @@ import {
   Modal,
   Pressable,
   Platform,
+  Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { LineChart, BarChart } from "react-native-chart-kit";
 import { SegmentedButtons, Button } from "react-native-paper";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../config/theme";
 import { statsAPI } from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
@@ -203,18 +205,38 @@ export default function StatisticsScreen() {
       };
     }
 
+    // Calculate date range in days
+    const daysDiff = filteredData.length;
+
     const labels = filteredData.map((day) => {
       const date = new Date(day.date);
+
+      // Smart label formatting based on range
       if (dateRange === "today") {
+        // Show hours for today
         return date.toLocaleDateString("vi-VN", {
           hour: "2-digit",
           minute: "2-digit",
         });
+      } else if (daysDiff > 60) {
+        // For long ranges (>60 days), show month/year
+        return date.toLocaleDateString("vi-VN", {
+          month: "short",
+          year: "2-digit",
+        });
+      } else if (daysDiff > 30) {
+        // For medium ranges (30-60 days), show day/month
+        return date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "short",
+        });
+      } else {
+        // For short ranges (≤30 days), show day/month
+        return date.toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+        });
       }
-      return date.toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-      });
     });
 
     const data = filteredData.map((day) => day.completedPomodoros || 0);
@@ -440,212 +462,335 @@ export default function StatisticsScreen() {
     );
   }
 
+  // Get comparison insights
+  const getComparisonInsight = () => {
+    if (!stats || !stats.last30Days || stats.last30Days.length < 14) {
+      return null;
+    }
+
+    const thisWeekData = getFilteredData();
+    const lastWeekStart = new Date();
+    lastWeekStart.setDate(lastWeekStart.getDate() - 13);
+    lastWeekStart.setHours(0, 0, 0, 0);
+    const lastWeekEnd = new Date();
+    lastWeekEnd.setDate(lastWeekEnd.getDate() - 7);
+    lastWeekEnd.setHours(23, 59, 59, 999);
+
+    const lastWeekData = stats.last30Days.filter((day) => {
+      const dayDate = new Date(day.date);
+      return dayDate >= lastWeekStart && dayDate <= lastWeekEnd;
+    });
+
+    if (lastWeekData.length === 0 || thisWeekData.length === 0) return null;
+
+    const thisWeekTotal = thisWeekData.reduce(
+      (sum, day) => sum + (day.totalWorkTime || 0),
+      0
+    );
+    const lastWeekTotal = lastWeekData.reduce(
+      (sum, day) => sum + (day.totalWorkTime || 0),
+      0
+    );
+
+    const diff = thisWeekTotal - lastWeekTotal;
+    const percentChange = lastWeekTotal > 0 ? (diff / lastWeekTotal) * 100 : 0;
+
+    if (Math.abs(percentChange) < 5) {
+      return {
+        icon: "📊",
+        trend: "stable",
+        message: "Phong độ ổn định",
+        detail: "Bạn đang duy trì mức độ tập trung đều đặn. Tiếp tục nhé!",
+      };
+    } else if (percentChange > 0) {
+      return {
+        icon: "📈",
+        trend: "up",
+        message: `Phong độ tăng ${Math.round(percentChange)}%`,
+        detail: `Bạn đã tập trung nhiều hơn tuần trước ${formatWorkTime(
+          diff
+        )}. Tiếp tục phát huy nhé!`,
+      };
+    } else {
+      return {
+        icon: "📉",
+        trend: "down",
+        message: `Giảm ${Math.abs(
+          Math.round(percentChange)
+        )}% so với tuần trước`,
+        detail: `Đừng nản lòng! Mỗi ngày đều là cơ hội mới để cải thiện.`,
+      };
+    }
+  };
+
+  // Get time of day insight
+  const getTimeOfDayInsight = () => {
+    // Simple placeholder - in real app, would analyze actual session times
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return "Bạn tập trung tốt nhất vào buổi sáng ☀️";
+    } else if (hour < 18) {
+      return "Bạn tập trung tốt nhất vào buổi chiều 🌤️";
+    } else {
+      return "Bạn tập trung tốt nhất vào buổi tối 🌙";
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
         style={styles.scrollView}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Clean Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>📊 {t("stats.statistics")}</Text>
-          <Text style={styles.subtitle}>{t("stats.trackProgress")}</Text>
+          <Text style={styles.title}>{t("stats.statistics")}</Text>
+          <Text style={styles.subtitle}>Phong độ tập trung của bạn</Text>
         </View>
 
-        {/* Date Range Selector */}
+        {/* Floating Pill Segmented Control */}
         <View style={styles.dateRangeContainer}>
-          <SegmentedButtons
-            value={dateRange}
-            onValueChange={handleDateRangeChange}
-            buttons={[
-              {
-                value: "today",
-                label: t("stats.today"),
-                style: styles.segmentButton,
-              },
-              {
-                value: "7days",
-                label: t("stats.last7Days"),
-                style: styles.segmentButton,
-              },
-              {
-                value: "30days",
-                label: t("stats.last30Days"),
-                style: styles.segmentButton,
-              },
-              {
-                value: "custom",
-                label: t("stats.custom"),
-                style: styles.segmentButton,
-              },
-            ]}
-            style={styles.segmentedButtons}
-          />
+          <View style={styles.pillContainer}>
+            <Pressable
+              style={[
+                styles.pillButton,
+                dateRange === "today" && styles.pillButtonActive,
+              ]}
+              onPress={() => handleDateRangeChange("today")}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  dateRange === "today" && styles.pillTextActive,
+                ]}
+              >
+                Hôm Nay
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.pillButton,
+                dateRange === "7days" && styles.pillButtonActive,
+              ]}
+              onPress={() => handleDateRangeChange("7days")}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  dateRange === "7days" && styles.pillTextActive,
+                ]}
+              >
+                7 Ngày
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.pillButton,
+                dateRange === "30days" && styles.pillButtonActive,
+              ]}
+              onPress={() => handleDateRangeChange("30days")}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  dateRange === "30days" && styles.pillTextActive,
+                ]}
+              >
+                30 Ngày
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.pillButton,
+                dateRange === "custom" && styles.pillButtonActive,
+              ]}
+              onPress={() => handleDateRangeChange("custom")}
+            >
+              <Text
+                style={[
+                  styles.pillText,
+                  dateRange === "custom" && styles.pillTextActive,
+                ]}
+              >
+                Tùy chỉnh...
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
-        {/* Filtered Stats Cards */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, styles.primaryCard]}>
-            <Text style={styles.statValue}>
-              {getFilteredStats().totalPomodoros}
+        {/* Hero Card - Main Focus Time Metric */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroHeader}>
+            <Text style={styles.heroLabel}>Tổng thời gian tập trung</Text>
+            <Text style={styles.heroSubLabel}>
+              {getChartTitle().replace("📈 ", "")}
             </Text>
-            <Text style={styles.statLabel}>Pomodoros</Text>
           </View>
 
-          <View style={[styles.statCard, styles.successCard]}>
-            <Text style={styles.statValue}>
-              {stats?.overall?.currentStreak || 0} 🔥
-            </Text>
-            <Text style={styles.statLabel}>{t("stats.streak")}</Text>
-          </View>
-
-          <View style={[styles.statCard, styles.infoCard]}>
-            <Text style={styles.statValue}>
+          {/* Empty State when 0m */}
+          {getFilteredStats().totalWorkTime === 0 ? (
+            <View style={styles.heroEmptyState}>
+              <Text style={styles.heroEmptyIcon}>🌱</Text>
+              <Text style={styles.heroEmptyValue}>0m</Text>
+              <Text style={styles.heroEmptyMessage}>
+                Hôm nay chưa bắt đầu, khởi động thôi!
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.heroValue}>
               {formatWorkTime(getFilteredStats().totalWorkTime)}
             </Text>
-            <Text style={styles.statLabel}>{t("stats.focusTime")}</Text>
-          </View>
+          )}
 
-          <View style={[styles.statCard, styles.warningCard]}>
-            <Text style={styles.statValue}>
-              {getFilteredStats().totalTasks}
+          {/* Secondary Stats Row - Badge Style */}
+          <View style={styles.secondaryStatsRow}>
+            <View style={styles.secondaryStatBadge}>
+              <Text style={styles.secondaryIcon}>🔥</Text>
+              <Text style={styles.secondaryValue}>
+                {stats?.overall?.currentStreak || 0}
+              </Text>
+              <Text style={styles.secondaryLabel}>Chuỗi</Text>
+            </View>
+
+            <View style={styles.secondaryStatBadge}>
+              <Text style={styles.secondaryIcon}>🎖️</Text>
+              <Text style={styles.secondaryValue}>
+                {getFilteredStats().totalTasks}
+              </Text>
+              <Text style={styles.secondaryLabel}>Hoàn thành</Text>
+            </View>
+
+            <View style={styles.secondaryStatBadge}>
+              <Text style={styles.secondaryIcon}>🍅</Text>
+              <Text style={styles.secondaryValue}>
+                {getFilteredStats().totalPomodoros}
+              </Text>
+              <Text style={styles.secondaryLabel}>Pomodoros</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Vibrant Streak Card with Fire Gradient */}
+        {stats?.overall?.currentStreak > 0 && (
+          <LinearGradient
+            colors={["#FF6B35", "#F7931E", "#FDC830"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.streakGradientCard}
+          >
+            {/* Decorative circles overlay for texture */}
+            <View style={styles.streakCirclesOverlay}>
+              <View style={[styles.streakCircle, styles.streakCircle1]} />
+              <View style={[styles.streakCircle, styles.streakCircle2]} />
+              <View style={[styles.streakCircle, styles.streakCircle3]} />
+            </View>
+
+            <Animated.Text style={styles.streakFireIcon}>🔥</Animated.Text>
+            <Text style={styles.streakGradientTitle}>
+              Tuyệt vời! {stats.overall.currentStreak} ngày liên tiếp!
             </Text>
-            <Text style={styles.statLabel}>{t("tasks.completed")}</Text>
+            <Text style={styles.streakGradientSubtitle}>
+              Tiếp tục phát huy! 🔥
+            </Text>
+
+            {/* Glassmorphism record badge */}
+            <View style={styles.streakRecordBadge}>
+              <Text style={styles.streakGradientRecord}>
+                Kỷ lục: {stats?.overall?.longestStreak || 0} ngày
+              </Text>
+            </View>
+          </LinearGradient>
+        )}
+
+        {/* Comparison Insight Card */}
+        {getComparisonInsight() && (
+          <View style={styles.insightCard}>
+            <Text style={styles.insightIcon}>
+              {getComparisonInsight().icon}
+            </Text>
+            <Text style={styles.insightMessage}>
+              {getComparisonInsight().message}
+            </Text>
+            <Text style={styles.insightDetail}>
+              {getComparisonInsight().detail}
+            </Text>
           </View>
+        )}
+
+        {/* Time of Day Insight - Pill Shape */}
+        <View style={styles.tipPillCard}>
+          <Text style={styles.tipPillText}>{getTimeOfDayInsight()}</Text>
         </View>
 
-        {/* Streak Message */}
-        <View style={styles.streakCard}>
-          <Text style={styles.streakEmoji}>🔥</Text>
-          <Text style={styles.streakMessage}>{getStreakMessage()}</Text>
-          <Text style={styles.longestStreak}>
-            {t("stats.longestStreak")}: {stats?.overall?.longestStreak || 0}{" "}
-            {t("stats.days")}
-          </Text>
-        </View>
-
-        {/* Chart Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{getChartTitle()}</Text>
-          <View style={styles.chartContainer}>
-            <LineChart
-              data={getChartData()}
-              width={CHART_WIDTH}
-              height={220}
-              chartConfig={{
-                backgroundColor: theme.colors.primary,
-                backgroundGradientFrom: theme.colors.primary,
-                backgroundGradientTo: theme.colors.secondary,
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                style: {
-                  borderRadius: 16,
-                },
-                propsForDots: {
-                  r: "6",
-                  strokeWidth: "2",
-                  stroke: theme.colors.accent,
-                },
-              }}
-              bezier
-              style={styles.chart}
-            />
-          </View>
-        </View>
-
-        {/* Weekly Stats */}
-        {stats?.weekly && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📅 {t("stats.thisWeek")}</Text>
-            <View style={styles.weeklyCard}>
-              <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>
-                  {t("stats.totalPomodoros")}:
-                </Text>
-                <Text style={styles.weeklyValue}>
-                  {stats.weekly.totalPomodoros}
-                </Text>
-              </View>
-              <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>
-                  {t("stats.averagePerDay")}:
-                </Text>
-                <Text style={styles.weeklyValue}>
-                  {Math.round(stats.weekly.averageDailyPomodoros * 10) / 10}
-                </Text>
-              </View>
-              <View style={styles.weeklyRow}>
-                <Text style={styles.weeklyLabel}>{t("stats.workTime")}:</Text>
-                <Text style={styles.weeklyValue}>
-                  {formatWorkTime(stats.weekly.totalWorkTime)}
-                </Text>
-              </View>
-              {stats.weekly.mostProductiveDay && (
-                <View style={styles.weeklyRow}>
-                  <Text style={styles.weeklyLabel}>
-                    {t("stats.mostProductiveDay")}:
-                  </Text>
-                  <Text style={styles.weeklyValue}>
-                    {translateDayName(stats.weekly.mostProductiveDay)}
-                  </Text>
-                </View>
-              )}
+        {/* Transparent Chart with Smooth Curves */}
+        {getFilteredData().length > 0 && (
+          <View style={styles.chartSection}>
+            <Text style={styles.chartTitle}>Biểu đồ tiến độ</Text>
+            <View style={styles.transparentChartContainer}>
+              <LineChart
+                data={getChartData()}
+                width={CHART_WIDTH - 32}
+                height={200}
+                chartConfig={{
+                  backgroundColor: "transparent",
+                  backgroundGradientFrom: "#FFFFFF",
+                  backgroundGradientTo: "#FFFFFF",
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(108, 99, 255, ${opacity})`,
+                  labelColor: (opacity = 1) =>
+                    `rgba(100, 100, 100, ${opacity})`,
+                  style: {
+                    borderRadius: 16,
+                  },
+                  propsForDots: {
+                    r: "5",
+                    strokeWidth: "2",
+                    stroke: "#6C63FF",
+                    fill: "#FFFFFF",
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "",
+                    stroke: "#E8E4FF",
+                    strokeWidth: 1,
+                  },
+                }}
+                bezier
+                style={styles.transparentChart}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+              />
             </View>
           </View>
         )}
 
-        {/* Monthly Stats */}
-        {stats?.monthly && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>📆 {t("stats.thisMonth")}</Text>
-            <View style={styles.monthlyCard}>
-              <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>
-                  {t("stats.totalPomodoros")}:
-                </Text>
-                <Text style={styles.monthlyValue}>
-                  {stats.monthly.totalPomodoros}
-                </Text>
-              </View>
-              <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>{t("stats.workTime")}:</Text>
-                <Text style={styles.monthlyValue}>
-                  {formatWorkTime(stats.monthly.totalWorkTime)}
-                </Text>
-              </View>
-              <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>{t("tasks.completed")}:</Text>
-                <Text style={styles.monthlyValue}>
-                  {stats.monthly.completedTasks}
-                </Text>
-              </View>
-              <View style={styles.monthlyRow}>
-                <Text style={styles.monthlyLabel}>
-                  {t("stats.averagePerDay")}:
-                </Text>
-                <Text style={styles.monthlyValue}>
-                  {Math.round(stats.monthly.averageDailyPomodoros * 10) / 10}
-                </Text>
+        {/* Achievement Preview with Progress Bar */}
+        <View style={styles.achievementSection}>
+          <Text style={styles.achievementSectionTitle}>🏆 Thành Tựu</Text>
+          <View style={styles.achievementPreviewCard}>
+            <Text style={styles.achievementPreviewTitle}>
+              Đã mở khóa: {getAchievementCount()}/10 thành tựu
+            </Text>
+            <View style={styles.progressBarContainer}>
+              <LinearGradient
+                colors={["#6C63FF", "#E879F9"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[
+                  styles.progressBarGradient,
+                  { width: `${(getAchievementCount() / 10) * 100}%` },
+                ]}
+              />
+              {/* Gift icon at the end */}
+              <View style={styles.progressGiftIcon}>
+                <Text style={styles.giftIconText}>🎁</Text>
               </View>
             </View>
-          </View>
-        )}
-
-        {/* Achievements Preview */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🏆 {t("stats.achievements")}</Text>
-          <View style={styles.achievementCard}>
-            <Text style={styles.achievementText}>
-              {t("stats.unlockedCount", {
-                count: getAchievementCount(),
-                total: 10,
-              })}
-            </Text>
-            <Text style={styles.achievementHint}>
-              {t("stats.achievementsHint")}
+            <Text style={styles.achievementPreviewHint}>
+              (Xem chi tiết trong phần Thành Tựu)
             </Text>
           </View>
         </View>
@@ -716,7 +861,7 @@ export default function StatisticsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F7FA",
+    backgroundColor: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
@@ -741,205 +886,421 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
   },
+
+  // Clean Header Styles
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
   },
   title: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: "bold",
-    color: "#2D3748",
-    marginBottom: 4,
+    color: "#1A202C",
+    letterSpacing: 0.3,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#718096",
+    marginTop: 4,
+    fontWeight: "400",
   },
-  statsGrid: {
+
+  // Floating Pill Segmented Control
+  dateRangeContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+  },
+  pillContainer: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 12,
-    gap: 12,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 100,
+    padding: 4,
+    gap: 4,
   },
-  statCard: {
-    width: (SCREEN_WIDTH - 48) / 2,
-    padding: 16,
-    borderRadius: 16,
+  pillButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 100,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 2,
+  },
+  pillButtonActive: {
+    backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
-  primaryCard: {
-    backgroundColor: theme.colors.primary,
+  pillText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#6B7280",
   },
-  successCard: {
-    backgroundColor: theme.colors.secondary,
+  pillTextActive: {
+    color: "#1F2937",
+    fontWeight: "600",
   },
-  infoCard: {
-    backgroundColor: theme.colors.accent,
+
+  // Hero Card Styles
+  heroCard: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    marginBottom: 16,
+    padding: 24,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  warningCard: {
-    backgroundColor: theme.colors.tertiary,
-  },
-  statValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    opacity: 0.9,
-    textAlign: "center",
-  },
-  streakCard: {
-    margin: 16,
-    padding: 20,
-    backgroundColor: "#FFF7ED",
-    borderRadius: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#F59E0B",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  streakEmoji: {
-    fontSize: 48,
-    textAlign: "center",
+  heroHeader: {
     marginBottom: 8,
   },
-  streakMessage: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#92400E",
+  heroLabel: {
+    fontSize: 15,
+    color: "#718096",
+    fontWeight: "500",
+  },
+  heroSubLabel: {
+    fontSize: 13,
+    color: "#A0AEC0",
+    marginTop: 2,
+  },
+  heroValue: {
+    fontSize: 56,
+    fontWeight: "bold",
+    color: "#6C63FF",
+    letterSpacing: -1,
+    marginBottom: 12,
+  },
+
+  // Hero Empty State
+  heroEmptyState: {
+    alignItems: "center",
+    paddingVertical: 20,
+  },
+  heroEmptyIcon: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  heroEmptyValue: {
+    fontSize: 48,
+    fontWeight: "bold",
+    color: "#CBD5E0",
+    marginBottom: 8,
+  },
+  heroEmptyMessage: {
+    fontSize: 15,
+    color: "#6C63FF",
+    fontWeight: "500",
+    fontStyle: "italic",
+  },
+
+  // Mini Chart in Hero Card
+  miniChartContainer: {
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  miniChart: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    height: 70,
+    gap: 3,
+  },
+  miniBar: {
+    flex: 1,
+    backgroundColor: "#E8E4FF",
+    borderRadius: 4,
+    minHeight: 10,
+  },
+
+  // Secondary Stats Row - Badge Style
+  secondaryStatsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F3F4F6",
+  },
+  secondaryStatBadge: {
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    minWidth: 90,
+  },
+  secondaryStat: {
+    alignItems: "center",
+  },
+  secondaryIcon: {
+    fontSize: 28,
+    marginBottom: 6,
+  },
+  secondaryValue: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#2D3748",
+    marginBottom: 2,
+  },
+  secondaryLabel: {
+    fontSize: 12,
+    color: "#A0AEC0",
+    fontWeight: "500",
+  },
+
+  // Vibrant Streak Card with Gradient
+  streakGradientCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 24,
+    borderRadius: 20,
+    alignItems: "center",
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+    overflow: "hidden",
+  },
+  // Decorative circles overlay for texture
+  streakCirclesOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.15,
+  },
+  streakCircle: {
+    position: "absolute",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 1000,
+  },
+  streakCircle1: {
+    width: 120,
+    height: 120,
+    top: -40,
+    right: -30,
+  },
+  streakCircle2: {
+    width: 80,
+    height: 80,
+    bottom: -20,
+    left: -20,
+  },
+  streakCircle3: {
+    width: 60,
+    height: 60,
+    top: 50,
+    left: 30,
+  },
+  streakFireIcon: {
+    fontSize: 56,
+    marginBottom: 8,
+  },
+  streakGradientTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#FFFFFF",
     textAlign: "center",
     marginBottom: 4,
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  longestStreak: {
-    fontSize: 12,
-    color: "#B45309",
+  streakGradientSubtitle: {
+    fontSize: 15,
+    color: "#FFFFFF",
     textAlign: "center",
+    marginBottom: 12,
+    opacity: 0.95,
   },
-  section: {
+  // Glassmorphism record badge
+  streakRecordBadge: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  streakGradientRecord: {
+    fontSize: 13,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+
+  // Comparison Insight Card
+  insightCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 20,
+    backgroundColor: "#F7FAFC",
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#6C63FF",
+  },
+  insightIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  insightMessage: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: "#2D3748",
+    marginBottom: 6,
+  },
+  insightDetail: {
+    fontSize: 14,
+    color: "#4A5568",
+    lineHeight: 20,
+  },
+
+  // Time of Day Tip Card - Pill Shape
+  tipPillCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "#FFF9C4",
+    borderRadius: 100,
+    alignSelf: "center",
+    maxWidth: "90%",
+  },
+  tipPillText: {
+    fontSize: 14,
+    color: "#7C3AED",
+    textAlign: "center",
+    fontWeight: "500",
+    fontStyle: "italic",
+  },
+
+  // Legacy tip card (kept for compatibility)
+  tipCard: {
+    marginHorizontal: 20,
+    marginBottom: 16,
     padding: 16,
+    backgroundColor: "#EBF8FF",
+    borderRadius: 12,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+  tipText: {
+    fontSize: 14,
+    color: "#2C5282",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+
+  // Transparent Chart Section
+  chartSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 17,
+    fontWeight: "600",
     color: "#2D3748",
     marginBottom: 12,
   },
-  chartContainer: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 8,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  chart: {
-    borderRadius: 16,
-  },
-  weeklyCard: {
+  transparentChartContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
-    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  weeklyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  weeklyLabel: {
-    fontSize: 14,
-    color: "#4A5568",
-  },
-  weeklyValue: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.primary,
-  },
-  monthlyCard: {
-    backgroundColor: "#FFFFFF",
+  transparentChart: {
     borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    marginLeft: -16,
   },
-  monthlyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
+
+  // Achievement Section with Progress Bar
+  achievementSection: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  monthlyLabel: {
-    fontSize: 14,
-    color: "#4A5568",
-  },
-  monthlyValue: {
-    fontSize: 16,
+  achievementSectionTitle: {
+    fontSize: 17,
     fontWeight: "600",
-    color: theme.colors.secondary,
+    color: "#2D3748",
+    marginBottom: 12,
   },
-  achievementCard: {
+  achievementPreviewCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 20,
-    alignItems: "center",
-    elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  achievementText: {
+  achievementPreviewTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: "#2D3748",
-    marginBottom: 4,
+    marginBottom: 12,
   },
-  achievementHint: {
+  progressBarContainer: {
+    height: 8,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
+    position: "relative",
+  },
+  progressBarGradient: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#6C63FF",
+    borderRadius: 4,
+  },
+  // Gift icon at the end of progress bar
+  progressGiftIcon: {
+    position: "absolute",
+    right: -4,
+    top: -12,
+    width: 32,
+    height: 32,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  giftIconText: {
+    fontSize: 18,
+  },
+  achievementPreviewHint: {
     fontSize: 12,
-    color: "#718096",
+    color: "#A0AEC0",
+    textAlign: "center",
+    fontStyle: "italic",
   },
+
   bottomSpacing: {
     height: 40,
   },
-  dateRangeContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    marginBottom: 8,
-  },
-  segmentedButtons: {
-    backgroundColor: "#F5F7FA",
-  },
-  segmentButton: {
-    borderColor: theme.colors.primary,
-  },
+
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -987,6 +1348,8 @@ const styles = StyleSheet.create({
     minWidth: 120,
     backgroundColor: theme.colors.primary,
   },
+
+  // Empty State Styles
   emptyStateContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
@@ -1023,6 +1386,50 @@ const styles = StyleSheet.create({
     color: "#718096",
     textAlign: "center",
     lineHeight: 20,
+  },
+
+  // Legacy styles for compatibility (can be removed if not used elsewhere)
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 12,
+    gap: 12,
+  },
+  statCard: {
+    width: (SCREEN_WIDTH - 48) / 2,
+    padding: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  primaryCard: {
+    backgroundColor: theme.colors.primary,
+  },
+  successCard: {
+    backgroundColor: theme.colors.secondary,
+  },
+  infoCard: {
+    backgroundColor: theme.colors.accent,
+  },
+  warningCard: {
+    backgroundColor: theme.colors.tertiary,
+  },
+  statValue: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#FFFFFF",
+    opacity: 0.9,
+    textAlign: "center",
   },
   emptyChartContainer: {
     backgroundColor: "#F7FAFC",

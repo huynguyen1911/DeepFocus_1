@@ -17,6 +17,8 @@ export default function TabLayout() {
 
   // Determine if user is in Teacher/Guardian mode
   const isTeacher = currentRole === 'teacher';
+  const isGuardian = currentRole === 'guardian';
+  const isStudent = currentRole === 'student';
 
   return (
     <Tabs
@@ -42,6 +44,7 @@ export default function TabLayout() {
           title: isTeacher ? 'Trang Chủ' : 'DeepFocus',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name={isTeacher ? "house.fill" : "timer"} color={color} />,
+          headerShown: false, // Ẩn header để dùng custom header trong HomeScreen
         }}
       />
 
@@ -55,10 +58,11 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Competitions Tab - always visible */}
+      {/* Competitions Tab - HIDDEN (not used) */}
       <Tabs.Screen
         name="competitions"
         options={{
+          href: null, // Hide from tab bar
           title: isTeacher ? 'Quản Lý Cuộc Thi' : 'Cuộc Thi',
           tabBarLabel: 'Compete',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="trophy.fill" color={color} />,
@@ -72,38 +76,30 @@ export default function TabLayout() {
           title: isTeacher ? 'Analytics' : 'Thống Kê',
           tabBarLabel: isTeacher ? 'Analytics' : 'Stats',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name={isTeacher ? "chart.line.uptrend.xyaxis" : "chart.bar.fill"} color={color} />,
+          headerShown: false, // Ẩn header để dùng large title trong StatisticsScreen
         }}
       />
 
-      {/* Explore Tab - visible for students, hidden for teachers */}
+      {/* Explore Tab - HIDDEN (not used) */}
       <Tabs.Screen
         name="explore"
         options={{
-          href: isTeacher ? null : undefined,
+          href: null, // Hide from tab bar
           title: 'Khám phá',
           tabBarLabel: 'Explore',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.fill" color={color} />,
         }}
       />
 
-      {/* Focus Training Tab - always visible */}
+      {/* Focus Training Tab - visible for students only */}
       <Tabs.Screen
         name="focus-training"
         options={{
-          title: 'Tập Trung',
+          href: isStudent ? undefined : null, // Hide from teacher/guardian
+          title: 'Focus Training ✨',
           tabBarLabel: 'Focus',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="brain.head.profile" color={color} />,
-        }}
-      />
-
-      {/* AI Planner Tab - Premium Feature (free for testing) */}
-      <Tabs.Screen
-        name="ai-planner"
-        options={{
-          title: 'AI Planner ✨',
-          tabBarLabel: 'AI Plan',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="sparkles" color={color} />,
-          headerShown: false, // AIPlannerNavigator handles its own headers
+          headerShown: false,
         }}
       />
 
@@ -113,6 +109,7 @@ export default function TabLayout() {
         options={{
           title: 'Cài Đặt',
           tabBarLabel: 'Settings',
+          headerShown: false, // Ẩn header để dùng Large Title trong SettingsScreen
           tabBarIcon: ({ color }) => (
             <View>
               <IconSymbol size={28} name="gearshape.fill" color={color} />

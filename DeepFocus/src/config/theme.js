@@ -4,34 +4,34 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: "#FF5252", // Work - Đỏ
-    primaryContainer: "#FFCDD2",
+    primary: "#6C63FF", // DeepFocus Purple - Tím chủ đạo
+    primaryContainer: "#E8E4FF",
     secondary: "#66BB6A", // Short Break - Xanh lá
     secondaryContainer: "#C8E6C9",
     tertiary: "#5C6BC0", // Long Break - Xanh dương/Tím
     tertiaryContainer: "#C5CAE9",
-    accent: "#FF9800", // Accent - Cam
+    accent: "#8F94FB", // Accent - Tím nhạt
     surface: "#FFFFFF",
-    surfaceVariant: "#FAFAFA",
-    background: "#FFFFFF",
-    error: "#B71C1C",
+    surfaceVariant: "#F3F0FF",
+    background: "#FAFAFA",
+    error: "#FF5252", // Chỉ dùng cho error/stop
     onPrimary: "#FFFFFF",
     onSecondary: "#FFFFFF",
     onTertiary: "#FFFFFF",
-    onSurface: "#212121",
-    onBackground: "#212121",
+    onSurface: "#2D3436",
+    onBackground: "#2D3436",
   },
 };
 
 export const colors = {
-  primary: "#FF5252",
-  secondary: "#F44336",
-  background: "#FFFFFF",
+  primary: "#6C63FF",
+  secondary: "#8F94FB",
+  background: "#FAFAFA",
   surface: "#FFFFFF",
-  text: "#212121",
-  textSecondary: "#757575",
-  border: "#E0E0E0",
-  error: "#B71C1C",
+  text: "#2D3436",
+  textSecondary: "#636E72",
+  border: "#E8E4FF",
+  error: "#FF5252",
   success: "#4CAF50",
   warning: "#FF9800",
 };

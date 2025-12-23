@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { roleAPI } from "../services/api";
 import { STORAGE_KEYS } from "../config/constants";
+import { useAuth } from "./AuthContext";
 
 const RoleContext = createContext();
 
@@ -23,27 +24,27 @@ export const RoleProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  // Load roles from API and AsyncStorage only if user is authenticated
+  // Load roles when authentication state changes
   useEffect(() => {
-    checkAuthAndLoadRoles();
-  }, []);
+    if (!authLoading) {
+      checkAuthAndLoadRoles();
+    }
+  }, [isAuthenticated, authLoading]);
 
   const checkAuthAndLoadRoles = async () => {
     try {
-      // Check if user has auth token
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-
-      if (!token) {
-        // No token, set default student role without calling API
-        console.log("⚠️ No auth token, using default role");
+      // If not authenticated, set default student role
+      if (!isAuthenticated) {
+        console.log("⚠️ Not authenticated, using default role");
         setRoles([{ type: "student", isPrimary: true, isActive: true }]);
         setCurrentRole("student");
         setLoading(false);
         return;
       }
 
-      // Token exists, load roles from API
+      // User is authenticated, load roles from API
       await loadRoles();
     } catch (err) {
       console.error("Error checking auth:", err);
@@ -104,20 +105,19 @@ export const RoleProvider = ({ children }) => {
         throw new Error(errorMsg);
       }
     } catch (err) {
-      console.error("❌ Error loading roles:", err);
-      console.error("❌ Error details:", {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
-
-      // Only set error if it's not an auth error
-      if (err.message && !err.message.includes("token")) {
+      // Handle token expiration silently - user will be logged out by AuthContext
+      if (
+        err.status === 401 ||
+        err.message?.includes("Token has expired") ||
+        err.message?.includes("token")
+      ) {
+        console.log("⚠️ Auth error in loadRoles, using default role");
+      } else {
+        console.error("❌ Error loading roles:", err.message);
         setError(err.message || "Failed to load roles");
       }
 
       // Set default student role if API fails
-      console.log("⚠️ Falling back to default student role");
       setRoles([{ type: "student", isPrimary: true, isActive: true }]);
       setCurrentRole("student");
     } finally {

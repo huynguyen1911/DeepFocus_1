@@ -6,7 +6,10 @@ import {
   Alert,
   BackHandler,
   Linking,
+  Modal,
+  Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import {
   Card,
@@ -44,6 +47,8 @@ const SettingsScreen = () => {
 
   // Determine if user is Teacher/Guardian
   const isTeacher = currentRole === "teacher";
+  const isGuardian = currentRole === "guardian";
+  const isStudent = currentRole === "student";
 
   // Create user-specific storage key
   const userId = user?.id || user?._id || "default";
@@ -62,6 +67,12 @@ const SettingsScreen = () => {
   const [dailyGoal, setDailyGoal] = useState(8); // ← DAILY GOAL SETTING
   const [testMode, setTestMode] = useState(false); // ← TEST MODE TOGGLE (default OFF for production)
   const [selectedLanguage, setSelectedLanguage] = useState(language); // ← Preview language selection
+  const [languageModalVisible, setLanguageModalVisible] = useState(false); // ← Language selection modal
+
+  // Slider tooltip states
+  const [workSliderValue, setWorkSliderValue] = useState(null);
+  const [shortBreakSliderValue, setShortBreakSliderValue] = useState(null);
+  const [longBreakSliderValue, setLongBreakSliderValue] = useState(null);
 
   // UI State
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -989,173 +1000,316 @@ const SettingsScreen = () => {
     await handleSaveSettings();
   };
 
+  // Helper functions for profile display
+  const formatUserName = (name) => {
+    if (!name) return "Test User 1";
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "TU";
+    const words = name.trim().split(" ");
+    if (words.length >= 2) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Auto-save function - debounced
+  const autoSaveTimeoutRef = useRef(null);
+  const handleAutoSave = useCallback(() => {
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout to auto-save after 1 second of inactivity
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log("🔄 Auto-saving settings...");
+
+        const newSettings = testMode
+          ? {
+              workDuration: 10,
+              shortBreakDuration: 5,
+              longBreakDuration: 10,
+              pomodorosUntilLongBreak,
+              autoStartBreaks,
+              autoStartPomodoros,
+              notifications,
+              sound,
+              vibration,
+              dailyGoal,
+              testMode: true,
+            }
+          : {
+              workDuration: Math.max(1, workDuration) * 60,
+              shortBreakDuration: Math.max(1, shortBreakDuration) * 60,
+              longBreakDuration: Math.max(1, longBreakDuration) * 60,
+              pomodorosUntilLongBreak,
+              autoStartBreaks,
+              autoStartPomodoros,
+              notifications,
+              sound,
+              vibration,
+              dailyGoal,
+              testMode: false,
+            };
+
+        await AsyncStorage.setItem(
+          USER_SETTINGS_KEY,
+          JSON.stringify(newSettings)
+        );
+        updateSettings(newSettings);
+
+        // Save language if changed
+        if (selectedLanguage !== language) {
+          await changeLanguage(selectedLanguage);
+        }
+
+        // Update original values
+        const newOriginalValues = {
+          workDuration,
+          shortBreakDuration,
+          longBreakDuration,
+          pomodorosUntilLongBreak,
+          autoStartBreaks,
+          autoStartPomodoros,
+          notifications,
+          sound,
+          vibration,
+          dailyGoal,
+          testMode,
+          language: selectedLanguage,
+        };
+
+        justSavedRef.current = true;
+        lastSavedTestModeRef.current = testMode;
+        setOriginalValues(newOriginalValues);
+        setHasUnsavedChanges(false);
+
+        console.log("✅ Auto-save completed");
+      } catch (error) {
+        console.error("❌ Auto-save error:", error);
+      }
+    }, 1000);
+  }, [
+    testMode,
+    workDuration,
+    shortBreakDuration,
+    longBreakDuration,
+    pomodorosUntilLongBreak,
+    autoStartBreaks,
+    autoStartPomodoros,
+    notifications,
+    sound,
+    vibration,
+    dailyGoal,
+    selectedLanguage,
+    language,
+    updateSettings,
+    changeLanguage,
+  ]);
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          {/* Student-Only Settings: Pomodoro Configuration */}
-          {!isTeacher && (
-            <>
-              {/* Test Mode Section */}
-              <Card style={[styles.card, styles.testModeCard]}>
-                <Card.Content>
-                  <View style={styles.switchRow}>
-                    <View style={styles.labelContainer}>
-                      <Text variant="bodyLarge" style={styles.testModeLabel}>
-                        🧪 {t("settings.testMode")} (10/5/10{" "}
-                        {t("stats.seconds")})
-                      </Text>
-                      <Text variant="bodySmall" style={styles.helpText}>
-                        {t("settings.testModeDesc")}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={testMode}
-                      onValueChange={setTestMode}
-                      color="#FF9800"
-                    />
-                  </View>
-                  {testMode && (
-                    <View style={styles.testModeWarning}>
-                      <Text variant="bodySmall" style={styles.warningText}>
-                        ⚠️ {t("settings.testModeWarning")}
-                      </Text>
-                    </View>
-                  )}
-                </Card.Content>
-              </Card>
+          {/* Large Title */}
+          <Text variant="displaySmall" style={styles.largeTitle}>
+            Cài Đặt
+          </Text>
 
+          {/* Profile Section - Centered & Prominent */}
+          <View style={styles.profileContainer}>
+            <Pressable
+              style={styles.profileCard}
+              onPress={() => router.push("/profile")}
+            >
+              <Avatar.Text
+                label={getInitials(user?.username || "test user 1")}
+                size={72}
+                style={styles.avatarLarge}
+                color="#FFFFFF"
+                labelStyle={{ fontSize: 28, fontWeight: "bold" }}
+              />
+              <Text variant="titleLarge" style={styles.profileName}>
+                {formatUserName(user?.username || "test user 1")}
+              </Text>
+              <Text variant="bodyMedium" style={styles.profileEmail}>
+                {user?.email || "test@deepfocus.app"}
+              </Text>
+              <List.Icon
+                icon="chevron-right"
+                color="#8E8E93"
+                style={styles.profileChevron}
+              />
+            </Pressable>
+          </View>
+
+          {/* Student-Only Settings: Pomodoro Configuration */}
+          {isStudent && (
+            <>
               {/* Timer Durations Section */}
-              <Card style={styles.card}>
-                <Card.Title
-                  title={`⏱️ ${t("settings.timerSettings")}`}
-                  titleStyle={styles.cardTitle}
-                />
-                <Card.Content>
-                  {/* Work Duration */}
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                ĐỒNG HỒ
+              </Text>
+              <View style={styles.groupedCard}>
+                {/* Work Duration */}
+                <View style={styles.settingItem}>
                   <View style={styles.settingRow}>
-                    <Text
-                      variant="bodyLarge"
-                      style={[styles.label, testMode && styles.disabledText]}
-                    >
+                    <Text variant="bodyLarge" style={styles.label}>
                       {t("settings.workDuration")}
                     </Text>
                     <Text
                       variant="titleMedium"
-                      style={[
-                        styles.value,
-                        { color: theme.colors.primary },
-                        testMode && styles.disabledText,
-                      ]}
+                      style={[styles.value, { color: theme.colors.primary }]}
                     >
                       {testMode
                         ? `10 ${t("stats.seconds")}`
                         : `${workDuration} ${t("settings.minutes")}`}
                     </Text>
                   </View>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={5}
-                    maximumValue={45}
-                    step={5}
-                    value={workDuration}
-                    onValueChange={(value) => {
-                      triggerHapticFeedback();
-                      setWorkDuration(value);
-                    }}
-                    minimumTrackTintColor={theme.colors.primary}
-                    maximumTrackTintColor="#E0E0E0"
-                    thumbTintColor={theme.colors.primary}
-                    disabled={testMode}
-                  />
+                  <View style={styles.sliderContainer}>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={5}
+                      maximumValue={45}
+                      step={5}
+                      value={workDuration}
+                      onValueChange={(value) => {
+                        if (value !== workDuration) {
+                          triggerHapticFeedback();
+                        }
+                        setWorkSliderValue(value);
+                        setWorkDuration(value);
+                      }}
+                      onSlidingComplete={(value) => {
+                        setWorkSliderValue(null);
+                        handleAutoSave();
+                      }}
+                      minimumTrackTintColor={theme.colors.primary}
+                      maximumTrackTintColor="#E0E0E0"
+                      thumbTintColor={theme.colors.primary}
+                      disabled={testMode}
+                    />
+                    {workSliderValue !== null && (
+                      <View style={styles.sliderTooltip}>
+                        <Text style={styles.sliderTooltipText}>
+                          {workSliderValue} {t("settings.minutes")}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
-                  {/* Short Break Duration */}
+                {/* Short Break Duration */}
+                <View style={styles.settingItem}>
                   <View style={styles.settingRow}>
-                    <Text
-                      variant="bodyLarge"
-                      style={[styles.label, testMode && styles.disabledText]}
-                    >
+                    <Text variant="bodyLarge" style={styles.label}>
                       {t("settings.shortBreakDuration")}
                     </Text>
                     <Text
                       variant="titleMedium"
-                      style={[
-                        styles.value,
-                        { color: "#66BB6A" },
-                        testMode && styles.disabledText,
-                      ]}
+                      style={[styles.value, { color: "#66BB6A" }]}
                     >
                       {testMode
                         ? `5 ${t("stats.seconds")}`
                         : `${shortBreakDuration} ${t("settings.minutes")}`}
                     </Text>
                   </View>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={1}
-                    maximumValue={10}
-                    step={1}
-                    value={shortBreakDuration}
-                    onValueChange={(value) => {
-                      triggerHapticFeedback();
-                      setShortBreakDuration(value);
-                    }}
-                    minimumTrackTintColor="#66BB6A"
-                    maximumTrackTintColor="#E0E0E0"
-                    thumbTintColor="#66BB6A"
-                    disabled={testMode}
-                  />
+                  <View style={styles.sliderContainer}>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={1}
+                      maximumValue={10}
+                      step={1}
+                      value={shortBreakDuration}
+                      onValueChange={(value) => {
+                        if (value !== shortBreakDuration) {
+                          triggerHapticFeedback();
+                        }
+                        setShortBreakSliderValue(value);
+                        setShortBreakDuration(value);
+                      }}
+                      onSlidingComplete={(value) => {
+                        setShortBreakSliderValue(null);
+                        handleAutoSave();
+                      }}
+                      minimumTrackTintColor="#66BB6A"
+                      maximumTrackTintColor="#E0E0E0"
+                      thumbTintColor="#66BB6A"
+                      disabled={testMode}
+                    />
+                    {shortBreakSliderValue !== null && (
+                      <View style={styles.sliderTooltip}>
+                        <Text style={styles.sliderTooltipText}>
+                          {shortBreakSliderValue} {t("settings.minutes")}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
-                  {/* Long Break Duration */}
+                {/* Long Break Duration */}
+                <View style={styles.settingItem}>
                   <View style={styles.settingRow}>
-                    <Text
-                      variant="bodyLarge"
-                      style={[styles.label, testMode && styles.disabledText]}
-                    >
+                    <Text variant="bodyLarge" style={styles.label}>
                       {t("settings.longBreakDuration")}
                     </Text>
                     <Text
                       variant="titleMedium"
-                      style={[
-                        styles.value,
-                        { color: "#5C6BC0" },
-                        testMode && styles.disabledText,
-                      ]}
+                      style={[styles.value, { color: "#5C6BC0" }]}
                     >
                       {testMode
                         ? `10 ${t("stats.seconds")}`
                         : `${longBreakDuration} ${t("settings.minutes")}`}
                     </Text>
                   </View>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={5}
-                    maximumValue={30}
-                    step={5}
-                    value={longBreakDuration}
-                    onValueChange={(value) => {
-                      triggerHapticFeedback();
-                      setLongBreakDuration(value);
-                    }}
-                    minimumTrackTintColor="#5C6BC0"
-                    maximumTrackTintColor="#E0E0E0"
-                    thumbTintColor="#5C6BC0"
-                    disabled={testMode}
-                  />
-                </Card.Content>
-              </Card>
+                  <View style={styles.sliderContainer}>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={5}
+                      maximumValue={30}
+                      step={5}
+                      value={longBreakDuration}
+                      onValueChange={(value) => {
+                        if (value !== longBreakDuration) {
+                          triggerHapticFeedback();
+                        }
+                        setLongBreakSliderValue(value);
+                        setLongBreakDuration(value);
+                      }}
+                      onSlidingComplete={(value) => {
+                        setLongBreakSliderValue(null);
+                        handleAutoSave();
+                      }}
+                      minimumTrackTintColor="#5C6BC0"
+                      maximumTrackTintColor="#E0E0E0"
+                      thumbTintColor="#5C6BC0"
+                      disabled={testMode}
+                    />
+                    {longBreakSliderValue !== null && (
+                      <View style={styles.sliderTooltip}>
+                        <Text style={styles.sliderTooltipText}>
+                          {longBreakSliderValue} {t("settings.minutes")}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
 
-              {/* Break Interval Section */}
-              <Card style={styles.card}>
-                <Card.Title
-                  title={`🔄 ${t("settings.behaviorSettings")}`}
-                  titleStyle={styles.cardTitle}
-                />
-                <Card.Content>
+                <Divider style={styles.listDivider} />
+
+                {/* Pomodoros Until Long Break */}
+                <View style={styles.settingItem}>
                   <View style={styles.settingRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
@@ -1183,15 +1337,18 @@ const SettingsScreen = () => {
                     onValueChange={(value) => {
                       triggerHapticFeedback();
                       setPomodorosUntilLongBreak(value);
+                      handleAutoSave();
                     }}
                     minimumTrackTintColor={theme.colors.primary}
                     maximumTrackTintColor="#E0E0E0"
                     thumbTintColor={theme.colors.primary}
                   />
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
-                  {/* Daily Goal Setting */}
+                {/* Daily Goal */}
+                <View style={styles.settingItem}>
                   <View style={styles.settingRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
@@ -1217,22 +1374,22 @@ const SettingsScreen = () => {
                     onValueChange={(value) => {
                       triggerHapticFeedback();
                       setDailyGoal(Math.round(value));
+                      handleAutoSave();
                     }}
                     minimumTrackTintColor={theme.colors.primary}
                     maximumTrackTintColor="#E0E0E0"
                     thumbTintColor={theme.colors.primary}
                   />
-                </Card.Content>
-              </Card>
+                </View>
+              </View>
 
-              {/* Auto-Start Section */}
-              <Card style={styles.card}>
-                <Card.Title
-                  title={`🚀 ${t("settings.behaviorSettings")}`}
-                  titleStyle={styles.cardTitle}
-                />
-                <Card.Content>
-                  {/* Auto Start Breaks */}
+              {/* Behavior Settings Section */}
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                HÀNH VI
+              </Text>
+              <View style={styles.groupedCard}>
+                {/* Auto Start Breaks */}
+                <View style={styles.settingItem}>
                   <View style={styles.switchRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
@@ -1244,14 +1401,19 @@ const SettingsScreen = () => {
                     </View>
                     <Switch
                       value={autoStartBreaks}
-                      onValueChange={setAutoStartBreaks}
+                      onValueChange={(value) => {
+                        setAutoStartBreaks(value);
+                        handleAutoSave();
+                      }}
                       color={theme.colors.primary}
                     />
                   </View>
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
-                  {/* Auto Start Pomodoros */}
+                {/* Auto Start Pomodoros */}
+                <View style={styles.settingItem}>
                   <View style={styles.switchRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
@@ -1263,280 +1425,221 @@ const SettingsScreen = () => {
                     </View>
                     <Switch
                       value={autoStartPomodoros}
-                      onValueChange={setAutoStartPomodoros}
+                      onValueChange={(value) => {
+                        setAutoStartPomodoros(value);
+                        handleAutoSave();
+                      }}
                       color={theme.colors.primary}
                     />
                   </View>
-                </Card.Content>
-              </Card>
+                </View>
+              </View>
 
               {/* Notifications Section */}
-              <Card style={styles.card}>
-                <Card.Title
-                  title={`🔔 ${t("settings.notificationSettings")}`}
-                  titleStyle={styles.cardTitle}
-                />
-                <Card.Content>
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                ÂM THANH & RUNG
+              </Text>
+              <View style={styles.groupedCard}>
+                <View style={styles.settingItem}>
                   <View style={styles.switchRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
                         {t("settings.enableNotifications")}
                       </Text>
-                      <Text variant="bodySmall" style={styles.helpText}>
-                        {t("settings.enableNotificationsDesc")}
-                      </Text>
                     </View>
                     <Switch
                       value={notifications}
-                      onValueChange={setNotifications}
+                      onValueChange={(value) => {
+                        setNotifications(value);
+                        handleAutoSave();
+                      }}
                       color={theme.colors.primary}
                     />
                   </View>
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
+                <View style={styles.settingItem}>
                   <View style={styles.switchRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
                         🔊 {t("settings.soundEnabled")}
                       </Text>
-                      <Text variant="bodySmall" style={styles.helpText}>
-                        {t("settings.soundEnabledDesc")}
-                      </Text>
                     </View>
                     <Switch
                       value={sound}
-                      onValueChange={setSound}
+                      onValueChange={(value) => {
+                        setSound(value);
+                        handleAutoSave();
+                      }}
                       color={theme.colors.primary}
                       disabled={!notifications}
                     />
                   </View>
+                </View>
 
-                  <Divider style={styles.divider} />
+                <Divider style={styles.listDivider} />
 
+                <View style={styles.settingItem}>
                   <View style={styles.switchRow}>
                     <View style={styles.labelContainer}>
                       <Text variant="bodyLarge" style={styles.label}>
                         📳 {t("settings.vibrationEnabled")}
                       </Text>
-                      <Text variant="bodySmall" style={styles.helpText}>
-                        {t("settings.vibrationEnabledDesc")}
-                      </Text>
                     </View>
                     <Switch
                       value={vibration}
-                      onValueChange={setVibration}
+                      onValueChange={(value) => {
+                        setVibration(value);
+                        handleAutoSave();
+                      }}
                       color={theme.colors.primary}
                       disabled={!notifications}
                     />
                   </View>
-                </Card.Content>
-              </Card>
-
-              {/* Action Buttons */}
-              <View style={styles.buttonContainer}>
-                <Button
-                  mode="contained"
-                  onPress={handleSaveSettings}
-                  loading={isSaving}
-                  disabled={isSaving}
-                  style={[
-                    styles.saveButton,
-                    hasUnsavedChanges && styles.saveButtonHighlight,
-                  ]}
-                  contentStyle={styles.buttonContent}
-                  icon="content-save"
-                  buttonColor={hasUnsavedChanges ? "#FF9800" : undefined}
-                >
-                  {hasUnsavedChanges
-                    ? `💾 ${t("settings.saveChanges")}`
-                    : t("settings.saveSettings")}
-                </Button>
-
-                <Button
-                  mode="outlined"
-                  onPress={handleResetSettings}
-                  disabled={isSaving}
-                  style={styles.resetButton}
-                  contentStyle={styles.buttonContent}
-                  icon="restore"
-                >
-                  {t("settings.resetDefault")}
-                </Button>
+                </View>
               </View>
             </>
           )}
 
-          {/* Profile Section */}
-          <Card style={styles.card}>
-            <List.Item
-              title="Hồ Sơ Người Dùng"
-              description="Quản lý thông tin cá nhân và vai trò"
-              left={(props) => <List.Icon {...props} icon="account" />}
-              right={(props) => <List.Icon {...props} icon="chevron-right" />}
-              onPress={() => router.push("/profile")}
-              style={{ paddingVertical: 8 }}
-            />
-          </Card>
-
-          {/* Guardian Section - Only show for students with pending requests */}
-          {hasRole("student") && pendingRequests.length > 0 && (
-            <Card style={styles.card}>
-              <Card.Title
-                title={`👪 Yêu cầu liên kết (${pendingRequests.length})`}
-                titleStyle={styles.cardTitle}
-              />
-              <Card.Content>
-                <Text variant="bodyMedium" style={{ marginBottom: 12 }}>
-                  Bạn có {pendingRequests.length} yêu cầu liên kết từ phụ
-                  huynh/gia sư
-                </Text>
-                <Button
-                  mode="contained"
-                  onPress={() => router.push("/guardian/pending-requests")}
-                  icon="account-multiple"
-                  style={{ marginTop: 8 }}
-                >
-                  Xem yêu cầu
-                </Button>
-              </Card.Content>
-            </Card>
-          )}
-
-          {/* Account Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`⚙️ ${t("settings.accountSettings")}`}
-              titleStyle={styles.cardTitle}
-            />
-            <Card.Content>
-              <Divider style={styles.divider} />
-
-              <Button
-                mode="outlined"
-                onPress={() => {
-                  Alert.alert(
-                    t("alerts.logout.title"),
-                    t("alerts.logout.message"),
-                    [
-                      { text: t("alerts.logout.cancel"), style: "cancel" },
-                      {
-                        text: t("alerts.logout.confirm"),
-                        style: "destructive",
-                        onPress: async () => {
-                          resetLanguage(); // Reset to Vietnamese before logout
-                          await logout();
-                          // Navigation will automatically redirect to Login
-                        },
-                      },
-                    ]
-                  );
-                }}
-                icon="logout"
-                textColor="#EF5350"
-                style={styles.logoutButton}
-              >
-                {t("settings.logout")}
-              </Button>
-            </Card.Content>
-          </Card>
-
           {/* Notifications Section */}
-          <Card style={styles.card}>
-            <Card.Title title={`🔔 Thông Báo`} titleStyle={styles.cardTitle} />
-            <Card.Content>
-              <List.Item
-                title="Xem tất cả thông báo"
-                description="Kiểm tra các thông báo và cập nhật mới nhất"
-                left={(props) => <List.Icon {...props} icon="bell" />}
-                right={(props) => <List.Icon {...props} icon="chevron-right" />}
-                onPress={() => navigation.navigate("alerts")}
-              />
-            </Card.Content>
-          </Card>
+          <Text variant="titleSmall" style={styles.sectionHeader}>
+            THÔNG BÁO
+          </Text>
+          <View style={styles.groupedCard}>
+            <List.Item
+              title="Xem tất cả thông báo"
+              description="Kiểm tra các thông báo và cập nhật mới nhất"
+              left={(props) => <List.Icon {...props} icon="bell" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => navigation.navigate("alerts")}
+            />
+          </View>
+
+          {/* Language Settings Section - Collapsed */}
+          <Text variant="titleSmall" style={styles.sectionHeader}>
+            NGÔN NGỮ
+          </Text>
+          <View style={styles.groupedCard}>
+            <List.Item
+              title="Ngôn ngữ"
+              description={selectedLanguage === "vi" ? "Tiếng Việt" : "English"}
+              left={(props) => <List.Icon {...props} icon="web" />}
+              right={(props) => (
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={{ color: "#8E8E93", marginRight: 8 }}>
+                    {selectedLanguage === "vi" ? "Tiếng Việt" : "English"}
+                  </Text>
+                  <List.Icon {...props} icon="chevron-right" />
+                </View>
+              )}
+              onPress={() => setLanguageModalVisible(true)}
+            />
+          </View>
 
           {/* App Info Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`ℹ️ ${t("settings.appInfo")}`}
-              titleStyle={styles.cardTitle}
+          <Text variant="titleSmall" style={styles.sectionHeader}>
+            ỨNG DỤNG
+          </Text>
+          <View style={styles.groupedCard}>
+            <List.Item
+              title={t("settings.version")}
+              description="1.0.0"
+              left={(props) => <List.Icon {...props} icon="information" />}
             />
-            <Card.Content>
-              <List.Item
-                title={t("settings.version")}
-                description="1.0.0"
-                left={(props) => <List.Icon {...props} icon="information" />}
-              />
-              <List.Item
-                title={t("settings.aboutApp")}
-                description={t("settings.aboutDescription")}
-                left={(props) => <List.Icon {...props} icon="heart" />}
-              />
-              <List.Item
-                title={t("settings.privacyPolicy")}
-                description={t("settings.privacyPolicyDesc")}
-                left={(props) => <List.Icon {...props} icon="shield-check" />}
-                onPress={() => Linking.openURL("https://deepfocus.app/privacy")}
-              />
-              <List.Item
-                title={t("settings.termsOfService")}
-                description={t("settings.termsOfServiceDesc")}
-                left={(props) => <List.Icon {...props} icon="file-document" />}
-                onPress={() => Linking.openURL("https://deepfocus.app/terms")}
-              />
-            </Card.Content>
-          </Card>
-
-          {/* Language Settings Section */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={`🌐 ${t("settings.languageSettings")}`}
-              titleStyle={styles.cardTitle}
+            <Divider style={styles.listDivider} />
+            <List.Item
+              title={t("settings.aboutApp")}
+              description={t("settings.aboutDescription")}
+              left={(props) => <List.Icon {...props} icon="heart" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
             />
-            <Card.Content>
-              <List.Item
-                title={t("settings.vietnamese")}
-                description="Tiếng Việt"
-                right={() =>
-                  selectedLanguage === "vi" && (
-                    <List.Icon icon="check" color={theme.colors.primary} />
-                  )
-                }
-                onPress={() => {
-                  setSelectedLanguage("vi");
-                  setPreviewLanguage("vi");
-                }}
-                style={styles.languageItem}
-              />
-              <Divider />
-              <List.Item
-                title={t("settings.english")}
-                description="English"
-                right={() =>
-                  selectedLanguage === "en" && (
-                    <List.Icon icon="check" color={theme.colors.primary} />
-                  )
-                }
-                onPress={() => {
-                  setSelectedLanguage("en");
-                  setPreviewLanguage("en");
-                }}
-                style={styles.languageItem}
-              />
-            </Card.Content>
-          </Card>
+            <Divider style={styles.listDivider} />
+            <List.Item
+              title={t("settings.privacyPolicy")}
+              description={t("settings.privacyPolicyDesc")}
+              left={(props) => <List.Icon {...props} icon="shield-check" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => Linking.openURL("https://deepfocus.app/privacy")}
+            />
+            <Divider style={styles.listDivider} />
+            <List.Item
+              title={t("settings.termsOfService")}
+              description={t("settings.termsOfServiceDesc")}
+              left={(props) => <List.Icon {...props} icon="file-document" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => Linking.openURL("https://deepfocus.app/terms")}
+            />
+          </View>
 
-          {/* Info Card */}
-          <Card style={[styles.card, styles.infoCard]}>
-            <Card.Content>
-              <Text variant="bodyMedium" style={styles.infoText}>
-                💡 <Text style={styles.infoBold}>{t("general.info")}:</Text>{" "}
-                {language === "vi"
-                  ? "Phương pháp Pomodoro truyền thống sử dụng chu kỳ 25-5-15 (25 phút làm việc, 5 phút nghỉ ngắn, 15 phút nghỉ dài sau 4 pomodoro)."
-                  : "The traditional Pomodoro Technique uses a 25-5-15 cycle (25 minutes work, 5 minutes short break, 15 minutes long break after 4 pomodoros)."}
+          {/* Advanced Settings - Test Mode Hidden at Bottom */}
+          {isStudent && (
+            <>
+              <Text variant="titleSmall" style={styles.sectionHeader}>
+                NÂNG CAO
               </Text>
-            </Card.Content>
-          </Card>
+              <View style={styles.groupedCard}>
+                <View style={styles.settingItem}>
+                  <View style={styles.switchRow}>
+                    <View style={styles.labelContainer}>
+                      <Text variant="bodyLarge" style={styles.label}>
+                        ⚡ {t("settings.testMode")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.helpText}>
+                        Chế độ test nhanh (10/5/10 giây)
+                      </Text>
+                    </View>
+                    <Switch
+                      value={testMode}
+                      onValueChange={(value) => {
+                        setTestMode(value);
+                        handleAutoSave();
+                      }}
+                      color="#FF9800"
+                    />
+                  </View>
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* Logout Button - Full Width Row */}
+          <View style={styles.groupedCard}>
+            <List.Item
+              title={t("settings.logout")}
+              titleStyle={styles.logoutText}
+              left={(props) => (
+                <List.Icon {...props} icon="logout" color="#EF5350" />
+              )}
+              onPress={() => {
+                Alert.alert(
+                  t("alerts.logout.title"),
+                  t("alerts.logout.message"),
+                  [
+                    { text: t("alerts.logout.cancel"), style: "cancel" },
+                    {
+                      text: t("alerts.logout.confirm"),
+                      style: "destructive",
+                      onPress: async () => {
+                        resetLanguage();
+                        await logout();
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={styles.logoutRow}
+            />
+          </View>
+
+          {/* Footer Tip - Minimal */}
+          <Text variant="bodySmall" style={styles.footerTip}>
+            💡{" "}
+            {language === "vi"
+              ? "Phương pháp Pomodoro truyền thống sử dụng chu kỳ 25-5-15 (25 phút làm việc, 5 phút nghỉ ngắn, 15 phút nghỉ dài sau 4 pomodoro)."
+              : "The traditional Pomodoro Technique uses a 25-5-15 cycle (25 minutes work, 5 minutes short break, 15 minutes long break after 4 pomodoros)."}
+          </Text>
         </View>
       </ScrollView>
 
@@ -1549,21 +1652,272 @@ const SettingsScreen = () => {
       >
         {snackbarMessage}
       </Snackbar>
-    </View>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setLanguageModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text variant="titleLarge" style={styles.modalTitle}>
+              {t("settings.languageSettings")}
+            </Text>
+            <Divider style={{ marginVertical: 16 }} />
+
+            <List.Item
+              title={t("settings.vietnamese")}
+              description="Tiếng Việt"
+              right={() =>
+                selectedLanguage === "vi" && (
+                  <List.Icon icon="check" color={theme.colors.primary} />
+                )
+              }
+              onPress={() => {
+                setSelectedLanguage("vi");
+                setPreviewLanguage("vi");
+                handleAutoSave();
+                setLanguageModalVisible(false);
+              }}
+              style={{ paddingVertical: 8 }}
+            />
+            <Divider />
+            <List.Item
+              title={t("settings.english")}
+              description="English"
+              right={() =>
+                selectedLanguage === "en" && (
+                  <List.Icon icon="check" color={theme.colors.primary} />
+                )
+              }
+              onPress={() => {
+                setSelectedLanguage("en");
+                setPreviewLanguage("en");
+                handleAutoSave();
+                setLanguageModalVisible(false);
+              }}
+              style={{ paddingVertical: 8 }}
+            />
+
+            <Divider style={{ marginVertical: 16 }} />
+            <Button
+              mode="text"
+              onPress={() => setLanguageModalVisible(false)}
+              style={{ marginTop: 8 }}
+            >
+              {t("general.close") || "Đóng"}
+            </Button>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#F2F2F7", // iOS-style background
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 16,
+    paddingHorizontal: 0,
     paddingBottom: 32,
+  },
+  largeTitle: {
+    fontSize: 34,
+    fontWeight: "bold",
+    color: "#000",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: "#F2F2F7",
+  },
+  profileContainer: {
+    backgroundColor: "#FFFFFF",
+    marginBottom: 24,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: "#C6C6C8",
+  },
+  profileCard: {
+    alignItems: "center",
+    paddingVertical: 24,
+    position: "relative",
+  },
+  avatarLarge: {
+    backgroundColor: "#007AFF",
+    marginBottom: 12,
+  },
+  profileName: {
+    fontWeight: "600",
+    color: "#000",
+    marginBottom: 4,
+  },
+  profileEmail: {
+    color: "#8E8E93",
+    fontSize: 15,
+  },
+  profileChevron: {
+    position: "absolute",
+    right: 16,
+    top: "50%",
+    marginTop: -12,
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#8E8E93",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 8,
+    backgroundColor: "#F2F2F7",
+  },
+  groupedCard: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 0,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderColor: "#C6C6C8",
+  },
+  settingItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  settingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  labelContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  label: {
+    fontWeight: "400",
+    fontSize: 17,
+    color: "#000",
+  },
+  helpText: {
+    color: "#8E8E93",
+    marginTop: 2,
+    fontSize: 13,
+  },
+  value: {
+    fontWeight: "600",
+    fontSize: 17,
+    minWidth: 80,
+    textAlign: "right",
+  },
+  sliderContainer: {
+    position: "relative",
+    width: "100%",
+  },
+  slider: {
+    width: "100%",
+    height: 40,
+    marginTop: 4,
+  },
+  sliderTooltip: {
+    position: "absolute",
+    top: -30,
+    alignSelf: "center",
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  sliderTooltipText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  listDivider: {
+    marginVertical: 0,
+    height: 0.5,
+    backgroundColor: "#C6C6C8",
+  },
+  logoutRow: {
+    paddingVertical: 4,
+  },
+  logoutText: {
+    color: "#EF5350",
+    textAlign: "center",
+    fontWeight: "400",
+    fontSize: 17,
+  },
+  footerTip: {
+    marginHorizontal: 32,
+    marginTop: 32,
+    marginBottom: 24,
+    lineHeight: 17,
+    color: "#8E8E93",
+    fontSize: 11,
+    textAlign: "center",
+    fontWeight: "400",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+  },
+  modalTitle: {
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  snackbar: {
+    position: "absolute",
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: "#4CAF50",
+    borderRadius: 8,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   card: {
     marginBottom: 16,
@@ -1596,39 +1950,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: "bold",
-  },
-  settingRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  labelContainer: {
-    flex: 1,
-    marginRight: 16,
-  },
-  label: {
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  helpText: {
-    color: "#757575",
-    marginTop: 4,
-  },
-  value: {
-    fontWeight: "bold",
-    minWidth: 80,
-    textAlign: "right",
-  },
-  slider: {
-    width: "100%",
-    height: 40,
   },
   divider: {
     marginVertical: 16,
@@ -1667,20 +1988,6 @@ const styles = StyleSheet.create({
   languageItem: {
     paddingVertical: 8,
   },
-  snackbar: {
-    position: "absolute",
-    top: "45%",
-    left: 20,
-    right: 20,
-    transform: [{ translateY: -25 }], // Center vertically
-    backgroundColor: "#4CAF50",
-    borderRadius: 8,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-  },
   accountInfo: {
     flexDirection: "row",
     alignItems: "center",
@@ -1696,10 +2003,6 @@ const styles = StyleSheet.create({
   },
   accountEmail: {
     color: "#757575",
-  },
-  logoutButton: {
-    marginTop: 12,
-    borderColor: "#EF5350",
   },
 });
 

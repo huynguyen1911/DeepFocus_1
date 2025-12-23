@@ -42,7 +42,7 @@ const WelcomeScreen = ({ navigation }) => {
         style={[styles.illustrationContainer, { opacity: fadeAnim }]}
       >
         <LottieView
-          source={require("../../assets/animations/focus-study.json")}
+          source={require("../../../assets/animations/focus-study.json")}
           autoPlay
           loop
           style={styles.illustration}

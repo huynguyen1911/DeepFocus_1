@@ -138,7 +138,7 @@ trainingDaySchema.methods.getRemainingChallenges = function () {
 };
 
 // Static method to get training days for a date range
-trainingDaySchema.statics.getForDateRange = function (
+trainingDaySchema.statics.getForDateRange = async function (
   userId,
   startDate,
   endDate
@@ -149,8 +149,15 @@ trainingDaySchema.statics.getForDateRange = function (
   const end = new Date(endDate);
   end.setHours(23, 59, 59, 999);
 
+  // First get active plan(s) for this user
+  const FocusPlan = require("./FocusPlan");
+  const activePlans = await FocusPlan.find({ userId, status: "active" });
+  const activePlanIds = activePlans.map((p) => p._id);
+
+  // Only return training days from active plans
   return this.find({
     userId,
+    planId: { $in: activePlanIds },
     date: {
       $gte: start,
       $lte: end,
@@ -159,14 +166,23 @@ trainingDaySchema.statics.getForDateRange = function (
 };
 
 // Static method to get today's training
-trainingDaySchema.statics.getTodayTraining = function (userId) {
+trainingDaySchema.statics.getTodayTraining = async function (userId) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
+  // Only get training day from active plan
+  const FocusPlan = require("./FocusPlan");
+  const activePlan = await FocusPlan.findOne({ userId, status: "active" });
+
+  if (!activePlan) {
+    return null;
+  }
+
   return this.findOne({
     userId,
+    planId: activePlan._id,
     date: {
       $gte: today,
       $lt: tomorrow,

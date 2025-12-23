@@ -108,15 +108,15 @@ export default function DailyPomodoroProgress({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 20,
     marginHorizontal: 16,
     marginVertical: 12,
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    elevation: 2,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
   },
   header: {
     flexDirection: "row",
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#2D3748",
+    color: "#2D3436",
     marginBottom: 2,
   },
   message: {
@@ -152,20 +152,20 @@ const styles = StyleSheet.create({
   completedNumber: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primary,
+    color: "#6C63FF",
   },
   goalText: {
     fontSize: 16,
-    color: "#718096",
+    color: "#636E72",
   },
   percentageText: {
     fontSize: 24,
     fontWeight: "bold",
-    color: theme.colors.primary,
+    color: "#6C63FF",
   },
   progressBarContainer: {
     height: 12,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: "#F3F0FF",
     borderRadius: 6,
     overflow: "hidden",
     marginBottom: 12,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   timeEstimate: {
     fontSize: 12,
-    color: "#718096",
+    color: "#636E72",
     textAlign: "right",
   },
 });

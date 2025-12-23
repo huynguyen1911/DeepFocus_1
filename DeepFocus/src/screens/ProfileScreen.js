@@ -5,13 +5,12 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Pressable,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
-  Card,
   Text,
   Avatar,
-  Divider,
-  List,
   ActivityIndicator,
   useTheme,
   IconButton,
@@ -44,7 +43,10 @@ const ProfileScreen = () => {
 
   const getRoleLabel = (roleType) => {
     if (roleType === "teacher") {
-      return "Teacher/Guardian";
+      return "Giáo viên / Phụ huynh";
+    }
+    if (roleType === "student") {
+      return "Học Sinh";
     }
     return t(`roles.${roleType}`) || roleType;
   };
@@ -138,6 +140,33 @@ const ProfileScreen = () => {
     }
   };
 
+  const formatUserName = (name) => {
+    if (!name) return "User";
+    // Capitalize each word
+    return name
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const getUserInitials = (name) => {
+    if (!name) return "TE";
+    const words = name
+      .trim()
+      .split(" ")
+      .filter((word) => word.length > 0);
+
+    if (words.length === 1) {
+      // Single word: take first 2 characters
+      return words[0].substring(0, 2).toUpperCase();
+    } else {
+      // Multiple words: take first letter of first and last word
+      const firstInitial = words[0].charAt(0).toUpperCase();
+      const lastInitial = words[words.length - 1].charAt(0).toUpperCase();
+      return firstInitial + lastInitial;
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -147,133 +176,135 @@ const ProfileScreen = () => {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#F2F2F7" }}
+      edges={["top", "left", "right"]}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={24}
-          onPress={() => router.back()}
-          iconColor={theme.colors.onSurface}
-        />
-        <Text variant="headlineSmall" style={{ flex: 1, marginLeft: 8 }}>
-          Hồ Sơ Người Dùng
-        </Text>
-      </View>
-
-      {/* User Info Card */}
-      <Card style={styles.card}>
-        <Card.Content style={styles.userInfoContainer}>
-          <Avatar.Text
-            size={80}
-            label={user?.username?.substring(0, 2).toUpperCase() || "U"}
-            style={{ backgroundColor: theme.colors.primary }}
-          />
-          <View style={styles.userDetails}>
-            <Text variant="headlineSmall" style={styles.userName}>
-              {user?.username || "User"}
-            </Text>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
+        {/* Clean Header */}
+        <View
+          style={[styles.header, { backgroundColor: theme.colors.surface }]}
+        >
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.headerButton}
+            android_ripple={{ color: "rgba(0,0,0,0.1)", borderless: false }}
+          >
             <Text
-              variant="bodyMedium"
-              style={{ color: theme.colors.onSurfaceVariant }}
+              style={[styles.headerButtonText, { color: theme.colors.primary }]}
             >
-              {user?.email || ""}
+              ‹
             </Text>
-          </View>
-        </Card.Content>
-      </Card>
+          </Pressable>
+          <Text variant="titleLarge" style={styles.headerTitle}>
+            Hồ Sơ
+          </Text>
+          <Pressable
+            onPress={() => {
+              Alert.alert("Chỉnh sửa", "Tính năng đang phát triển");
+            }}
+            style={styles.headerButton}
+            android_ripple={{ color: "rgba(0,0,0,0.1)", borderless: false }}
+          >
+            <Text
+              style={[styles.headerButtonText, { color: theme.colors.primary }]}
+            >
+              Sửa
+            </Text>
+          </Pressable>
+        </View>
 
-      {/* All Roles Section */}
-      <Card style={styles.card}>
-        <Card.Title
-          title="Vai Trò"
-          titleVariant="titleMedium"
-          left={(props) => (
-            <Avatar.Icon {...props} icon="account-badge" size={40} />
-          )}
-        />
-        <Divider />
-        <Card.Content style={{ paddingTop: 8 }}>
-          {allRoleTypes.map((roleType) => {
+        {/* Hero Section - Avatar + Name + Email */}
+        <View style={styles.heroSection}>
+          <Avatar.Text
+            size={100}
+            label={getUserInitials(user?.username)}
+            style={{
+              backgroundColor: theme.colors.primary,
+              marginBottom: 16,
+              borderWidth: 3,
+              borderColor: "#fff",
+            }}
+            labelStyle={{ fontWeight: "700", fontSize: 36 }}
+          />
+          <Text variant="headlineMedium" style={styles.userName}>
+            {formatUserName(user?.username) || "Test User 1"}
+          </Text>
+          <Text
+            variant="bodyMedium"
+            style={[styles.userEmail, { color: theme.colors.onSurfaceVariant }]}
+          >
+            {user?.email || "test1@example.com"}
+          </Text>
+        </View>
+
+        {/* Role Section Header */}
+        <Text variant="labelSmall" style={styles.sectionHeader}>
+          VAI TRÒ HIỆN TẠI
+        </Text>
+
+        {/* Role Selection List */}
+        <View
+          style={[styles.section, { backgroundColor: theme.colors.surface }]}
+        >
+          {allRoleTypes.map((roleType, index) => {
             const isActive = existingRoleTypes.includes(roleType);
             const isCurrent = roleType === currentRole;
 
             return (
-              <TouchableOpacity
-                key={roleType}
-                onPress={() => handleRolePress(roleType)}
-                disabled={switching || isCurrent}
-              >
-                <List.Item
-                  title={getRoleLabel(roleType)}
-                  description={
-                    isActive
-                      ? getRoleDescription(roleType)
-                      : "Nhấn để kích hoạt vai trò này"
-                  }
-                  left={(props) => (
-                    <List.Icon
-                      {...props}
-                      icon={getRoleIcon(roleType)}
-                      color={
-                        isCurrent
-                          ? theme.colors.primary
-                          : isActive
-                          ? theme.colors.onSurfaceVariant
-                          : theme.colors.outline
-                      }
-                    />
+              <React.Fragment key={roleType}>
+                <Pressable
+                  onPress={() => handleRolePress(roleType)}
+                  disabled={switching || isCurrent}
+                  android_ripple={{ color: "rgba(0,0,0,0.05)" }}
+                  style={({ pressed }) => [
+                    styles.roleRow,
+                    pressed && { backgroundColor: "rgba(0,0,0,0.03)" },
+                  ]}
+                >
+                  <View style={styles.roleRowLeft}>
+                    <Text style={styles.roleIcon}>
+                      {roleType === "student" ? "🎓" : "🧑‍🏫"}
+                    </Text>
+                    <Text
+                      variant="bodyLarge"
+                      style={[
+                        styles.roleLabel,
+                        isCurrent && {
+                          color: theme.colors.primary,
+                          fontWeight: "500",
+                        },
+                        !isActive && { color: theme.colors.onSurfaceVariant },
+                      ]}
+                    >
+                      {getRoleLabel(roleType)}
+                    </Text>
+                  </View>
+                  {isCurrent && (
+                    <Text
+                      style={[
+                        styles.checkmark,
+                        { color: theme.colors.primary },
+                      ]}
+                    >
+                      ✓
+                    </Text>
                   )}
-                  right={(props) =>
-                    isCurrent ? (
-                      <List.Icon
-                        {...props}
-                        icon="check-circle"
-                        color={theme.colors.primary}
-                      />
-                    ) : !isActive ? (
-                      <List.Icon
-                        {...props}
-                        icon="plus-circle-outline"
-                        color={theme.colors.outline}
-                      />
-                    ) : null
-                  }
-                  style={[
-                    styles.roleItem,
-                    isCurrent && {
-                      backgroundColor: theme.colors.primaryContainer,
-                    },
-                    !isActive && {
-                      opacity: 0.6,
-                    },
-                  ]}
-                  titleStyle={[
-                    isCurrent && {
-                      color: theme.colors.primary,
-                      fontWeight: "600",
-                    },
-                    !isActive && {
-                      color: theme.colors.outline,
-                    },
-                  ]}
-                  descriptionStyle={
-                    !isActive && {
-                      color: theme.colors.outline,
-                      fontStyle: "italic",
-                    }
-                  }
-                />
-              </TouchableOpacity>
+                </Pressable>
+                {index < allRoleTypes.length - 1 && (
+                  <View
+                    style={[styles.divider, { backgroundColor: "#E5E5EA" }]}
+                  />
+                )}
+              </React.Fragment>
             );
           })}
-        </Card.Content>
-      </Card>
-
-      <View style={{ height: 24 }} />
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -288,30 +319,80 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  headerButton: {
+    paddingHorizontal: 12,
     paddingVertical: 8,
-  },
-  card: {
-    marginHorizontal: 16,
-    marginTop: 16,
-  },
-  userInfoContainer: {
-    flexDirection: "row",
+    minWidth: 60,
     alignItems: "center",
-    paddingVertical: 16,
   },
-  userDetails: {
-    marginLeft: 16,
+  headerButtonText: {
+    fontSize: 32,
+    fontWeight: "400",
+    lineHeight: 32,
+  },
+  headerTitle: {
+    fontWeight: "600",
     flex: 1,
+    textAlign: "center",
+  },
+  heroSection: {
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   userName: {
     fontWeight: "600",
     marginBottom: 4,
+    textAlign: "center",
   },
-  roleItem: {
+  userEmail: {
+    textAlign: "center",
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    color: "#666",
+    letterSpacing: 0.5,
+  },
+  section: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  roleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  roleRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  roleIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  roleLabel: {
+    fontSize: 16,
+  },
+  checkmark: {
+    fontSize: 22,
+    fontWeight: "600",
+  },
+  divider: {
+    height: 1,
+    marginLeft: 52,
   },
 });
 

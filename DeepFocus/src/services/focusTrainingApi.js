@@ -137,6 +137,46 @@ const focusTrainingApi = {
   },
 
   /**
+   * 3.5 Check Plan Generation Status (for background processing)
+   * @param {string} assessmentId - Assessment ID to check
+   * @returns {Promise<Object>} { status: 'pending' | 'completed', plan?: Object }
+   */
+  async checkPlanGeneration(assessmentId) {
+    try {
+      const response = await focusTrainingClient.get(
+        `/plan-status/${assessmentId}`
+      );
+      return response.data;
+    } catch (error) {
+      // Silent handling - endpoint doesn't exist yet, use fallback
+      if (__DEV__ && !error.silent) {
+        console.log(
+          "⚠️ /plan-status endpoint not available, using fallback to GET /plan"
+        );
+      }
+
+      // Fallback: check if active plan exists
+      try {
+        const activePlan = await this.getActivePlan();
+        return {
+          status: activePlan.plan ? "completed" : "pending",
+          plan: activePlan.plan,
+        };
+      } catch (fallbackError) {
+        // If no active plan exists (404), it means still generating
+        if (fallbackError.silent) {
+          return { status: "pending" };
+        }
+        // Real error - log it
+        if (__DEV__) {
+          console.error("Failed to check plan status:", fallbackError);
+        }
+        return { status: "pending" };
+      }
+    }
+  },
+
+  /**
    * 4. Get Training Days (for calendar)
    * @param {string} startDate - YYYY-MM-DD
    * @param {string} endDate - YYYY-MM-DD

@@ -203,9 +203,92 @@ class AIService {
     }
 
     try {
-      return typeof cleanedResponse === "string"
-        ? JSON.parse(cleanedResponse)
-        : cleanedResponse;
+      const parsed =
+        typeof cleanedResponse === "string"
+          ? JSON.parse(cleanedResponse)
+          : cleanedResponse;
+
+      // CRITICAL: AI returns a week object with "days" array, not wrapped in "weeks" array
+      // We need to ensure consistent structure
+      if (parsed.days && Array.isArray(parsed.days)) {
+        // This is a single week response - validate it has 7 days
+        console.log(`✅ Parsed single week with ${parsed.days.length} days`);
+
+        if (parsed.days.length !== 7) {
+          console.warn(
+            `⚠️  Week has ${parsed.days.length} days instead of 7, attempting to fix...`
+          );
+
+          // Get week number to calculate correct day numbers
+          const weekNum = parsed.weekNumber || 1;
+          const expectedDayNumbers = Array.from(
+            { length: 7 },
+            (_, i) => (weekNum - 1) * 7 + i + 1
+          );
+
+          // Find which days are missing
+          const existingDayNumbers = parsed.days.map((d) => d.dayNumber);
+          const missingDayNumbers = expectedDayNumbers.filter(
+            (n) => !existingDayNumbers.includes(n)
+          );
+
+          console.log(`📋 Expected days: ${expectedDayNumbers.join(", ")}`);
+          console.log(`📋 Existing days: ${existingDayNumbers.join(", ")}`);
+          console.log(`❌ Missing days: ${missingDayNumbers.join(", ")}`);
+
+          // Auto-fill missing days
+          if (missingDayNumbers.length > 0 && missingDayNumbers.length <= 2) {
+            // If missing 1-2 days, try to auto-fill them
+            for (const dayNum of missingDayNumbers) {
+              const dayOfWeek = ((dayNum - 1) % 7) + 1;
+
+              // Day 7 should always be a rest day
+              if (dayOfWeek === 7 || dayNum % 7 === 0) {
+                parsed.days.push({
+                  dayNumber: dayNum,
+                  type: "rest",
+                  dailyTheme: "Ngay nghi",
+                  challenges: [],
+                });
+                console.log(`✅ Auto-added rest day ${dayNum}`);
+              } else {
+                // For training days, create a simple placeholder
+                const difficulty = dayOfWeek <= 2 ? 2 : dayOfWeek >= 5 ? 4 : 3;
+                parsed.days.push({
+                  dayNumber: dayNum,
+                  type: "training",
+                  dailyTheme: `Ngay ${dayOfWeek} - Tap luyen co ban`,
+                  challenges: this.createSimpleChallenges(
+                    dayOfWeek,
+                    difficulty
+                  ),
+                });
+                console.log(
+                  `✅ Auto-added training day ${dayNum} with ${dayOfWeek}/7`
+                );
+              }
+            }
+
+            // Sort days by dayNumber
+            parsed.days.sort((a, b) => a.dayNumber - b.dayNumber);
+            console.log(`✅ Week repaired to have ${parsed.days.length} days`);
+          } else {
+            throw new Error(
+              `Week must have exactly 7 days, got ${parsed.days.length} (missing ${missingDayNumbers.length} days)`
+            );
+          }
+        }
+
+        return parsed; // Return the week object directly
+      } else if (parsed.weeks && Array.isArray(parsed.weeks)) {
+        // This is already in the full plan format
+        console.log(`✅ Parsed full plan with ${parsed.weeks.length} weeks`);
+        return parsed;
+      } else {
+        throw new Error(
+          "Invalid AI response structure: missing 'days' or 'weeks' array"
+        );
+      }
     } catch (error) {
       // Log problematic area for debugging
       const errorPos = parseInt(
@@ -309,6 +392,44 @@ class AIService {
 
     // 8. Fix double commas
     repaired = repaired.replace(/,\s*,/g, ",");
+
+    // 9. CRITICAL FIX: Ensure proper closing of main structure
+    // Check if JSON ends properly with closing brackets
+    const trimmed = repaired.trim();
+
+    // Count opening and closing brackets
+    const openBraces = (trimmed.match(/\{/g) || []).length;
+    const closeBraces = (trimmed.match(/\}/g) || []).length;
+    const openBrackets = (trimmed.match(/\[/g) || []).length;
+    const closeBrackets = (trimmed.match(/\]/g) || []).length;
+
+    console.log(
+      `🔧 Bracket count - Braces: ${openBraces} vs ${closeBraces}, Brackets: ${openBrackets} vs ${closeBrackets}`
+    );
+
+    // Add missing closing brackets/braces
+    let needsClosing = trimmed;
+
+    // Add missing closing array brackets
+    const missingBrackets = openBrackets - closeBrackets;
+    if (missingBrackets > 0) {
+      console.log(`🔧 Adding ${missingBrackets} missing ]`);
+      needsClosing += "]".repeat(missingBrackets);
+    }
+
+    // Add missing closing braces
+    const missingBraces = openBraces - closeBraces;
+    if (missingBraces > 0) {
+      console.log(`🔧 Adding ${missingBraces} missing }`);
+      needsClosing += "}".repeat(missingBraces);
+    }
+
+    repaired = needsClosing;
+
+    console.log(
+      "🔧 AFTER REPAIR (last 100 chars):",
+      repaired.substring(repaired.length - 100)
+    );
 
     return repaired;
   }
@@ -855,12 +976,13 @@ EXAMPLE - Day 5 (Friday - PEAK):
 }
 
 PROGRESSIVE DIFFICULTY REQUIREMENTS (MOST IMPORTANT):
-- Day 1-2: Keep EASY to build confidence (2 cycles, short duration)
-- Day 3: MODERATE increase (3 cycles, medium duration)
-- Day 4: MORE CHALLENGING (3-4 cycles, longer techniques)
-- Day 5: PEAK difficulty (4 cycles, longest sessions)
-- Day 6: LIGHTER for recovery (2 cycles, relaxing activities)
-- Day 7: REST (no challenges)
+- Day 1 (Mon): EASY - Build confidence (2 cycles, short duration)
+- Day 2 (Tue): EASY - Continue building (2 cycles, short duration)
+- Day 3 (Wed): MODERATE - Increase challenge (3 cycles, medium duration)
+- Day 4 (Thu): MORE CHALLENGING - Push further (3-4 cycles, longer techniques)
+- Day 5 (Fri): PEAK DIFFICULTY - Maximum effort (4-5 cycles, longest sessions)
+- Day 6 (Sat): LIGHTER - Recovery and reflection (2 cycles, relaxing activities)
+- Day 7 (Sun): REST - No challenges, complete rest
 
 NEVER make difficulty jump randomly - it must follow smooth progression!
 
@@ -881,7 +1003,67 @@ CRITICAL RULES TO AVOID JSON ERRORS:
 - EVERY challenge must end with closing bracket and comma EXCEPT last one
 - Structure: days array has 7 items, training days (1-6) have 3 challenges each, rest day (7) has empty challenges array
 - Difficulty values: Day 1-2 use difficulty 2, Day 3-4 use 3, Day 5 use 4, Day 6 use 2
-- This MUST parse with JSON.parse or it fails!`;
+- This MUST parse with JSON.parse or it fails!
+
+⚠️ CRITICAL: YOU MUST CREATE EXACTLY 7 DAYS - NO MORE, NO LESS! ⚠️
+
+REQUIRED JSON STRUCTURE (RETURN ONLY THIS JSON, NOTHING ELSE):
+{
+  "weekNumber": ${weekNumber},
+  "theme": "${theme.focus}",
+  "description": "Tuan ${weekNumber}: ${theme.focus}",
+  "focusAreas": ["Pomodoro", "Tho sau", "Mindfulness"],
+  "days": [
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 1},
+      "type": "training",
+      "dailyTheme": "Day 1 theme",
+      "challenges": [ ...3 challenges for Day 1 (Monday - EASY)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 2},
+      "type": "training",
+      "dailyTheme": "Day 2 theme",
+      "challenges": [ ...3 challenges for Day 2 (Tuesday - EASY)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 3},
+      "type": "training",
+      "dailyTheme": "Day 3 theme",
+      "challenges": [ ...3 challenges for Day 3 (Wednesday - MODERATE)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 4},
+      "type": "training",
+      "dailyTheme": "Day 4 theme",
+      "challenges": [ ...3 challenges for Day 4 (Thursday - MORE CHALLENGING)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 5},
+      "type": "training",
+      "dailyTheme": "Day 5 theme",
+      "challenges": [ ...3 challenges for Day 5 (Friday - PEAK)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 6},
+      "type": "training",
+      "dailyTheme": "Day 6 theme",
+      "challenges": [ ...3 challenges for Day 6 (Saturday - LIGHTER)... ]
+    },
+    {
+      "dayNumber": ${(weekNumber - 1) * 7 + 7},
+      "type": "rest",
+      "dailyTheme": "Ngay nghi",
+      "challenges": []
+    }
+  ]
+}
+
+⚠️ REMINDER: The "days" array MUST contain EXACTLY 7 day objects (dayNumber ${
+      (weekNumber - 1) * 7 + 1
+    } through ${(weekNumber - 1) * 7 + 7}). Count them before responding!
+
+Return ONLY the JSON object above. NO explanatory text before or after. The response must start with { and end with }. Each training day (1-6) must have exactly 3 challenges. Day 7 must be a rest day with empty challenges array.`;
   }
 
   buildWeeklyFeedbackPrompt(weekData, planData) {
@@ -974,8 +1156,13 @@ Respond in Vietnamese. Be specific, supportive, and actionable. Max 200 words.`;
     planData.trainingDays = 0;
     planData.restDays = 0;
 
-    // Count training vs rest days
-    planData.weeks.forEach((week) => {
+    // Count training vs rest days and add weekNumber if missing
+    planData.weeks.forEach((week, index) => {
+      // Ensure weekNumber exists (AI sometimes omits it)
+      if (!week.weekNumber) {
+        week.weekNumber = index + 1;
+      }
+
       week.days?.forEach((day) => {
         if (day.type === "rest") planData.restDays++;
         else planData.trainingDays++;
@@ -1126,6 +1313,75 @@ Respond in Vietnamese. Be specific, supportive, and actionable. Max 200 words.`;
     }
 
     return challenges.slice(0, numChallenges);
+  }
+
+  /**
+   * Create simple challenges without diacritics for auto-filled days
+   */
+  createSimpleChallenges(dayOfWeek, difficulty) {
+    const challenges = [];
+
+    // Determine cycles based on day of week (progressive)
+    const cycles = dayOfWeek <= 2 ? 2 : dayOfWeek >= 5 ? 4 : 3;
+    const workTime = 15;
+    const shortBreak = 5;
+    const longBreak = 15;
+
+    // Challenge 1: Pomodoro
+    challenges.push({
+      type: "focus_session",
+      title: `${cycles} chu ky Pomodoro (${workTime}p work ${shortBreak}p nghi ngan)`,
+      duration: cycles * (workTime + shortBreak),
+      difficulty: difficulty,
+      description: "Tap trung lam viec co ban",
+      instructions: [
+        "Chuan bi khong gian yen tinh",
+        `Bat timer ${workTime} phut`,
+        "Tap trung hoan toan",
+        `Nghi ${shortBreak} phut`,
+        `Lap lai ${cycles} lan`,
+      ],
+      benefits: ["Tang nang suat", "Giam phan tam", "Xay dung thoi quen"],
+      tips: ["Tat thong bao", "Chon viec uu tien", "Ghi chu tien do"],
+    });
+
+    // Challenge 2: Breathing
+    const breathingDuration = dayOfWeek <= 2 ? 5 : dayOfWeek >= 5 ? 12 : 10;
+    challenges.push({
+      type: "breathing",
+      title: `Tho sau co ban ${breathingDuration} phut`,
+      duration: breathingDuration,
+      difficulty: difficulty,
+      description: "Ky thuat tho sau giam stress",
+      instructions: [
+        "Ngoi thoai mai",
+        "Hut vao qua mui 4 giay",
+        "Tho ra qua mieng 6 giay",
+        "Lap lai 10 lan",
+      ],
+      benefits: ["Giam cang thang", "Tang oxy nao", "On dinh cam xuc"],
+      tips: ["Lam cham lai", "Tap buoi sang", "Nhum mat"],
+    });
+
+    // Challenge 3: Mindfulness
+    const mindfulnessDuration = dayOfWeek <= 2 ? 5 : dayOfWeek >= 5 ? 15 : 10;
+    challenges.push({
+      type: "mindfulness",
+      title: `Quan sat hoi tho ${mindfulnessDuration} phut`,
+      duration: mindfulnessDuration,
+      difficulty: difficulty,
+      description: "Tap trung quan sat hoi tho",
+      instructions: [
+        "Ngoi thang lung",
+        "Nhum mat nhe nhang",
+        "Chu y vao hoi tho",
+        "Khong can thay doi gi",
+      ],
+      benefits: ["Tang nhan thuc", "Lam chu tam tri", "Giam suy nghi"],
+      tips: ["Khong bat ep", "Chap nhan phan tam", "Tap hang ngay"],
+    });
+
+    return challenges;
   }
 
   generateFallbackPlan(assessmentData) {

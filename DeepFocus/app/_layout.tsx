@@ -18,6 +18,7 @@ import { RewardProvider } from '@/src/contexts/RewardContext';
 import { AlertProvider } from '@/src/contexts/AlertContext';
 import { GuardianProvider } from '@/src/contexts/GuardianContext';
 import { ConnectedPomodoroProvider } from '@/src/contexts/ConnectedPomodoroProvider';
+import { FocusTrainingProvider } from '@/src/contexts/FocusTrainingContext';
 import ErrorBoundary from '@/src/components/ErrorBoundary';
 import { requestNotificationPermissions } from '@/src/services/notificationService';
 
@@ -46,6 +47,7 @@ export default function RootLayout() {
                           <AlertProvider>
                             <GuardianProvider>
                               <ConnectedPomodoroProvider>
+                                <FocusTrainingProvider>
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -77,20 +79,14 @@ export default function RootLayout() {
                 <Stack.Screen 
                   name="add-task" 
                   options={{ 
-                    presentation: 'modal', 
-                    title: 'Tạo Nhiệm Vụ',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    presentation: 'modal',
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 
                   name="task-details/[id]" 
                   options={{ 
-                    title: 'Chi Tiết Nhiệm Vụ',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 
@@ -205,8 +201,15 @@ export default function RootLayout() {
                     },
                   }} 
                 />
+                <Stack.Screen 
+                  name="profile" 
+                  options={{ 
+                    headerShown: false,
+                  }} 
+                />
               </Stack>
                               <StatusBar style="light" />
+                                </FocusTrainingProvider>
                               </ConnectedPomodoroProvider>
                             </GuardianProvider>
                           </AlertProvider>

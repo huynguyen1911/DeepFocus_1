@@ -4,7 +4,6 @@ import {
   Card,
   Title,
   Text,
-  Button,
   ProgressBar,
   Badge,
   useTheme,
@@ -14,6 +13,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { formatTime } from "../utils/helpers";
 import TaskSelector from "./TaskSelector";
 import PomodoroCompletionModal from "./PomodoroCompletionModal";
+import GradientButton from "./GradientButton";
 
 const Timer = () => {
   const theme = useTheme();
@@ -76,7 +76,7 @@ const Timer = () => {
   const getStateColor = () => {
     switch (timerState) {
       case TIMER_STATES.WORKING:
-        return "#FF5252";
+        return "#6C63FF";
       case TIMER_STATES.SHORT_BREAK:
         return "#66BB6A";
       case TIMER_STATES.LONG_BREAK:
@@ -111,36 +111,29 @@ const Timer = () => {
         // Show continue button for active task
         return (
           <View style={styles.buttonColumn}>
-            <Button
-              mode="contained"
+            <GradientButton
               onPress={() => startWorkSessionWithTask(activeTask)}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
+              title={t("home.resumeWork")}
               icon="play"
-            >
-              {t("home.resumeWork")}
-            </Button>
+              style={styles.button}
+            />
             <View style={styles.buttonRow}>
-              <Button
+              <GradientButton
                 mode="outlined"
                 onPress={handleSwapTask}
-                style={[styles.button, styles.buttonHalf]}
-                contentStyle={styles.buttonContent}
+                title={t("timer.swapTask")}
                 icon="swap-horizontal"
-              >
-                {t("timer.swapTask")}
-              </Button>
-              <Button
+                style={[styles.button, styles.buttonHalf]}
+              />
+              <GradientButton
                 mode="outlined"
                 onPress={() => {
                   clearActiveTask();
                 }}
-                style={[styles.button, styles.buttonHalf]}
-                contentStyle={styles.buttonContent}
+                title={t("tasks.delete")}
                 icon="close"
-              >
-                {t("tasks.delete")}
-              </Button>
+                style={[styles.button, styles.buttonHalf]}
+              />
             </View>
           </View>
         );
@@ -149,24 +142,19 @@ const Timer = () => {
       // No active task - show task selector button
       return (
         <View style={styles.buttonColumn}>
-          <Button
-            mode="contained"
+          <GradientButton
             onPress={() => setShowTaskSelector(true)}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
+            title={t("timer.selectTaskAndStart")}
             icon="format-list-checks"
-          >
-            {t("timer.selectTaskAndStart")}
-          </Button>
-          <Button
+            style={styles.button}
+          />
+          <GradientButton
             mode="outlined"
             onPress={startWorkSession}
-            style={styles.button}
-            contentStyle={styles.buttonContent}
+            title={t("timer.startWithoutTask")}
             icon="play"
-          >
-            {t("timer.startWithoutTask")}
-          </Button>
+            style={styles.button}
+          />
         </View>
       );
     }
@@ -175,24 +163,19 @@ const Timer = () => {
       // Timer running - show pause and reset
       return (
         <View style={styles.buttonRow}>
-          <Button
-            mode="contained"
+          <GradientButton
             onPress={pauseTimer}
-            style={[styles.button, styles.buttonHalf]}
-            contentStyle={styles.buttonContent}
+            title={t("home.pause")}
             icon="pause"
-          >
-            {t("home.pause")}
-          </Button>
-          <Button
+            style={[styles.button, styles.buttonHalf]}
+          />
+          <GradientButton
             mode="outlined"
             onPress={resetTimer}
-            style={[styles.button, styles.buttonHalf]}
-            contentStyle={styles.buttonContent}
+            title={t("home.reset")}
             icon="refresh"
-          >
-            {t("home.reset")}
-          </Button>
+            style={[styles.button, styles.buttonHalf]}
+          />
         </View>
       );
     }
@@ -200,34 +183,27 @@ const Timer = () => {
     // Timer paused - show resume, reset, skip
     return (
       <View style={styles.buttonColumn}>
-        <Button
-          mode="contained"
+        <GradientButton
           onPress={startTimer}
-          style={styles.button}
-          contentStyle={styles.buttonContent}
+          title={t("home.resume")}
           icon="play"
-        >
-          {t("home.resume")}
-        </Button>
+          style={styles.button}
+        />
         <View style={styles.buttonRow}>
-          <Button
+          <GradientButton
             mode="outlined"
             onPress={resetTimer}
-            style={[styles.button, styles.buttonHalf]}
-            contentStyle={styles.buttonContent}
+            title={t("home.reset")}
             icon="refresh"
-          >
-            {t("home.reset")}
-          </Button>
-          <Button
+            style={[styles.button, styles.buttonHalf]}
+          />
+          <GradientButton
             mode="outlined"
             onPress={skipTimer}
-            style={[styles.button, styles.buttonHalf]}
-            contentStyle={styles.buttonContent}
+            title={t("general.skip")}
             icon="skip-next"
-          >
-            {t("general.skip")}
-          </Button>
+            style={[styles.button, styles.buttonHalf]}
+          />
         </View>
       </View>
     );
@@ -353,7 +329,13 @@ const styles = StyleSheet.create({
   card: {
     marginVertical: 16,
     marginHorizontal: 16,
-    borderRadius: 16,
+    borderRadius: 20,
+    elevation: 2,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    backgroundColor: "#FFFFFF",
   },
   cardContent: {
     padding: 24,
@@ -377,23 +359,28 @@ const styles = StyleSheet.create({
   },
   taskContainer: {
     width: "100%",
-    backgroundColor: "#FFF3E0",
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: "#F3F0FF",
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: "#FF5252",
+    borderLeftWidth: 3,
+    borderLeftColor: "#6C63FF",
+    elevation: 1,
+    shadowColor: "#6C63FF",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   taskLabel: {
     fontSize: 12,
-    color: "#757575",
+    color: "#636E72",
     marginBottom: 4,
     fontWeight: "500",
   },
   taskTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#212121",
+    color: "#2D3436",
     lineHeight: 22,
   },
   taskProgressContainer: {
@@ -411,17 +398,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#E0E0E0",
   },
   timerText: {
-    fontSize: 72,
-    fontWeight: "bold",
+    fontSize: 80,
+    fontWeight: "300",
     textAlign: "center",
     marginVertical: 24,
     fontVariant: ["tabular-nums"],
+    letterSpacing: -2,
   },
   durationText: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "400",
     textAlign: "center",
-    color: "#757575",
+    color: "#636E72",
     marginTop: -20,
     marginBottom: 12,
     fontVariant: ["tabular-nums"],
@@ -450,13 +438,10 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   button: {
-    borderRadius: 8,
+    borderRadius: 12,
   },
   buttonHalf: {
     flex: 1,
-  },
-  buttonContent: {
-    height: 50,
   },
   counterContainer: {
     marginTop: 20,

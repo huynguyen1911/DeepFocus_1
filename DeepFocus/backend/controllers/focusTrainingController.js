@@ -86,14 +86,12 @@ exports.generatePlan = async (req, res) => {
     const userId = req.user.id;
     const { assessmentId, customDuration, startDate } = req.body;
 
-    // Check if user already has an active plan
+    // Cancel any existing active plans before creating new one
     const existingPlan = await FocusPlan.getActivePlan(userId);
     if (existingPlan) {
-      return res.status(400).json({
-        success: false,
-        message: "You already have an active training plan",
-        data: { planId: existingPlan._id },
-      });
+      console.log(`🔄 Cancelling old active plan: ${existingPlan._id}`);
+      existingPlan.status = "cancelled";
+      await existingPlan.save();
     }
 
     // Get latest assessment if not provided
@@ -134,8 +132,8 @@ exports.generatePlan = async (req, res) => {
       }
     );
 
-    // Create plan
-    const planStartDate = startDate ? new Date(startDate) : new Date();
+    // Create plan with current date (ignore old startDate from client)
+    const planStartDate = new Date();
     // Normalize to start of day to avoid timezone issues
     planStartDate.setHours(0, 0, 0, 0);
 
@@ -299,6 +297,15 @@ exports.getTrainingDay = async (req, res) => {
     const userId = req.user.id;
     const { date } = req.params;
 
+    // Get active plan first
+    const activePlan = await FocusPlan.getActivePlan(userId);
+    if (!activePlan) {
+      return res.status(404).json({
+        success: false,
+        message: "No active training plan",
+      });
+    }
+
     // Parse date and create date range for the entire day (to handle timezone issues)
     const queryDate = new Date(date);
     const startOfDay = new Date(queryDate);
@@ -306,8 +313,10 @@ exports.getTrainingDay = async (req, res) => {
     const endOfDay = new Date(queryDate);
     endOfDay.setHours(23, 59, 59, 999);
 
+    // Only get training day from active plan
     const trainingDay = await TrainingDay.findOne({
       userId,
+      planId: activePlan._id,
       date: {
         $gte: startOfDay,
         $lte: endOfDay,
@@ -323,7 +332,7 @@ exports.getTrainingDay = async (req, res) => {
 
     // Get AI encouragement for the day
     const aiService = getAIService();
-    const plan = await FocusPlan.findById(trainingDay.planId);
+    const plan = activePlan;
 
     if (!trainingDay.aiEncouragement && trainingDay.type === "training") {
       try {

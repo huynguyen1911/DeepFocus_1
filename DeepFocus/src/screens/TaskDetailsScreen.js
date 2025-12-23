@@ -1,826 +1,359 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
+  TouchableOpacity,
+  TextInput as RNTextInput,
   Alert,
+  Platform,
 } from "react-native";
 import {
-  TextInput,
-  Button,
-  Card,
   Text,
-  useTheme,
+  IconButton,
+  Chip,
   Snackbar,
   ActivityIndicator,
-  Chip,
-  IconButton,
-  ProgressBar,
-  Divider,
+  Menu,
+  FAB,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTasks } from "../contexts/TaskContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import CircularProgressTask from "../components/CircularProgressTask";
+import PriorityChips from "../components/PriorityChips";
+import GradientButton from "../components/GradientButton";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+/**
+ * Task Details Screen - View-first, Edit-later approach
+ * Natural & Human-centric design
+ */
 const TaskDetailsScreen = () => {
-  const theme = useTheme();
   const { t, language } = useLanguage();
   const { updateTask, deleteTask, completeTask, tasks } = useTasks();
   const params = useLocalSearchParams();
-
   const taskId = params?.id || params?.taskId;
 
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    estimatedPomodoros: "1",
-    completedPomodoros: 0,
-    priority: "medium",
-    dueDate: null,
-    isCompleted: false,
-    createdAt: null,
-  });
-
-  const [originalTask, setOriginalTask] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  // State
+  const [task, setTask] = useState(null);
   const [isLoadingTask, setIsLoadingTask] = useState(true);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [tempTitle, setTempTitle] = useState("");
+  const [tempDescription, setTempDescription] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [hasChanges, setHasChanges] = useState(false);
 
-  // Load task data
+  const titleInputRef = useRef(null);
+
+  // Load task
   useEffect(() => {
     if (taskId) {
-      setIsLoadingTask(true);
-
-      const task = tasks.find((t) => t._id === taskId || t.id === taskId);
-
-      if (task) {
-        const taskData = {
-          title: task.title || "",
-          description: task.description || "",
-          estimatedPomodoros: String(task.estimatedPomodoros || 1),
-          completedPomodoros: task.completedPomodoros || 0,
-          priority: task.priority || "medium",
-          dueDate: task.dueDate ? new Date(task.dueDate) : null,
-          isCompleted: task.isCompleted || false,
-          createdAt: task.createdAt ? new Date(task.createdAt) : null,
-        };
-        setFormData(taskData);
-        setOriginalTask(task);
+      const foundTask = tasks.find((t) => t._id === taskId || t.id === taskId);
+      if (foundTask) {
+        setTask(foundTask);
+        setTempTitle(foundTask.title || "");
+        setTempDescription(foundTask.description || "");
       }
-
       setIsLoadingTask(false);
     }
   }, [taskId, tasks]);
 
-  // Track changes
-  useEffect(() => {
-    if (originalTask) {
-      const changed =
-        formData.title !== originalTask.title ||
-        formData.description !== (originalTask.description || "") ||
-        formData.estimatedPomodoros !==
-          String(originalTask.estimatedPomodoros) ||
-        formData.priority !== originalTask.priority ||
-        formData.dueDate?.getTime() !==
-          (originalTask.dueDate
-            ? new Date(originalTask.dueDate).getTime()
-            : null);
+  // Auto-save when field changes
+  const autoSave = async (field, value) => {
+    if (!task) return;
 
-      setHasChanges(changed);
-    }
-  }, [formData, originalTask]);
+    try {
+      const updateData = { [field]: value };
+      const result = await updateTask(taskId, updateData);
 
-  // Handle input change
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Clear field error
-    if (errors[field]) {
-      setErrors((prev) => ({
-        ...prev,
-        [field]: null,
-      }));
+      if (result.success) {
+        setTask((prev) => ({ ...prev, [field]: value }));
+      } else {
+        setSnackbarMessage("Lỗi khi lưu tự động");
+        setSnackbarVisible(true);
+      }
+    } catch (error) {
+      console.error("Auto-save error:", error);
     }
   };
 
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
+  // Handle title edit
+  const handleTitleTap = () => {
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 100);
+  };
 
-    if (!formData.title.trim()) {
-      newErrors.title = t("addTask.titleRequired");
+  const handleTitleBlur = () => {
+    setEditingTitle(false);
+    if (tempTitle.trim() && tempTitle !== task.title) {
+      autoSave("title", tempTitle.trim());
+    } else if (!tempTitle.trim()) {
+      setTempTitle(task.title);
     }
+  };
 
-    const pomodoros = parseInt(formData.estimatedPomodoros);
-    if (isNaN(pomodoros) || pomodoros < 1) {
-      newErrors.estimatedPomodoros = t("addTask.pomodorosMinimum");
+  // Handle description blur
+  const handleDescriptionBlur = () => {
+    if (tempDescription !== task.description) {
+      autoSave("description", tempDescription);
     }
+  };
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // Handle priority change
+  const handlePriorityChange = (newPriority) => {
+    autoSave("priority", newPriority);
   };
 
   // Handle date change
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      handleInputChange("dueDate", selectedDate);
+      autoSave("dueDate", selectedDate.toISOString());
     }
   };
 
-  // Show date picker with keyboard dismiss
-  const showDatePickerHandler = () => {
-    Keyboard.dismiss();
-    setShowDatePicker(true);
-  };
-
-  // Format date for display
-  const formatDate = (date) => {
-    if (!date) return t("taskDetails.notSet");
-    return date.toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
-
-  // Format datetime for created at
-  const formatDateTime = (date) => {
-    if (!date) return "N/A";
-    return date.toLocaleString(language === "vi" ? "vi-VN" : "en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  // Calculate progress percentage
-  const calculateProgress = () => {
-    const estimated = parseInt(formData.estimatedPomodoros) || 1;
-    const completed = formData.completedPomodoros || 0;
-    return Math.min((completed / estimated) * 100, 100);
-  };
-
-  // Get priority color
-  const getPriorityColor = () => {
-    switch (formData.priority) {
-      case "high":
-        return "#D32F2F";
-      case "medium":
-        return "#F57C00";
-      case "low":
-        return "#388E3C";
-      default:
-        return "#757575";
-    }
-  };
-
-  // Get priority label
-  const getPriorityLabel = () => {
-    switch (formData.priority) {
-      case "high":
-        return t("tasks.priorityHigh");
-      case "medium":
-        return t("tasks.priorityMedium");
-      case "low":
-        return t("tasks.priorityLow");
-      default:
-        return t("tasks.priorityMedium");
-    }
-  };
-
-  // Handle save
-  const handleSave = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const taskData = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        estimatedPomodoros: parseInt(formData.estimatedPomodoros),
-        priority: formData.priority,
-        dueDate: formData.dueDate ? formData.dueDate.toISOString() : undefined,
-      };
-
-      const result = await updateTask(taskId, taskData);
-
-      if (result.success) {
-        setSnackbarMessage(t("taskDetails.saveSuccess"));
-        setSnackbarVisible(true);
-        setHasChanges(false);
-
-        // Update original task
-        setOriginalTask((prev) => ({
-          ...prev,
-          ...taskData,
-        }));
-      } else {
-        setSnackbarMessage(result.error || t("taskDetails.saveError"));
-        setSnackbarVisible(true);
-      }
-    } catch (error) {
-      setSnackbarMessage(t("errors.generic"));
-      setSnackbarVisible(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle delete with confirmation
-  const handleDelete = () => {
-    Alert.alert(
-      t("taskDetails.confirmDelete"),
-      t("taskDetails.confirmDeleteMessage"),
-      [
-        {
-          text: t("tasks.cancel"),
-          style: "cancel",
-        },
-        {
-          text: t("taskDetails.delete"),
-          style: "destructive",
-          onPress: async () => {
-            setIsLoading(true);
-            try {
-              const result = await deleteTask(taskId);
-
-              if (result.success) {
-                setSnackbarMessage(t("taskDetails.deleteSuccess"));
-                setSnackbarVisible(true);
-
-                setTimeout(() => {
-                  router.back();
-                }, 1000);
-              } else {
-                setSnackbarMessage(
-                  result.error || t("taskDetails.deleteError")
-                );
-                setSnackbarVisible(true);
-              }
-            } catch (error) {
-              setSnackbarMessage(t("errors.generic"));
-              setSnackbarVisible(true);
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  // Handle toggle complete
-  const handleToggleComplete = async () => {
-    setIsLoading(true);
-
+  // Handle complete task
+  const handleCompleteTask = async () => {
     try {
       const result = await completeTask(taskId);
-
       if (result.success) {
-        // Get the NEW status from the server response
-        const newStatus = result.data.isCompleted;
-
-        // Update formData with the new status
-        setFormData((prev) => ({
-          ...prev,
-          isCompleted: newStatus,
-        }));
-
-        // Use the new status for the message
-        setSnackbarMessage(
-          newStatus
-            ? t("taskDetails.markedComplete")
-            : t("taskDetails.markedIncomplete")
-        );
+        // TODO: Add confetti animation here! 🎉
+        // - Trigger confetti from center or button
+        // - Transform tree emoji: 🌱 -> 🌳
+        // - Dopamine reward for user!
+        setSnackbarMessage("🎉 Hoàn thành nhiệm vụ!");
         setSnackbarVisible(true);
+        setTimeout(() => router.back(), 1500);
       } else {
-        setSnackbarMessage(result.error || t("taskDetails.statusError"));
+        setSnackbarMessage(result.error || "Lỗi khi hoàn thành");
         setSnackbarVisible(true);
       }
     } catch (error) {
-      setSnackbarMessage(t("errors.generic"));
+      setSnackbarMessage("Có lỗi xảy ra");
       setSnackbarVisible(true);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Handle cancel
-  const handleCancel = () => {
-    if (hasChanges) {
-      Alert.alert(
-        t("taskDetails.unsavedChanges"),
-        t("taskDetails.unsavedChangesMessage"),
-        [
-          {
-            text: t("taskDetails.stay"),
-            style: "cancel",
-          },
-          {
-            text: t("taskDetails.exit"),
-            style: "destructive",
-            onPress: () => router.back(),
-          },
-        ]
-      );
-    } else {
-      router.back();
-    }
+  // Handle delete task
+  const handleDeleteTask = () => {
+    Alert.alert("Xóa nhiệm vụ", "Bạn có chắc chắn muốn xóa nhiệm vụ này?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: async () => {
+          const result = await deleteTask(taskId);
+          if (result.success) {
+            router.back();
+          } else {
+            setSnackbarMessage("Lỗi khi xóa");
+            setSnackbarVisible(true);
+          }
+        },
+      },
+    ]);
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "Chưa đặt";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  // Get quick date label
+  const getQuickDateLabel = () => {
+    if (!task?.dueDate) return "Chưa đặt hạn";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(task.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "☀️ Hôm nay";
+    if (diffDays === 1) return "🌙 Ngày mai";
+    if (diffDays >= 2 && diffDays <= 7) return `📅 ${diffDays} ngày nữa`;
+    return `📅 ${formatDate(task.dueDate)}`;
   };
 
   if (isLoadingTask) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-        edges={["bottom"]}
-      >
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>{t("general.loading")}</Text>
+          <ActivityIndicator size="large" color="#6C63FF" />
+          <Text style={styles.loadingText}>Đang tải...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (!originalTask) {
+  if (!task) {
     return (
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: theme.colors.background }]}
-        edges={["bottom"]}
-      >
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>{t("taskDetails.taskNotFound")}</Text>
-          <Button
-            mode="contained"
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            {t("taskDetails.goBack")}
-          </Button>
+          <Text style={styles.errorText}>Không tìm thấy nhiệm vụ</Text>
         </View>
       </SafeAreaView>
     );
   }
-
-  const progressPercentage = calculateProgress();
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["bottom"]}
-    >
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* Simple Header */}
+      <View style={styles.header}>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => router.back()}
+          iconColor="#2D3436"
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        />
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <IconButton
+              icon="dots-vertical"
+              size={24}
+              onPress={() => setMenuVisible(true)}
+              iconColor="#2D3436"
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            />
+          }
         >
-          {/* Header Card - Status and Progress */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <View style={styles.headerContainer}>
-                <View style={styles.statusContainer}>
-                  <Chip
-                    icon={
-                      formData.isCompleted ? "check-circle" : "clock-outline"
-                    }
-                    mode="flat"
-                    style={[
-                      styles.statusChip,
-                      formData.isCompleted
-                        ? { backgroundColor: "#E8F5E9" }
-                        : { backgroundColor: "#FFF3E0" },
-                    ]}
-                    textStyle={
-                      formData.isCompleted
-                        ? { color: "#2E7D32" }
-                        : { color: "#E65100" }
-                    }
-                  >
-                    {formData.isCompleted
-                      ? t("tasks.completed")
-                      : t("tasks.inProgress")}
-                  </Chip>
+          <Menu.Item
+            leadingIcon="delete"
+            onPress={() => {
+              setMenuVisible(false);
+              handleDeleteTask();
+            }}
+            title="Xóa nhiệm vụ"
+            titleStyle={{ color: "#FF5252" }}
+          />
+        </Menu>
+      </View>
 
-                  <Chip
-                    icon="flag"
-                    mode="flat"
-                    style={[
-                      styles.priorityChip,
-                      { backgroundColor: `${getPriorityColor()}15` },
-                    ]}
-                    textStyle={{ color: getPriorityColor() }}
-                  >
-                    {getPriorityLabel()}
-                  </Chip>
-                </View>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Title - Editable on tap */}
+        <View style={styles.heroSection}>
+          {editingTitle ? (
+            <RNTextInput
+              ref={titleInputRef}
+              value={tempTitle}
+              onChangeText={setTempTitle}
+              onBlur={handleTitleBlur}
+              style={styles.heroTitleInput}
+              placeholder="Tên nhiệm vụ..."
+              placeholderTextColor="#BDBDBD"
+              autoFocus
+              returnKeyType="done"
+            />
+          ) : (
+            <TouchableOpacity onPress={handleTitleTap} activeOpacity={0.7}>
+              <Text style={styles.heroTitle}>{task.title}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-                {/* Circular Progress */}
-                <View style={styles.progressCircleContainer}>
-                  <View style={styles.progressCircle}>
-                    <Text style={styles.progressPercentage}>
-                      {Math.round(progressPercentage)}%
-                    </Text>
-                    <Text style={styles.progressLabel}>
-                      {t("tasks.completed")}
-                    </Text>
-                  </View>
-                  <View style={styles.progressCircleOuter}>
-                    <View
-                      style={[
-                        styles.progressCircleFill,
-                        {
-                          width: `${progressPercentage}%`,
-                          backgroundColor: formData.isCompleted
-                            ? "#4CAF50"
-                            : theme.colors.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
+        {/* Circular Progress - Gamification */}
+        <CircularProgressTask
+          completed={task.completedPomodoros || 0}
+          estimated={parseInt(task.estimatedPomodoros) || 1}
+        />
 
-                {/* Pomodoro Stats */}
-                <View style={styles.pomodoroStats}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>
-                      {formData.completedPomodoros}
-                    </Text>
-                    <Text style={styles.statLabel}>
-                      {t("taskDetails.completed")}
-                    </Text>
-                  </View>
-                  <Divider style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>
-                      {formData.estimatedPomodoros}
-                    </Text>
-                    <Text style={styles.statLabel}>
-                      {t("taskDetails.estimated")}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </Card.Content>
-          </Card>
+        {/* Properties Row - Chips */}
+        <View style={styles.propertiesSection}>
+          {/* Date Chip */}
+          <TouchableOpacity
+            style={styles.propertyChip}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={styles.propertyChipText}>{getQuickDateLabel()}</Text>
+          </TouchableOpacity>
 
-          {/* Basic Info Card */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("taskDetails.basicInfo")}
-              </Text>
+          {showDatePicker && (
+            <DateTimePicker
+              value={task.dueDate ? new Date(task.dueDate) : new Date()}
+              mode="date"
+              display="default"
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+            />
+          )}
+        </View>
 
-              {/* Title Input */}
-              <TextInput
-                label={t("addTask.titleLabel")}
-                value={formData.title}
-                onChangeText={(value) => handleInputChange("title", value)}
-                mode="outlined"
-                style={styles.input}
-                error={!!errors.title}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="format-title" />}
-              />
-              {errors.title && (
-                <Text style={styles.errorText}>{errors.title}</Text>
-              )}
+        {/* Priority Selection */}
+        <View style={styles.prioritySection}>
+          <Text style={styles.sectionLabel}>Mức độ quan trọng</Text>
+          <PriorityChips
+            value={task.priority || "medium"}
+            onChange={handlePriorityChange}
+          />
+        </View>
 
-              {/* Description Input */}
-              <TextInput
-                label={t("taskDetails.description")}
-                value={formData.description}
-                onChangeText={(value) =>
-                  handleInputChange("description", value)
-                }
-                mode="outlined"
-                style={styles.input}
-                multiline
-                numberOfLines={4}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="text" />}
-              />
+        {/* Description - Always visible */}
+        <View style={styles.descriptionSection}>
+          <View style={styles.descriptionHeader}>
+            <Text style={styles.sectionLabel}>Ghi chú</Text>
+            <MaterialCommunityIcons
+              name="pencil-outline"
+              size={18}
+              color="#D1D5DB"
+              style={styles.descriptionIcon}
+            />
+          </View>
+          <RNTextInput
+            value={tempDescription}
+            onChangeText={setTempDescription}
+            onBlur={handleDescriptionBlur}
+            style={styles.descriptionInput}
+            placeholder="Thêm ghi chú cho nhiệm vụ này..."
+            placeholderTextColor="#B0B0B0"
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+        </View>
 
-              {/* Estimated Pomodoros */}
-              <TextInput
-                label={t("addTask.pomodorosLabel")}
-                value={formData.estimatedPomodoros}
-                onChangeText={(value) =>
-                  handleInputChange("estimatedPomodoros", value)
-                }
-                mode="outlined"
-                style={styles.input}
-                keyboardType="number-pad"
-                error={!!errors.estimatedPomodoros}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="timer-sand" />}
-              />
-              {errors.estimatedPomodoros && (
-                <Text style={styles.errorText}>
-                  {errors.estimatedPomodoros}
-                </Text>
-              )}
-            </Card.Content>
-          </Card>
+        {/* Spacer for FAB */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
-          {/* Priority & Date Card */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("taskDetails.settings")}
-              </Text>
-
-              {/* Priority Selection */}
-              <Text variant="titleSmall" style={styles.fieldLabel}>
-                {t("tasks.priority")}
-              </Text>
-              <View style={styles.priorityButtons}>
-                <Button
-                  mode={formData.priority === "low" ? "contained" : "outlined"}
-                  onPress={() => handleInputChange("priority", "low")}
-                  icon="arrow-down"
-                  style={[
-                    styles.priorityButton,
-                    formData.priority === "low" && {
-                      backgroundColor: "#388E3C",
-                    },
-                  ]}
-                  disabled={isLoading}
-                >
-                  {t("tasks.priorityLow")}
-                </Button>
-                <Button
-                  mode={
-                    formData.priority === "medium" ? "contained" : "outlined"
-                  }
-                  onPress={() => handleInputChange("priority", "medium")}
-                  icon="minus"
-                  style={[
-                    styles.priorityButton,
-                    formData.priority === "medium" && {
-                      backgroundColor: "#F57C00",
-                    },
-                  ]}
-                  disabled={isLoading}
-                >
-                  {t("tasks.priorityMedium")}
-                </Button>
-                <Button
-                  mode={formData.priority === "high" ? "contained" : "outlined"}
-                  onPress={() => handleInputChange("priority", "high")}
-                  icon="arrow-up"
-                  style={[
-                    styles.priorityButton,
-                    formData.priority === "high" && {
-                      backgroundColor: "#D32F2F",
-                    },
-                  ]}
-                  disabled={isLoading}
-                >
-                  {t("tasks.priorityHigh")}
-                </Button>
-              </View>
-
-              {/* Due Date Picker */}
-              <Text variant="titleSmall" style={styles.fieldLabel}>
-                {t("tasks.dueDate")}
-              </Text>
-              <Button
-                mode="outlined"
-                onPress={showDatePickerHandler}
-                icon="calendar"
-                style={styles.dateButton}
-                disabled={isLoading}
-              >
-                {formatDate(formData.dueDate)}
-              </Button>
-
-              {formData.dueDate && (
-                <Button
-                  mode="text"
-                  onPress={() => handleInputChange("dueDate", null)}
-                  icon="close"
-                  textColor="#757575"
-                  style={styles.clearDateButton}
-                  disabled={isLoading}
-                >
-                  {t("addTask.clearDueDate")}
-                </Button>
-              )}
-
-              {showDatePicker && (
-                <DateTimePicker
-                  value={formData.dueDate || new Date()}
-                  mode="date"
-                  display="default"
-                  onChange={handleDateChange}
-                  minimumDate={new Date()}
-                />
-              )}
-            </Card.Content>
-          </Card>
-
-          {/* Metadata Card */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("taskDetails.detailedInfo")}
-              </Text>
-
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>
-                  {t("taskDetails.createdDate")}:
-                </Text>
-                <Text style={styles.metadataValue}>
-                  {formatDateTime(formData.createdAt)}
-                </Text>
-              </View>
-
-              <Divider style={styles.metadataDivider} />
-
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>{t("tasks.status")}:</Text>
-                <Chip
-                  icon={formData.isCompleted ? "check-circle" : "clock-outline"}
-                  compact
-                  style={
-                    formData.isCompleted
-                      ? { backgroundColor: "#E8F5E9" }
-                      : { backgroundColor: "#FFF3E0" }
-                  }
-                  textStyle={
-                    formData.isCompleted
-                      ? { color: "#2E7D32", fontSize: 12 }
-                      : { color: "#E65100", fontSize: 12 }
-                  }
-                >
-                  {formData.isCompleted
-                    ? t("tasks.completed")
-                    : t("tasks.inProgress")}
-                </Chip>
-              </View>
-
-              <Divider style={styles.metadataDivider} />
-
-              <View style={styles.metadataRow}>
-                <Text style={styles.metadataLabel}>
-                  {t("taskDetails.pomodoroProgress")}:
-                </Text>
-                <Text style={styles.metadataValue}>
-                  {formData.completedPomodoros} / {formData.estimatedPomodoros}
-                </Text>
-              </View>
-
-              <ProgressBar
-                progress={progressPercentage / 100}
-                style={styles.progressBar}
-                color={formData.isCompleted ? "#4CAF50" : theme.colors.primary}
-              />
-
-              {/* Pomodoro History */}
-              {originalTask?.pomodoroSessions &&
-                originalTask.pomodoroSessions.length > 0 && (
-                  <>
-                    <Divider style={styles.metadataDivider} />
-                    <Text style={styles.metadataLabel}>
-                      {t("taskDetails.pomodoroHistory")}:
-                    </Text>
-                    <View style={styles.historyContainer}>
-                      {originalTask.pomodoroSessions
-                        .slice()
-                        .reverse()
-                        .slice(0, 5)
-                        .map((session, index) => (
-                          <View key={index} style={styles.historyItem}>
-                            <Text style={styles.historyDate}>
-                              {new Date(session.completedAt).toLocaleString(
-                                language === "vi" ? "vi-VN" : "en-US",
-                                {
-                                  day: "2-digit",
-                                  month: "2-digit",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
-                            </Text>
-                            <Chip
-                              icon="timer"
-                              compact
-                              style={styles.historyChip}
-                            >
-                              {session.duration} {t("taskDetails.minutes")}
-                            </Chip>
-                          </View>
-                        ))}
-                      {originalTask.pomodoroSessions.length > 5 && (
-                        <Text style={styles.historyMore}>
-                          +{originalTask.pomodoroSessions.length - 5}{" "}
-                          {t("taskDetails.moreSessions")}
-                        </Text>
-                      )}
-                    </View>
-                  </>
-                )}
-            </Card.Content>
-          </Card>
-
-          {/* Action Buttons */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("taskDetails.actions")}
-              </Text>
-
-              {/* Toggle Complete Button */}
-              <Button
-                mode="contained"
-                onPress={handleToggleComplete}
-                icon={formData.isCompleted ? "close-circle" : "check-circle"}
-                style={[
-                  styles.actionButton,
-                  formData.isCompleted
-                    ? { backgroundColor: "#F57C00" }
-                    : { backgroundColor: "#4CAF50" },
-                ]}
-                loading={isLoading}
-                disabled={isLoading}
-              >
-                {formData.isCompleted
-                  ? t("taskDetails.markIncomplete")
-                  : t("taskDetails.markComplete")}
-              </Button>
-
-              {/* Save Button */}
-              <Button
-                mode="contained"
-                onPress={handleSave}
-                icon="content-save"
-                style={styles.actionButton}
-                loading={isLoading}
-                disabled={isLoading || !hasChanges}
-              >
-                {t("taskDetails.saveChanges")}
-              </Button>
-
-              {/* Delete Button */}
-              <Button
-                mode="outlined"
-                onPress={handleDelete}
-                icon="delete"
-                style={styles.deleteButton}
-                textColor="#D32F2F"
-                disabled={isLoading}
-              >
-                {t("taskDetails.deleteTask")}
-              </Button>
-
-              {/* Cancel Button */}
-              <Button
-                mode="text"
-                onPress={handleCancel}
-                icon="arrow-left"
-                style={styles.cancelButton}
-                disabled={isLoading}
-              >
-                {t("taskDetails.goBack")}
-              </Button>
-            </Card.Content>
-          </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      {/* Bottom Action Button - Gradient */}
+      {!task.isCompleted && (
+        <View style={styles.bottomContainer}>
+          <GradientButton
+            onPress={handleCompleteTask}
+            title="Hoàn thành nhiệm vụ"
+            icon="check"
+            mode="gradient"
+            style={styles.completeButton}
+          />
+        </View>
+      )}
 
       {/* Snackbar */}
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
-        action={{
-          label: t("general.close"),
-          onPress: () => setSnackbarVisible(false),
-        }}
+        style={{ backgroundColor: "#6C63FF" }}
       >
         {snackbarMessage}
       </Snackbar>
@@ -831,200 +364,127 @@ const TaskDetailsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#FAFAFA",
   },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 16,
-    paddingBottom: 32,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: "transparent",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
   },
   loadingText: {
     marginTop: 16,
     fontSize: 14,
-    color: "#757575",
+    color: "#636E72",
   },
   errorText: {
     fontSize: 16,
-    color: "#D32F2F",
-    marginBottom: 16,
+    color: "#FF5252",
   },
-  backButton: {
-    marginTop: 16,
-  },
-  card: {
-    elevation: 2,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  cardContent: {
-    padding: 16,
-  },
-  headerContainer: {
-    alignItems: "center",
-  },
-  statusContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 24,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  statusChip: {
-    borderRadius: 20,
-  },
-  priorityChip: {
-    borderRadius: 20,
-  },
-  progressCircleContainer: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  progressCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "#F5F5F5",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  progressCircleOuter: {
-    width: 140,
-    height: 8,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  progressCircleFill: {
-    height: "100%",
-    borderRadius: 4,
-  },
-  progressPercentage: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#1976D2",
-  },
-  progressLabel: {
-    fontSize: 12,
-    color: "#757575",
-    marginTop: 4,
-  },
-  pomodoroStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    paddingTop: 16,
-  },
-  statItem: {
-    alignItems: "center",
+  scrollView: {
     flex: 1,
   },
-  statDivider: {
-    width: 1,
-    height: 40,
-    alignSelf: "center",
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#1976D2",
+  heroSection: {
+    marginBottom: 24,
   },
-  statLabel: {
-    fontSize: 12,
-    color: "#757575",
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontWeight: "bold",
-    marginBottom: 16,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  priorityButtons: {
+  heroTitleContainer: {
     flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    marginBottom: 16,
   },
-  priorityButton: {
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#2D3436",
     flex: 1,
   },
-  dateButton: {
-    marginBottom: 8,
-  },
-  clearDateButton: {
-    marginBottom: 16,
-  },
-  metadataRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  heroTitleInput: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#2D3436",
     paddingVertical: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "#6C63FF",
   },
-  metadataLabel: {
-    fontSize: 14,
-    color: "#757575",
+  editIcon: {
+    marginLeft: 8,
+  },
+  propertiesSection: {
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  propertyChip: {
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+  },
+  propertyChipText: {
+    fontSize: 15,
     fontWeight: "500",
+    color: "#2D3436",
   },
-  metadataValue: {
-    fontSize: 14,
-    color: "#212121",
-    fontWeight: "600",
+  prioritySection: {
+    marginBottom: 28,
   },
-  metadataDivider: {
-    marginVertical: 8,
+  sectionLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#2D3436",
+    marginBottom: 12,
   },
-  progressBar: {
-    marginTop: 12,
-    height: 8,
-    borderRadius: 4,
+  descriptionSection: {
+    marginBottom: 28,
   },
-  historyContainer: {
-    marginTop: 8,
-    gap: 8,
-  },
-  historyItem: {
+  descriptionHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 4,
-  },
-  historyDate: {
-    fontSize: 13,
-    color: "#616161",
-  },
-  historyChip: {
-    height: 28,
-  },
-  historyMore: {
-    fontSize: 12,
-    color: "#9E9E9E",
-    fontStyle: "italic",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  actionButton: {
     marginBottom: 12,
+    gap: 6,
   },
-  deleteButton: {
-    marginBottom: 12,
-    borderColor: "#D32F2F",
+  descriptionIcon: {
+    marginTop: 2,
   },
-  cancelButton: {
-    marginTop: 8,
+  descriptionInput: {
+    fontSize: 15,
+    color: "#636E72",
+    backgroundColor: "transparent",
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    borderRadius: 0,
+    borderWidth: 0,
+    minHeight: 100,
+  },
+  bottomContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  completeButton: {
+    width: "100%",
   },
 });
 

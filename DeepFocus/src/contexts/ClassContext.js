@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { classAPI } from "../services/api";
 import { useRole } from "./RoleContext";
+import { useAuth } from "./AuthContext";
 
 const ClassContext = createContext();
 
@@ -19,13 +20,21 @@ export const ClassProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { currentRole, hasRole } = useRole();
+  const { isAuthenticated } = useAuth();
 
-  // Load classes when role changes
+  // Load classes when role changes and user is authenticated
   useEffect(() => {
-    if (currentRole && (hasRole("teacher") || hasRole("student"))) {
+    if (
+      isAuthenticated &&
+      currentRole &&
+      (hasRole("teacher") || hasRole("student"))
+    ) {
       loadClasses();
+    } else if (!isAuthenticated) {
+      setClasses([]);
+      setCurrentClass(null);
     }
-  }, [currentRole]);
+  }, [currentRole, isAuthenticated]);
 
   // Load classes based on current role
   const loadClasses = async () => {
@@ -51,17 +60,27 @@ export const ClassProvider = ({ children }) => {
         );
       }
     } catch (err) {
-      console.error("Error loading classes:", err);
-      setError(err.message || "Failed to load classes");
+      // Handle token expiration silently - user will be logged out by AuthContext
+      if (
+        err.status === 401 ||
+        err.message?.includes("Token has expired") ||
+        err.message?.includes("token")
+      ) {
+        console.log("⚠️ Auth error in loadClasses, skipping");
+        setClasses([]);
+      } else {
+        console.error("Error loading classes:", err.message);
+        setError(err.message || "Failed to load classes");
 
-      // Try to load from cache
-      try {
-        const cached = await AsyncStorage.getItem(`classes_${currentRole}`);
-        if (cached) {
-          setClasses(JSON.parse(cached));
+        // Try to load from cache
+        try {
+          const cached = await AsyncStorage.getItem(`classes_${currentRole}`);
+          if (cached) {
+            setClasses(JSON.parse(cached));
+          }
+        } catch (cacheErr) {
+          console.error("Cache read error:", cacheErr);
         }
-      } catch (cacheErr) {
-        console.error("Cache read error:", cacheErr);
       }
     } finally {
       setLoading(false);

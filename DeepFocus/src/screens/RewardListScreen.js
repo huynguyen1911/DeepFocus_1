@@ -19,6 +19,7 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { useReward } from "../contexts/RewardContext";
 import { useAuth } from "../contexts/AuthContext";
+import { useRole } from "../contexts/RoleContext";
 import RewardCard from "../components/RewardCard";
 
 /**
@@ -29,6 +30,7 @@ export default function RewardListScreen() {
   const theme = useTheme();
   const { classId } = useLocalSearchParams();
   const { user } = useAuth();
+  const { currentRole } = useRole();
   const { rewards, isLoading, loadRewardsByClass, deleteReward, clearError } =
     useReward();
 
@@ -113,6 +115,11 @@ export default function RewardListScreen() {
     return (
       reward.giverId === user._id || user.roles?.some((r) => r.name === "admin")
     );
+  };
+
+  // Check if user can create rewards (only teacher/guardian, not student)
+  const canCreateReward = () => {
+    return currentRole === "teacher" || currentRole === "guardian";
   };
 
   const getCategoryLabel = (category) => {
@@ -258,12 +265,14 @@ export default function RewardListScreen() {
         )}
       </ScrollView>
 
-      <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={handleCreateReward}
-        label="Tạo phần thưởng"
-      />
+      {canCreateReward() && (
+        <FAB
+          icon="plus"
+          style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+          onPress={handleCreateReward}
+          label="Tạo phần thưởng"
+        />
+      )}
     </View>
   );
 }

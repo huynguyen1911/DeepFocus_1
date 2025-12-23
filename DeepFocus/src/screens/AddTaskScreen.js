@@ -6,22 +6,28 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  TouchableOpacity,
+  TextInput as RNTextInput,
 } from "react-native";
 import {
   TextInput,
   Button,
-  Card,
   Text,
-  SegmentedButtons,
   useTheme,
   Snackbar,
   ActivityIndicator,
+  IconButton,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTasks } from "../contexts/TaskContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import PomodoroCounter from "../components/PomodoroCounter";
+import PriorityChips from "../components/PriorityChips";
+import GradientButton from "../components/GradientButton";
 
 const AddTaskScreen = () => {
   const theme = useTheme();
@@ -115,8 +121,31 @@ const AddTaskScreen = () => {
 
   // Show date picker with keyboard dismiss
   const showDatePickerHandler = () => {
-    Keyboard.dismiss(); // Dismiss keyboard trước
+    Keyboard.dismiss();
     setShowDatePicker(true);
+  };
+
+  // Quick date actions
+  const setQuickDate = (type) => {
+    const date = new Date();
+
+    switch (type) {
+      case "today":
+        handleInputChange("dueDate", date);
+        break;
+      case "tomorrow":
+        date.setDate(date.getDate() + 1);
+        handleInputChange("dueDate", date);
+        break;
+      case "weekend":
+        // Next Saturday
+        const daysUntilWeekend = 6 - date.getDay();
+        date.setDate(
+          date.getDate() + (daysUntilWeekend > 0 ? daysUntilWeekend : 7)
+        );
+        handleInputChange("dueDate", date);
+        break;
+    }
   };
 
   // Format date for display
@@ -196,12 +225,28 @@ const AddTaskScreen = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      edges={["bottom"]}
+      style={[styles.container, { backgroundColor: "#FAFAFA" }]}
+      edges={["top", "bottom"]}
     >
+      {/* Floating X button */}
+      <View style={styles.floatingHeader}>
+        <Text variant="titleLarge" style={styles.screenTitle}>
+          {isEditMode ? "Chỉnh sửa nhiệm vụ" : "Mục tiêu mới"}
+        </Text>
+        <IconButton
+          icon="close"
+          size={26}
+          onPress={handleCancel}
+          style={styles.closeButton}
+          iconColor="#636E72"
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        />
+      </View>
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -210,133 +255,141 @@ const AddTaskScreen = () => {
         >
           {isLoadingTask ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" />
+              <ActivityIndicator size="large" color="#6C63FF" />
               <Text style={styles.loadingText}>{t("general.loading")}</Text>
             </View>
           ) : (
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
-                <Text variant="headlineSmall" style={styles.formTitle}>
-                  {isEditMode ? t("addTask.editTask") : t("addTask.createTask")}
-                </Text>
-
-                {/* Title Input */}
-                <TextInput
-                  label={t("addTask.titleLabel")}
+            <View style={styles.formContainer}>
+              {/* Title Input - Large, conversational */}
+              <View style={styles.section}>
+                <RNTextInput
                   value={formData.title}
                   onChangeText={(value) => handleInputChange("title", value)}
-                  mode="outlined"
-                  style={styles.input}
-                  error={!!errors.title}
-                  disabled={isLoading}
-                  left={<TextInput.Icon icon="format-title" />}
+                  placeholder="Bạn muốn làm gì?"
+                  placeholderTextColor="#9E9E9E"
+                  style={[
+                    styles.titleInput,
+                    errors.title && { borderColor: "#FF5252" },
+                  ]}
+                  editable={!isLoading}
+                  autoFocus={!isEditMode}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                 />
                 {errors.title && (
                   <Text style={styles.errorText}>{errors.title}</Text>
                 )}
+              </View>
 
-                {/* Description Input */}
-                <TextInput
-                  label={t("addTask.descriptionLabel")}
+              {/* Description Input */}
+              <View style={styles.section}>
+                <RNTextInput
                   value={formData.description}
                   onChangeText={(value) =>
                     handleInputChange("description", value)
                   }
-                  mode="outlined"
-                  style={styles.input}
+                  placeholder="Ghi chú thêm..."
+                  placeholderTextColor="#B0B0B0"
+                  style={styles.descriptionInput}
                   multiline
                   numberOfLines={3}
-                  disabled={isLoading}
-                  left={<TextInput.Icon icon="text" />}
+                  textAlignVertical="top"
+                  editable={!isLoading}
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                 />
+              </View>
 
-                {/* Estimated Pomodoros */}
-                <TextInput
-                  label={t("addTask.pomodorosLabel")}
+              {/* Pomodoro Estimation */}
+              <View style={styles.section}>
+                <Text style={styles.questionText}>Thời gian dự kiến</Text>
+                <PomodoroCounter
                   value={formData.estimatedPomodoros}
-                  onChangeText={(value) =>
+                  onChange={(value) =>
                     handleInputChange("estimatedPomodoros", value)
                   }
-                  mode="outlined"
-                  style={styles.input}
-                  keyboardType="number-pad"
-                  error={!!errors.estimatedPomodoros}
                   disabled={isLoading}
-                  left={<TextInput.Icon icon="timer-sand" />}
                 />
                 {errors.estimatedPomodoros && (
                   <Text style={styles.errorText}>
                     {errors.estimatedPomodoros}
                   </Text>
                 )}
+              </View>
 
-                {/* Priority Selection */}
-                <Text variant="titleSmall" style={styles.sectionTitle}>
-                  {t("tasks.priority")}
-                </Text>
-                <SegmentedButtons
+              {/* Priority Selection */}
+              <View style={styles.section}>
+                <Text style={styles.questionText}>Mức độ quan trọng?</Text>
+                <PriorityChips
                   value={formData.priority}
-                  onValueChange={(value) =>
-                    handleInputChange("priority", value)
-                  }
-                  buttons={[
-                    {
-                      value: "low",
-                      label: t("tasks.priorityLow"),
-                      icon: "arrow-down",
-                      style:
-                        formData.priority === "low"
-                          ? { backgroundColor: "#E8F5E9" }
-                          : {},
-                    },
-                    {
-                      value: "medium",
-                      label: t("tasks.priorityMedium"),
-                      icon: "minus",
-                      style:
-                        formData.priority === "medium"
-                          ? { backgroundColor: "#FFF3E0" }
-                          : {},
-                    },
-                    {
-                      value: "high",
-                      label: t("tasks.priorityHigh"),
-                      icon: "arrow-up",
-                      style:
-                        formData.priority === "high"
-                          ? { backgroundColor: "#FFEBEE" }
-                          : {},
-                    },
-                  ]}
-                  style={styles.segmentedButtons}
+                  onChange={(value) => handleInputChange("priority", value)}
                   disabled={isLoading}
                 />
+              </View>
 
-                {/* Due Date Picker */}
-                <Text variant="titleSmall" style={styles.sectionTitle}>
-                  {t("addTask.dueDateSection")}
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={showDatePickerHandler}
-                  icon="calendar"
-                  style={styles.dateButton}
-                  disabled={isLoading}
-                >
-                  {formatDate(formData.dueDate)}
-                </Button>
-
-                {formData.dueDate && (
-                  <Button
-                    mode="text"
-                    onPress={() => handleInputChange("dueDate", null)}
-                    icon="close"
-                    textColor="#757575"
-                    style={styles.clearDateButton}
+              {/* Due Date - Quick Actions */}
+              <View style={styles.section}>
+                <Text style={styles.questionText}>Khi nào làm?</Text>
+                <View style={styles.dateChipsRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.dateChip,
+                      formData.dueDate &&
+                        formatDate(formData.dueDate).includes(
+                          formatDate(new Date())
+                        ) &&
+                        styles.dateChipSelected,
+                    ]}
+                    onPress={() => setQuickDate("today")}
                     disabled={isLoading}
                   >
-                    {t("addTask.clearDueDate")}
-                  </Button>
+                    <Text style={styles.dateChipEmoji}>☀️</Text>
+                    <Text style={styles.dateChipText}>Hôm nay</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dateChip}
+                    onPress={() => setQuickDate("tomorrow")}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.dateChipEmoji}>🌙</Text>
+                    <Text style={styles.dateChipText}>Ngày mai</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dateChip}
+                    onPress={() => setQuickDate("weekend")}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.dateChipEmoji}>🎯</Text>
+                    <Text style={styles.dateChipText}>Cuối tuần</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.dateChip, styles.dateChipIcon]}
+                    onPress={showDatePickerHandler}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.dateChipEmoji}>📅</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {formData.dueDate && (
+                  <View style={styles.selectedDateContainer}>
+                    <Text style={styles.selectedDateText}>
+                      📅 {formatDate(formData.dueDate)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => handleInputChange("dueDate", null)}
+                      disabled={isLoading}
+                    >
+                      <MaterialCommunityIcons
+                        name="close-circle"
+                        size={20}
+                        color="#636E72"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 )}
 
                 {showDatePicker && (
@@ -348,31 +401,23 @@ const AddTaskScreen = () => {
                     minimumDate={new Date()}
                   />
                 )}
-
-                {/* Action Buttons */}
-                <View style={styles.buttonContainer}>
-                  <Button
-                    mode="outlined"
-                    onPress={handleCancel}
-                    style={styles.cancelButton}
-                    disabled={isLoading}
-                  >
-                    {t("tasks.cancel")}
-                  </Button>
-                  <Button
-                    mode="contained"
-                    onPress={handleSubmit}
-                    style={styles.submitButton}
-                    loading={isLoading}
-                    disabled={isLoading}
-                  >
-                    {isEditMode ? t("addTask.update") : t("tasks.save")}
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
+              </View>
+            </View>
           )}
         </ScrollView>
+
+        {/* Bottom Action Button */}
+        {!isLoadingTask && (
+          <View style={styles.bottomContainer}>
+            <GradientButton
+              onPress={handleSubmit}
+              title={isEditMode ? "💾 Cập nhật nhiệm vụ" : "✨ Tạo nhiệm vụ"}
+              loading={isLoading}
+              disabled={isLoading}
+              style={styles.createButton}
+            />
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {/* Snackbar */}
@@ -384,6 +429,7 @@ const AddTaskScreen = () => {
           label: t("general.close"),
           onPress: () => setSnackbarVisible(false),
         }}
+        style={{ backgroundColor: "#6C63FF" }}
       >
         {snackbarMessage}
       </Snackbar>
@@ -395,70 +441,146 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  floatingHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+    backgroundColor: "transparent",
+  },
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#2D3436",
+  },
+  closeButton: {
+    margin: 0,
+  },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: 16,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    marginTop: 100,
   },
   loadingText: {
     marginTop: 16,
+    color: "#636E72",
     fontSize: 14,
-    color: "#757575",
   },
-  card: {
-    elevation: 2,
+  formContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  section: {
+    marginBottom: 28,
+  },
+  titleInput: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#2D3436",
+    backgroundColor: "#F5F7FA",
+    paddingHorizontal: 0,
+    paddingVertical: 18,
     borderRadius: 12,
+    borderWidth: 0,
   },
-  cardContent: {
-    padding: 20,
+  descriptionInput: {
+    fontSize: 15,
+    color: "#636E72",
+    backgroundColor: "transparent",
+    paddingHorizontal: 0,
+    paddingVertical: 12,
+    borderRadius: 0,
+    borderWidth: 0,
+    minHeight: 80,
   },
-  formTitle: {
-    fontWeight: "bold",
-    marginBottom: 24,
-    textAlign: "center",
+  questionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#2D3436",
+    marginBottom: 12,
   },
-  input: {
-    marginBottom: 16,
+  dateChipsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  dateChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    borderWidth: 0,
+    gap: 4,
+  },
+  dateChipSelected: {
+    backgroundColor: "#EDE9FE",
+    borderColor: "#6C63FF",
+    borderWidth: 2,
+  },
+  dateChipIcon: {
+    flex: 0,
+    width: 48,
+    paddingHorizontal: 0,
+  },
+  dateChipEmoji: {
+    fontSize: 16,
+  },
+  dateChipText: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  selectedDateContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F3F0FF",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  selectedDateText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#6C63FF",
+  },
+  bottomContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  createButton: {
+    width: "100%",
   },
   errorText: {
-    color: "#D32F2F",
     fontSize: 12,
-    marginTop: -12,
-    marginBottom: 12,
-    marginLeft: 12,
-  },
-  sectionTitle: {
-    fontWeight: "600",
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  segmentedButtons: {
-    marginBottom: 16,
-  },
-  dateButton: {
-    marginBottom: 8,
-  },
-  clearDateButton: {
-    marginBottom: 16,
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 24,
-  },
-  cancelButton: {
-    flex: 1,
-  },
-  submitButton: {
-    flex: 1,
+    color: "#FF5252",
+    marginTop: 6,
+    marginLeft: 4,
   },
 });
 
