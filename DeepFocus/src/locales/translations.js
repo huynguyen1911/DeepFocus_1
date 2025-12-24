@@ -801,7 +801,8 @@ export const translations = {
       thisWeek: "Tuần Này",
       thisMonth: "Tháng Này",
       emptyTitle: "Vị trí số 1 đang chờ bạn!",
-      emptyDescription: "Chưa có nhà vô địch nào. Hãy hoàn thành bài tập đầu tiên để ghi danh vào đường đua!",
+      emptyDescription:
+        "Chưa có nhà vô địch nào. Hãy hoàn thành bài tập đầu tiên để ghi danh vào đường đua!",
     },
 
     // Members management translations
@@ -1602,7 +1603,8 @@ export const translations = {
       thisWeek: "This Week",
       thisMonth: "This Month",
       emptyTitle: "The #1 spot is waiting for you!",
-      emptyDescription: "No champions yet. Complete your first assignment to join the race!",
+      emptyDescription:
+        "No champions yet. Complete your first assignment to join the race!",
     },
 
     // Members management translations

@@ -18,7 +18,7 @@ import {
   Divider,
   SegmentedButtons,
 } from "react-native-paper";
-import { router, useLocalSearchParams, Stack } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { classAPI } from "../services/api";
 import { useLanguage } from "../contexts/LanguageContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -201,7 +201,6 @@ export default function LeaderboardScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.centered]}>
-        <Stack.Screen options={{ headerShown: false }} />
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text variant="bodyMedium" style={styles.loadingText}>
           {t("leaderboard.loading")}
@@ -212,7 +211,6 @@ export default function LeaderboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
         <IconButton
           icon="arrow-left"

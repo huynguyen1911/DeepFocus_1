@@ -122,6 +122,18 @@ export default function RootLayout() {
                   }} 
                 />
                 <Stack.Screen 
+                  name="classes/leaderboard/[id]" 
+                  options={{ 
+                    headerShown: false,
+                  }} 
+                />
+                <Stack.Screen 
+                  name="classes/members/[id]" 
+                  options={{ 
+                    headerShown: false,
+                  }} 
+                />
+                <Stack.Screen 
                   name="rewards/[classId]" 
                   options={{ 
                     title: 'Phần Thưởng & Phạt',
