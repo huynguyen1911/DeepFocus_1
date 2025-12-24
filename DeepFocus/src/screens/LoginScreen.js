@@ -6,11 +6,12 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  TouchableOpacity,
+  Text,
 } from "react-native";
 import {
   TextInput,
   Button,
-  Card,
   Title,
   Paragraph,
   HelperText,
@@ -18,9 +19,11 @@ import {
   useTheme,
   Divider,
   Snackbar,
+  IconButton,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -128,7 +131,8 @@ const LoginScreen = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { backgroundColor: "#FFFFFF" }]}
+      edges={["top", "left", "right"]}
     >
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -137,104 +141,132 @@ const LoginScreen = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Custom Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <IconButton icon="arrow-left" size={24} iconColor="#666" />
+          </TouchableOpacity>
+
+          {/* Logo Icon */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoEmoji}>🧠</Text>
+            </View>
+          </View>
+
+          {/* Header - No Box, Just Text */}
           <View style={styles.header}>
-            <Title style={[styles.title, { color: theme.colors.primary }]}>
-              DeepFocus
-            </Title>
+            <Text style={styles.title}>DeepFocus</Text>
             <Paragraph style={styles.subtitle}>{t("login.subtitle")}</Paragraph>
           </View>
 
-          {/* Login Form */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Title style={styles.formTitle}>{t("auth.login")}</Title>
-
-              {/* Global Error */}
-              {error && (
-                <HelperText
-                  type="error"
-                  visible={!!error}
-                  style={styles.globalError}
-                >
-                  {error}
-                </HelperText>
-              )}
-
-              {/* Email Input */}
-              <TextInput
-                label={t("auth.email")}
-                value={formData.email}
-                onChangeText={(value) => handleInputChange("email", value)}
-                mode="outlined"
-                style={styles.input}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                error={!!errors.email}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="email" />}
-              />
-              <HelperText type="error" visible={!!errors.email}>
-                {errors.email}
+          {/* Login Form - No Card Wrapper */}
+          <View style={styles.formContainer}>
+            {/* Global Error */}
+            {error && (
+              <HelperText
+                type="error"
+                visible={!!error}
+                style={styles.globalError}
+              >
+                {error}
               </HelperText>
+            )}
 
-              {/* Password Input */}
-              <TextInput
-                label={t("auth.password")}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange("password", value)}
-                mode="outlined"
-                style={styles.input}
-                secureTextEntry={!showPassword}
-                error={!!errors.password}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="lock" />}
-                right={
-                  <TextInput.Icon
-                    icon={showPassword ? "eye-off" : "eye"}
-                    onPress={() => setShowPassword(!showPassword)}
-                  />
+            {/* Email Input - Soft UI */}
+            <TextInput
+              label={t("auth.email")}
+              value={formData.email}
+              onChangeText={(value) => handleInputChange("email", value)}
+              mode="flat"
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={!!errors.email}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="email" color="#9E9E9E" />}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <HelperText type="error" visible={!!errors.email}>
+              {errors.email}
+            </HelperText>
+
+            {/* Password Input - Soft UI */}
+            <TextInput
+              label={t("auth.password")}
+              value={formData.password}
+              onChangeText={(value) => handleInputChange("password", value)}
+              mode="flat"
+              style={styles.input}
+              secureTextEntry={!showPassword}
+              error={!!errors.password}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="lock" color="#9E9E9E" />}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? "eye-off" : "eye"}
+                  onPress={() => setShowPassword(!showPassword)}
+                  color="#9E9E9E"
+                />
+              }
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <HelperText type="error" visible={!!errors.password}>
+              {errors.password}
+            </HelperText>
+
+            {/* Login Button - Gradient */}
+            <TouchableOpacity
+              onPress={handleLogin}
+              disabled={isLoading}
+              activeOpacity={0.8}
+              style={styles.loginButtonContainer}
+            >
+              <LinearGradient
+                colors={
+                  isLoading ? ["#BDBDBD", "#9E9E9E"] : ["#7C4DFF", "#B47CFF"]
                 }
-              />
-              <HelperText type="error" visible={!!errors.password}>
-                {errors.password}
-              </HelperText>
-
-              {/* Login Button */}
-              <Button
-                mode="contained"
-                onPress={handleLogin}
-                style={styles.loginButton}
-                contentStyle={styles.buttonContent}
-                disabled={isLoading}
-                loading={isLoading}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientButton}
               >
-                {isLoading ? t("auth.loggingIn") : t("auth.login")}
-              </Button>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {t("auth.login").toUpperCase()}
+                  </Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
 
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <Divider style={styles.divider} />
-                <Paragraph style={styles.dividerText}>
-                  {t("login.or")}
-                </Paragraph>
-                <Divider style={styles.divider} />
-              </View>
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <Divider style={styles.divider} />
+              <Paragraph style={styles.dividerText}>{t("login.or")}</Paragraph>
+              <Divider style={styles.divider} />
+            </View>
 
-              {/* Register Link */}
-              <Button
-                mode="outlined"
-                onPress={handleNavigateToRegister}
-                style={styles.registerButton}
-                contentStyle={styles.buttonContent}
-                disabled={isLoading}
-              >
+            {/* Register Link */}
+            <TouchableOpacity
+              onPress={handleNavigateToRegister}
+              disabled={isLoading}
+              activeOpacity={0.7}
+              style={styles.registerLinkContainer}
+            >
+              <Paragraph style={styles.registerLinkText}>
                 {t("login.createAccount")}
-              </Button>
-            </Card.Content>
-          </Card>
+              </Paragraph>
+            </TouchableOpacity>
+          </View>
 
           {/* Footer */}
           <View style={styles.footer}>
@@ -248,7 +280,7 @@ const LoginScreen = () => {
       {/* Loading Overlay */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color="#7C4DFF" />
         </View>
       )}
 
@@ -278,35 +310,58 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  backButton: {
+    position: "absolute",
+    top: 0,
+    left: 4,
+    zIndex: 10,
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginTop: 60,
+    marginBottom: 24,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F3E5F5",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  logoEmoji: {
+    fontSize: 42,
+    margin: 0,
+    padding: 0,
   },
   header: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 32,
+  },
+  gradientTitle: {
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 8,
+    color: "#FFFFFF",
+    textAlign: "center",
+    margin: 0,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
-    opacity: 0.7,
+    color: "#757575",
+    lineHeight: 22,
   },
-  card: {
-    marginBottom: 20,
-    elevation: 4,
-  },
-  cardContent: {
-    padding: 24,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
+  formContainer: {
+    width: "100%",
   },
   globalError: {
     marginBottom: 16,
@@ -315,44 +370,61 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 4,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  loginButton: {
-    marginTop: 20,
+  loginButtonContainer: {
+    marginTop: 24,
     marginBottom: 16,
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  buttonContent: {
-    height: 50,
+  gradientButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 56,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    margin: 0,
   },
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
+    marginVertical: 24,
   },
   divider: {
     flex: 1,
+    backgroundColor: "#E0E0E0",
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    opacity: 0.6,
+    color: "#9E9E9E",
   },
-  registerButton: {
-    marginBottom: 8,
+  registerLinkContainer: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  registerLinkText: {
+    fontSize: 15,
+    color: "#7C4DFF",
+    fontWeight: "bold",
   },
   footer: {
     alignItems: "center",
     paddingHorizontal: 20,
+    marginTop: 32,
   },
   footerText: {
     fontSize: 12,
     textAlign: "center",
-    opacity: 0.6,
+    color: "#9E9E9E",
     lineHeight: 18,
-  },
-  linkText: {
-    fontSize: 12,
-    color: "#FF5252",
-    fontWeight: "500",
   },
   loadingOverlay: {
     position: "absolute",

@@ -136,10 +136,7 @@ export default function RootLayout() {
                 <Stack.Screen 
                   name="rewards/[classId]" 
                   options={{ 
-                    title: 'Phần Thưởng & Phạt',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 
@@ -155,10 +152,7 @@ export default function RootLayout() {
                 <Stack.Screen 
                   name="rewards/summary" 
                   options={{ 
-                    title: 'Bảng Xếp Hạng',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 
@@ -209,6 +203,18 @@ export default function RootLayout() {
                 />
                 <Stack.Screen 
                   name="profile" 
+                  options={{ 
+                    headerShown: false,
+                  }} 
+                />
+                <Stack.Screen 
+                  name="login" 
+                  options={{ 
+                    headerShown: false,
+                  }} 
+                />
+                <Stack.Screen 
+                  name="register" 
                   options={{ 
                     headerShown: false,
                   }} 

@@ -71,7 +71,8 @@ export default function ClassMembersScreen() {
     if (id && id !== 'undefined') {
       loadMembers();
     }
-  }, [id, loadMembers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -166,48 +167,88 @@ export default function ClassMembersScreen() {
     }
   }, [t]);
 
+  const getInitials = useCallback((user: any) => {
+    const fullName = user.focusProfile?.fullName;
+    const username = user.username;
+    
+    if (fullName) {
+      // Handle "Không xác định" specifically
+      if (fullName.toLowerCase().includes('không xác định') || fullName.toLowerCase().includes('unknown')) {
+        return "KX";
+      }
+      
+      const names = fullName.trim().split(' ');
+      if (names.length >= 2) {
+        return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+      }
+      return fullName.substring(0, 2).toUpperCase();
+    }
+    
+    if (username) {
+      return username.substring(0, 2).toUpperCase();
+    }
+    
+    // Default fallback for truly unknown users
+    return "KX";
+  }, []);
+
+  const capitalizeWords = useCallback((text: string) => {
+    if (!text) return text;
+    return text
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }, []);
+
   const renderMemberItem = (member: any, isPending: boolean = false) => {
-    const user = member.userId || member;
+    const user = member.user || member.userId || member;
     const canManage = isTeacher && member.role !== "teacher";
+    const isOnline = member.status === "active";
 
     return (
       <Card key={member._id} style={styles.memberCard}>
         <Card.Content style={styles.cardContent}>
           <View style={styles.memberInfo}>
-            <Avatar.Text
-              size={48}
-              label={user.focusProfile?.fullName?.substring(0, 2).toUpperCase() || user.username?.substring(0, 2).toUpperCase() || "??"}
-              style={{ backgroundColor: theme.colors.primary }}
-            />
+            {/* Avatar with Online Indicator */}
+            <View style={styles.avatarContainer}>
+              <Avatar.Text
+                size={50}
+                label={getInitials(user)}
+                style={{ backgroundColor: theme.colors.primary }}
+              />
+              {isOnline && !isPending && (
+                <View style={styles.onlineIndicator} />
+              )}
+            </View>
+
+            {/* Member Details */}
             <View style={styles.memberDetails}>
               <Text variant="titleMedium" style={styles.memberName}>
-                {user.focusProfile?.fullName || user.username || t("common.unknown")}
+                {capitalizeWords(user.focusProfile?.fullName || user.username || t("common.unknown"))}
               </Text>
-              <Text variant="bodySmall" style={styles.memberEmail}>
-                {user.email || ""}
-              </Text>
-              <View style={styles.chipsContainer}>
+              {user.email && (
+                <Text variant="bodySmall" style={styles.memberEmail}>
+                  {user.email}
+                </Text>
+              )}
+            </View>
+
+            {/* Role Badge */}
+            <View style={styles.badgeContainer}>
+              {member.role === "teacher" && (
                 <Chip
                   compact
-                  mode="outlined"
-                  style={[styles.statusChip, { borderColor: getStatusColor(member.status) }]}
-                  textStyle={{ color: getStatusColor(member.status) }}
+                  mode="flat"
+                  style={styles.roleChip}
+                  textStyle={styles.roleChipText}
                 >
-                  {getStatusLabel(member.status)}
+                  {t("members.roleTeacher")}
                 </Chip>
-                {member.role === "teacher" && (
-                  <Chip
-                    compact
-                    icon="account-tie"
-                    style={styles.roleChip}
-                  >
-                    {t("members.roleTeacher")}
-                  </Chip>
-                )}
-              </View>
+              )}
             </View>
           </View>
 
+          {/* Actions */}
           {isPending && isTeacher ? (
             <View style={styles.actionsContainer}>
               <IconButton
@@ -292,39 +333,6 @@ export default function ClassMembersScreen() {
           />
         }
       >
-        {/* Class Info */}
-        <Card style={styles.classCard}>
-          <Card.Content>
-            <Text variant="titleLarge" style={styles.className}>
-              {currentClass?.name}
-            </Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons
-                  name="account-group"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-                <Text variant="bodyMedium">
-                  {approvedMembers.length} {t("members.activeMembers")}
-                </Text>
-              </View>
-              {pendingMembers.length > 0 && (
-                <View style={styles.statItem}>
-                  <MaterialCommunityIcons
-                    name="account-clock"
-                    size={20}
-                    color={theme.colors.secondary}
-                  />
-                  <Text variant="bodyMedium">
-                    {pendingMembers.length} {t("members.pendingMembers")}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </Card.Content>
-        </Card>
-
         {/* Pending Requests */}
         {isTeacher && pendingMembers.length > 0 && (
           <View style={styles.section}>
@@ -338,7 +346,7 @@ export default function ClassMembersScreen() {
         {/* Active Members */}
         <View style={styles.section}>
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            {t("members.activeMembers")} ({approvedMembers.length})
+            {t("members.membersList")} ({approvedMembers.length})
           </Text>
           {approvedMembers.length === 0 ? (
             <Card style={styles.emptyCard}>
@@ -416,9 +424,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 8,
-    paddingTop: 8,
+    paddingTop: 50,
+    paddingBottom: 12,
     backgroundColor: "#fff",
     elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
   },
   title: {
     fontWeight: "bold",
@@ -430,67 +441,72 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: "#666",
   },
-  classCard: {
-    margin: 16,
-    marginBottom: 8,
-  },
-  className: {
-    fontWeight: "bold",
-    marginBottom: 12,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 16,
-  },
-  statItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
   section: {
     padding: 16,
-    paddingTop: 8,
+    paddingTop: 16,
   },
   sectionTitle: {
     fontWeight: "bold",
     marginBottom: 12,
+    fontSize: 16,
   },
   memberCard: {
     marginBottom: 12,
     elevation: 2,
+    borderRadius: 12,
   },
   cardContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingVertical: 12,
   },
   memberInfo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     flex: 1,
+    gap: 12,
+  },
+  avatarContainer: {
+    position: "relative",
+  },
+  onlineIndicator: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#4CAF50",
+    borderWidth: 2,
+    borderColor: "#fff",
   },
   memberDetails: {
     flex: 1,
+    justifyContent: "center",
   },
   memberName: {
-    fontWeight: "bold",
+    fontWeight: "600",
+    fontSize: 16,
+    marginBottom: 2,
   },
   memberEmail: {
     color: "#666",
-    marginBottom: 4,
+    fontSize: 13,
   },
-  chipsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 4,
-  },
-  statusChip: {
-    height: 24,
+  badgeContainer: {
+    marginLeft: 8,
   },
   roleChip: {
-    height: 24,
+    height: 28,
     backgroundColor: "#E3F2FD",
+    paddingVertical: 0,
+  },
+  roleChipText: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginVertical: 6,
+    marginHorizontal: 8,
   },
   actionsContainer: {
     flexDirection: "row",

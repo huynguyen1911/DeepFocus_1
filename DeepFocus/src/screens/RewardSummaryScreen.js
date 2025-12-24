@@ -7,8 +7,10 @@ import {
   ActivityIndicator,
   ProgressBar,
   Chip,
+  IconButton,
+  SegmentedButtons,
 } from "react-native-paper";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useReward } from "../contexts/RewardContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
@@ -21,6 +23,7 @@ export default function RewardSummaryScreen() {
   const { classId } = useLocalSearchParams();
   const { summary, isLoading, loadRewardSummary } = useReward();
   const [refreshing, setRefreshing] = useState(false);
+  const [filterType, setFilterType] = useState("rewards"); // rewards, penalties
 
   useEffect(() => {
     if (classId) {
@@ -77,6 +80,47 @@ export default function RewardSummaryScreen() {
 
   const maxPoints = getMaxPoints();
 
+  // Filter and sort students based on selected tab
+  const getFilteredStudents = () => {
+    const allStudents = summary?.students || [];
+
+    if (filterType === "rewards") {
+      // Show students with positive points, sorted descending
+      return allStudents
+        .filter((s) => s.totalPoints > 0)
+        .sort((a, b) => b.totalPoints - a.totalPoints);
+    } else {
+      // Show students with negative points, sorted by most penalties (most negative first)
+      return allStudents
+        .filter((s) => s.totalPoints < 0)
+        .sort((a, b) => a.totalPoints - b.totalPoints);
+    }
+  };
+
+  const filteredStudents = getFilteredStudents();
+
+  // Render empty state based on tab
+  const renderEmptyState = () => {
+    const isRewardsTab = filterType === "rewards";
+    const icon = isRewardsTab ? "🎁" : "⚠️";
+    const title = isRewardsTab ? "Chưa có ngôi sao nào" : "Lớp rất ngoan!";
+    const description = isRewardsTab
+      ? "Chưa có ngôi sao nào được trao."
+      : "Lớp học rất ngoan, chưa ai bị nhắc nhở!";
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>{icon}</Text>
+        <Text variant="headlineSmall" style={styles.emptyTitle}>
+          {title}
+        </Text>
+        <Text variant="bodyMedium" style={styles.emptyDescription}>
+          {description}
+        </Text>
+      </View>
+    );
+  };
+
   if (isLoading && !summary) {
     return (
       <View style={styles.centerContainer}>
@@ -85,10 +129,44 @@ export default function RewardSummaryScreen() {
     );
   }
 
-  const students = summary?.students || [];
-
   return (
     <View style={styles.container}>
+      {/* Custom Header */}
+      <View style={styles.header}>
+        <IconButton icon="arrow-left" size={24} onPress={() => router.back()} />
+        <Text variant="headlineSmall" style={styles.title}>
+          Thống Kê Thi Đua
+        </Text>
+        <View style={{ width: 48 }} />
+      </View>
+
+      {/* Tabs Section */}
+      <View style={styles.tabsContainer}>
+        <SegmentedButtons
+          value={filterType}
+          onValueChange={setFilterType}
+          buttons={[
+            {
+              value: "rewards",
+              label: "Khen Thưởng",
+              icon: "trophy",
+            },
+            {
+              value: "penalties",
+              label: "Nhắc Nhở",
+              icon: "alert-circle",
+            },
+          ]}
+          style={styles.segmentedButtons}
+          theme={{
+            colors: {
+              secondaryContainer: theme.colors.primary,
+              onSecondaryContainer: "#FFFFFF",
+            },
+          }}
+        />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -99,32 +177,22 @@ export default function RewardSummaryScreen() {
           />
         }
       >
-        {students.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons
-              name="chart-bar"
-              size={64}
-              color="#BDBDBD"
-            />
-            <Text variant="headlineSmall" style={styles.emptyTitle}>
-              Chưa có dữ liệu
-            </Text>
-            <Text variant="bodyMedium" style={styles.emptyDescription}>
-              Chưa có học sinh nào nhận phần thưởng hoặc phạt trong lớp này.
-            </Text>
-          </View>
+        {filteredStudents.length === 0 ? (
+          renderEmptyState()
         ) : (
           <View style={styles.listContainer}>
             <View style={styles.headerCard}>
               <Text variant="titleLarge" style={styles.headerTitle}>
-                🏆 Bảng Xếp Hạng
+                {filterType === "rewards"
+                  ? "🏆 Top Khen Thưởng"
+                  : "⚠️ Top Nhắc Nhở"}
               </Text>
               <Text variant="bodyMedium" style={styles.headerSubtitle}>
-                {students.length} học sinh
+                {filteredStudents.length} học sinh
               </Text>
             </View>
 
-            {students.map((student, index) => {
+            {filteredStudents.map((student, index) => {
               const rank = index + 1;
               const medal = getMedalIcon(rank);
               const progress = Math.abs(student.totalPoints) / maxPoints;
@@ -212,13 +280,38 @@ export default function RewardSummaryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f5f5f5",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f5f5f5",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingTop: 50,
+    paddingBottom: 12,
+    backgroundColor: "#fff",
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
+  },
+  title: {
+    fontWeight: "bold",
+  },
+  tabsContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    elevation: 1,
+  },
+  segmentedButtons: {
+    marginBottom: 0,
   },
   scrollView: {
     flex: 1,
@@ -319,6 +412,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 80,
   },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
   emptyTitle: {
     fontWeight: "bold",
     marginTop: 16,
@@ -328,5 +425,6 @@ const styles = StyleSheet.create({
   emptyDescription: {
     color: "#757575",
     textAlign: "center",
+    lineHeight: 22,
   },
 });

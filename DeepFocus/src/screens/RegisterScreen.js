@@ -6,11 +6,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Text,
 } from "react-native";
 import {
   TextInput,
   Button,
-  Card,
   Title,
   Paragraph,
   HelperText,
@@ -19,9 +19,11 @@ import {
   Divider,
   Checkbox,
   Snackbar,
+  IconButton,
 } from "react-native-paper";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 
@@ -198,7 +200,8 @@ const RegisterScreen = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[styles.container, { backgroundColor: "#FFFFFF" }]}
+      edges={["top", "left", "right"]}
     >
       <KeyboardAvoidingView
         style={styles.keyboardView}
@@ -207,187 +210,227 @@ const RegisterScreen = () => {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
+          {/* Custom Back Button */}
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <IconButton icon="arrow-left" size={24} iconColor="#666" />
+          </TouchableOpacity>
+
+          {/* Logo Icon */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoEmoji}>🧠</Text>
+            </View>
+          </View>
+
+          {/* Header - No Box, Just Text */}
           <View style={styles.header}>
-            <Title style={[styles.title, { color: theme.colors.primary }]}>
-              {t("register.title")}
-            </Title>
+            <Text style={styles.title}>{t("register.title")}</Text>
             <Paragraph style={styles.subtitle}>
               {t("register.subtitle")}
             </Paragraph>
           </View>
 
-          {/* Register Form */}
-          <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
-              <Title style={styles.formTitle}>{t("auth.register")}</Title>
-
-              {/* Global Error */}
-              {error && (
-                <HelperText
-                  type="error"
-                  visible={!!error}
-                  style={styles.globalError}
-                >
-                  {error}
-                </HelperText>
-              )}
-
-              {/* Username Input */}
-              <TextInput
-                label={t("auth.username")}
-                value={formData.username}
-                onChangeText={(value) => handleInputChange("username", value)}
-                mode="outlined"
-                style={styles.input}
-                autoCapitalize="none"
-                autoComplete="username"
-                error={!!errors.username}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="account" />}
-              />
-              <HelperText type="error" visible={!!errors.username}>
-                {errors.username}
-              </HelperText>
-
-              {/* Email Input */}
-              <TextInput
-                label={t("auth.email")}
-                value={formData.email}
-                onChangeText={(value) => handleInputChange("email", value)}
-                mode="outlined"
-                style={styles.input}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                error={!!errors.email}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="email" />}
-              />
-              <HelperText type="error" visible={!!errors.email}>
-                {errors.email}
-              </HelperText>
-
-              {/* Password Input */}
-              <TextInput
-                label={t("auth.password")}
-                value={formData.password}
-                onChangeText={(value) => handleInputChange("password", value)}
-                mode="outlined"
-                style={styles.input}
-                secureTextEntry={!showPassword}
-                error={!!errors.password}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="lock" />}
-                right={
-                  <TextInput.Icon
-                    icon={showPassword ? "eye-off" : "eye"}
-                    onPress={() => setShowPassword(!showPassword)}
-                  />
-                }
-              />
-              {/* Password Strength Indicator */}
-              {formData.password && (
-                <HelperText
-                  type="info"
-                  visible={!!formData.password}
-                  style={[
-                    styles.passwordStrength,
-                    { color: getPasswordStrengthColor() },
-                  ]}
-                >
-                  {getPasswordStrengthText()}
-                </HelperText>
-              )}
-              <HelperText type="error" visible={!!errors.password}>
-                {errors.password}
-              </HelperText>
-
-              {/* Confirm Password Input */}
-              <TextInput
-                label={t("auth.confirmPassword")}
-                value={formData.confirmPassword}
-                onChangeText={(value) =>
-                  handleInputChange("confirmPassword", value)
-                }
-                mode="outlined"
-                style={styles.input}
-                secureTextEntry={!showConfirmPassword}
-                error={!!errors.confirmPassword}
-                disabled={isLoading}
-                left={<TextInput.Icon icon="lock-check" />}
-                right={
-                  <TextInput.Icon
-                    icon={showConfirmPassword ? "eye-off" : "eye"}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                  />
-                }
-              />
-              <HelperText type="error" visible={!!errors.confirmPassword}>
-                {errors.confirmPassword}
-              </HelperText>
-
-              {/* Terms Agreement */}
-              <TouchableOpacity
-                style={styles.checkboxContainer}
-                onPress={() => setAgreeToTerms(!agreeToTerms)}
-                activeOpacity={0.7}
+          {/* Register Form - No Card Wrapper */}
+          <View style={styles.formContainer}>
+            {/* Global Error */}
+            {error && (
+              <HelperText
+                type="error"
+                visible={!!error}
+                style={styles.globalError}
               >
-                <Checkbox
-                  status={agreeToTerms ? "checked" : "unchecked"}
-                  color={theme.colors.primary}
+                {error}
+              </HelperText>
+            )}
+
+            {/* Username Input - Soft UI */}
+            <TextInput
+              label={t("auth.username")}
+              value={formData.username}
+              onChangeText={(value) => handleInputChange("username", value)}
+              mode="flat"
+              style={styles.input}
+              autoCapitalize="none"
+              autoComplete="username"
+              error={!!errors.username}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="account" color="#9E9E9E" />}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <HelperText type="error" visible={!!errors.username}>
+              {errors.username}
+            </HelperText>
+
+            {/* Email Input - Soft UI */}
+            <TextInput
+              label={t("auth.email")}
+              value={formData.email}
+              onChangeText={(value) => handleInputChange("email", value)}
+              mode="flat"
+              style={styles.input}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              error={!!errors.email}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="email" color="#9E9E9E" />}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <HelperText type="error" visible={!!errors.email}>
+              {errors.email}
+            </HelperText>
+
+            {/* Password Input - Soft UI */}
+            <TextInput
+              label={t("auth.password")}
+              value={formData.password}
+              onChangeText={(value) => handleInputChange("password", value)}
+              mode="flat"
+              style={styles.input}
+              secureTextEntry={!showPassword}
+              error={!!errors.password}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="lock" color="#9E9E9E" />}
+              right={
+                <TextInput.Icon
+                  icon={showPassword ? "eye-off" : "eye"}
+                  onPress={() => setShowPassword(!showPassword)}
+                  color="#9E9E9E"
                 />
-                <Paragraph style={styles.checkboxText}>
-                  {t("auth.agreeTerms")}
-                </Paragraph>
-              </TouchableOpacity>
-              <HelperText type="error" visible={!!errors.terms}>
-                {errors.terms}
+              }
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <HelperText
+                type="info"
+                visible={!!formData.password}
+                style={[
+                  styles.passwordStrength,
+                  { color: getPasswordStrengthColor() },
+                ]}
+              >
+                {getPasswordStrengthText()}
               </HelperText>
+            )}
+            <HelperText type="error" visible={!!errors.password}>
+              {errors.password}
+            </HelperText>
 
-              {/* Register Button */}
-              <Button
-                mode="contained"
-                onPress={handleRegister}
-                style={styles.registerButton}
-                contentStyle={styles.buttonContent}
-                disabled={isLoading || !agreeToTerms}
-                loading={isLoading}
-              >
-                {isLoading
-                  ? t("auth.registering")
-                  : t("register.createAccount")}
-              </Button>
+            {/* Confirm Password Input - Soft UI */}
+            <TextInput
+              label={t("auth.confirmPassword")}
+              value={formData.confirmPassword}
+              onChangeText={(value) =>
+                handleInputChange("confirmPassword", value)
+              }
+              mode="flat"
+              style={styles.input}
+              secureTextEntry={!showConfirmPassword}
+              error={!!errors.confirmPassword}
+              disabled={isLoading}
+              left={<TextInput.Icon icon="lock-check" color="#9E9E9E" />}
+              right={
+                <TextInput.Icon
+                  icon={showConfirmPassword ? "eye-off" : "eye"}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  color="#9E9E9E"
+                />
+              }
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
+            <HelperText type="error" visible={!!errors.confirmPassword}>
+              {errors.confirmPassword}
+            </HelperText>
 
-              {/* Divider */}
-              <View style={styles.dividerContainer}>
-                <Divider style={styles.divider} />
-                <Paragraph style={styles.dividerText}>
-                  {t("login.or")}
-                </Paragraph>
-                <Divider style={styles.divider} />
+            {/* Terms Agreement */}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setAgreeToTerms(!agreeToTerms)}
+              activeOpacity={0.7}
+            >
+              <Checkbox
+                status={agreeToTerms ? "checked" : "unchecked"}
+                color="#7C4DFF"
+              />
+              <View style={styles.termsTextContainer}>
+                <Text style={styles.checkboxText}>
+                  Tôi đồng ý với{" "}
+                  <Text style={styles.linkText}>Điều khoản dịch vụ</Text> và{" "}
+                  <Text style={styles.linkText}>Chính sách bảo mật</Text>
+                </Text>
               </View>
+            </TouchableOpacity>
+            <HelperText type="error" visible={!!errors.terms}>
+              {errors.terms}
+            </HelperText>
 
-              {/* Login Link */}
-              <Button
-                mode="outlined"
-                onPress={handleNavigateToLogin}
-                style={styles.loginButton}
-                contentStyle={styles.buttonContent}
-                disabled={isLoading}
+            {/* Register Button - Gradient */}
+            <TouchableOpacity
+              onPress={handleRegister}
+              disabled={isLoading || !agreeToTerms}
+              activeOpacity={0.8}
+              style={styles.registerButtonContainer}
+            >
+              <LinearGradient
+                colors={
+                  isLoading || !agreeToTerms
+                    ? ["#BDBDBD", "#9E9E9E"]
+                    : ["#7C4DFF", "#B47CFF"]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientButton}
               >
-                {t("auth.haveAccount")} {t("auth.loginNow")}
-              </Button>
-            </Card.Content>
-          </Card>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {t("register.createAccount").toUpperCase()}
+                  </Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <Divider style={styles.divider} />
+              <Paragraph style={styles.dividerText}>{t("login.or")}</Paragraph>
+              <Divider style={styles.divider} />
+            </View>
+
+            {/* Login Link */}
+            <TouchableOpacity
+              onPress={handleNavigateToLogin}
+              disabled={isLoading}
+              activeOpacity={0.7}
+              style={styles.loginLinkContainer}
+            >
+              <Paragraph style={styles.loginLinkText}>
+                {t("auth.haveAccount")}{" "}
+                <Paragraph style={styles.loginLinkBold}>
+                  {t("auth.loginNow")}
+                </Paragraph>
+              </Paragraph>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Loading Overlay */}
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color="#7C4DFF" />
         </View>
       )}
 
@@ -417,35 +460,58 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+  },
+  backButton: {
+    position: "absolute",
+    top: 0,
+    left: 4,
+    zIndex: 10,
+  },
+  logoContainer: {
+    alignItems: "center",
+    marginTop: 60,
+    marginBottom: 24,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F3E5F5",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  logoEmoji: {
+    fontSize: 42,
+    margin: 0,
+    padding: 0,
   },
   header: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 32,
+  },
+  gradientTitle: {
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "bold",
-    marginBottom: 8,
+    color: "#FFFFFF",
+    textAlign: "center",
+    margin: 0,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     textAlign: "center",
-    opacity: 0.7,
+    color: "#757575",
+    lineHeight: 22,
   },
-  card: {
-    marginBottom: 20,
-    elevation: 4,
-  },
-  cardContent: {
-    padding: 24,
-  },
-  formTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
+  formContainer: {
+    width: "100%",
   },
   globalError: {
     marginBottom: 16,
@@ -454,6 +520,9 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 4,
+    backgroundColor: "#F5F5F5",
+    borderRadius: 14,
+    overflow: "hidden",
   },
   passwordStrength: {
     marginBottom: 4,
@@ -462,43 +531,69 @@ const styles = StyleSheet.create({
   },
   checkboxContainer: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginTop: 16,
     marginBottom: 8,
+    paddingRight: 8,
   },
-  checkboxText: {
+  termsTextContainer: {
     flex: 1,
     marginLeft: 8,
+  },
+  checkboxText: {
     fontSize: 14,
     lineHeight: 20,
+    color: "#616161",
   },
   linkText: {
-    fontSize: 14,
-    color: "#FF5252",
-    fontWeight: "500",
+    color: "#7C4DFF",
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
-  registerButton: {
-    marginTop: 20,
+  registerButtonContainer: {
+    marginTop: 24,
     marginBottom: 16,
+    borderRadius: 14,
+    overflow: "hidden",
   },
-  buttonContent: {
-    height: 50,
+  gradientButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 56,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+    margin: 0,
   },
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 20,
+    marginVertical: 24,
   },
   divider: {
     flex: 1,
+    backgroundColor: "#E0E0E0",
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 14,
-    opacity: 0.6,
+    color: "#9E9E9E",
   },
-  loginButton: {
-    marginBottom: 8,
+  loginLinkContainer: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  loginLinkText: {
+    fontSize: 15,
+    color: "#616161",
+  },
+  loginLinkBold: {
+    fontSize: 15,
+    color: "#7C4DFF",
+    fontWeight: "bold",
   },
   loadingOverlay: {
     position: "absolute",

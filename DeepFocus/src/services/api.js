@@ -14,9 +14,17 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      // Don't add token for public endpoints (login, register)
+      const publicEndpoints = ["/auth/login", "/auth/register"];
+      const isPublicEndpoint = publicEndpoints.some((endpoint) =>
+        config.url.includes(endpoint)
+      );
+
+      if (!isPublicEndpoint) {
+        const token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
       }
 
       // Log request in development

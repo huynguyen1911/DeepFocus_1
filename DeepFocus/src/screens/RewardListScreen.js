@@ -12,8 +12,6 @@ import {
   useTheme,
   ActivityIndicator,
   SegmentedButtons,
-  Chip,
-  Menu,
   IconButton,
 } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
@@ -36,21 +34,15 @@ export default function RewardListScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [filterType, setFilterType] = useState("all"); // all, rewards, penalties
-  const [categoryMenuVisible, setCategoryMenuVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     if (classId) {
       loadData();
     }
-  }, [classId, selectedCategory]);
+  }, [classId]);
 
   const loadData = async () => {
-    const options = {};
-    if (selectedCategory) {
-      options.category = selectedCategory;
-    }
-    await loadRewardsByClass(classId, options);
+    await loadRewardsByClass(classId);
   };
 
   const handleRefresh = async () => {
@@ -122,17 +114,35 @@ export default function RewardListScreen() {
     return currentRole === "teacher" || currentRole === "guardian";
   };
 
-  const getCategoryLabel = (category) => {
-    switch (category) {
-      case "academic":
-        return "Học tập";
-      case "behavior":
-        return "Hành vi";
-      case "attendance":
-        return "Chuyên cần";
-      default:
-        return "Tất cả";
+  // Render empty state with icon and engaging text
+  const renderEmptyState = () => {
+    let icon = "🎁";
+    let title = "Chưa có phần thưởng";
+    let description =
+      "Lớp học trầm quá? Hãy tặng sao để khích lệ học sinh ngay!";
+
+    if (filterType === "rewards") {
+      icon = "🎁";
+      title = "Chưa có phần thưởng";
+      description =
+        "Hãy trao phần thưởng để ghi nhận những nỗ lực của các bạn!";
+    } else if (filterType === "penalties") {
+      icon = "⚠️";
+      title = "Chưa có phạt nào";
+      description = "Tuyệt vời! Các bạn học sinh đang rất ngoan.";
     }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>{icon}</Text>
+        <Text variant="headlineSmall" style={styles.emptyTitle}>
+          {title}
+        </Text>
+        <Text variant="bodyMedium" style={styles.emptyDescription}>
+          {description}
+        </Text>
+      </View>
+    );
   };
 
   if (isLoading && rewards.length === 0) {
@@ -145,7 +155,22 @@ export default function RewardListScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Custom Header */}
       <View style={styles.header}>
+        <IconButton icon="arrow-left" size={24} onPress={() => router.back()} />
+        <Text variant="headlineSmall" style={styles.title}>
+          Thưởng & Phạt
+        </Text>
+        <IconButton
+          icon="chart-bar"
+          size={24}
+          onPress={handleViewSummary}
+          iconColor={theme.colors.primary}
+        />
+      </View>
+
+      {/* Tabs Section */}
+      <View style={styles.tabsContainer}>
         <SegmentedButtons
           value={filterType}
           onValueChange={setFilterType}
@@ -167,62 +192,13 @@ export default function RewardListScreen() {
             },
           ]}
           style={styles.segmentedButtons}
+          theme={{
+            colors: {
+              secondaryContainer: theme.colors.primary,
+              onSecondaryContainer: "#FFFFFF",
+            },
+          }}
         />
-
-        <View style={styles.filterRow}>
-          <Menu
-            visible={categoryMenuVisible}
-            onDismiss={() => setCategoryMenuVisible(false)}
-            anchor={
-              <Chip
-                icon="filter"
-                onPress={() => setCategoryMenuVisible(true)}
-                mode="outlined"
-                style={styles.categoryChip}
-              >
-                {getCategoryLabel(selectedCategory)}
-              </Chip>
-            }
-          >
-            <Menu.Item
-              onPress={() => {
-                setSelectedCategory(null);
-                setCategoryMenuVisible(false);
-              }}
-              title="Tất cả"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSelectedCategory("academic");
-                setCategoryMenuVisible(false);
-              }}
-              title="Học tập"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSelectedCategory("behavior");
-                setCategoryMenuVisible(false);
-              }}
-              title="Hành vi"
-            />
-            <Menu.Item
-              onPress={() => {
-                setSelectedCategory("attendance");
-                setCategoryMenuVisible(false);
-              }}
-              title="Chuyên cần"
-            />
-          </Menu>
-
-          <IconButton
-            icon="chart-bar"
-            mode="contained"
-            onPress={handleViewSummary}
-            iconColor={theme.colors.onPrimary}
-            containerColor={theme.colors.primary}
-            size={20}
-          />
-        </View>
       </View>
 
       <ScrollView
@@ -236,18 +212,7 @@ export default function RewardListScreen() {
         }
       >
         {filteredRewards.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text variant="headlineSmall" style={styles.emptyTitle}>
-              Chưa có phần thưởng
-            </Text>
-            <Text variant="bodyMedium" style={styles.emptyDescription}>
-              {filterType === "all"
-                ? "Chưa có phần thưởng hoặc phạt nào trong lớp này."
-                : filterType === "rewards"
-                ? "Chưa có phần thưởng nào."
-                : "Chưa có phạt nào."}
-            </Text>
-          </View>
+          renderEmptyState()
         ) : (
           <View style={styles.listContainer}>
             <Text variant="bodySmall" style={styles.countText}>
@@ -280,33 +245,38 @@ export default function RewardListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f5f5f5",
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#f5f5f5",
   },
   header: {
-    backgroundColor: "#FFFFFF",
-    paddingTop: 12,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    elevation: 2,
-  },
-  segmentedButtons: {
-    marginBottom: 12,
-  },
-  filterRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingTop: 50,
+    paddingBottom: 12,
+    backgroundColor: "#fff",
+    elevation: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F2F2F7",
   },
-  categoryChip: {
-    flex: 1,
-    marginRight: 8,
+  title: {
+    fontWeight: "bold",
+  },
+  tabsContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 12,
+    elevation: 1,
+  },
+  segmentedButtons: {
+    marginBottom: 0,
   },
   scrollView: {
     flex: 1,
@@ -327,6 +297,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingTop: 80,
   },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
   emptyTitle: {
     fontWeight: "bold",
     marginBottom: 8,
@@ -335,6 +309,7 @@ const styles = StyleSheet.create({
   emptyDescription: {
     color: "#757575",
     textAlign: "center",
+    lineHeight: 22,
   },
   fab: {
     position: "absolute",

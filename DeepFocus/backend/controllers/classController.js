@@ -85,10 +85,10 @@ const getClass = async (req, res) => {
     const userId = req.user._id;
 
     const classData = await Class.findById(id)
-      .populate("createdBy", "focusProfile email")
+      .populate("createdBy", "username focusProfile email")
       .populate({
         path: "members.user",
-        select: "focusProfile email",
+        select: "username focusProfile email",
       });
 
     if (!classData) {
@@ -265,8 +265,8 @@ const getClasses = async (req, res) => {
     if (userRole === "teacher") {
       // Teacher: get classes they created
       const classes = await Class.find({ createdBy: userId })
-        .populate("createdBy", "focusProfile email")
-        .populate("members.user", "focusProfile email")
+        .populate("createdBy", "username focusProfile email")
+        .populate("members.user", "username focusProfile email")
         .sort({ createdAt: -1 });
 
       const classesWithStats = classes.map((cls) => {
@@ -303,8 +303,8 @@ const getClasses = async (req, res) => {
         "members.user": userId,
         "members.status": { $in: ["active", "pending"] },
       })
-        .populate("createdBy", "focusProfile email")
-        .populate("members.user", "focusProfile email")
+        .populate("createdBy", "username focusProfile email")
+        .populate("members.user", "username focusProfile email")
         .sort({ createdAt: -1 });
 
       const studentClasses = classes.map((cls) => {
@@ -359,8 +359,8 @@ const getTeacherClasses = async (req, res) => {
     }
 
     const classes = await Class.find({ createdBy: userId })
-      .populate("createdBy", "focusProfile email")
-      .populate("members.user", "focusProfile email")
+      .populate("createdBy", "username focusProfile email")
+      .populate("members.user", "username focusProfile email")
       .sort({ createdAt: -1 });
 
     // Add stats for each class
@@ -430,8 +430,8 @@ const getStudentClasses = async (req, res) => {
       "members.user": userId,
       "members.status": { $in: ["active", "pending"] },
     })
-      .populate("createdBy", "focusProfile email")
-      .populate("members.user", "focusProfile email")
+      .populate("createdBy", "username focusProfile email")
+      .populate("members.user", "username focusProfile email")
       .sort({ createdAt: -1 });
 
     // Filter to only return relevant class info for student
@@ -836,7 +836,7 @@ const getMemberList = async (req, res) => {
 
     const classData = await Class.findById(id).populate(
       "members.user",
-      "fullName email"
+      "username email focusProfile"
     );
 
     if (!classData) {
