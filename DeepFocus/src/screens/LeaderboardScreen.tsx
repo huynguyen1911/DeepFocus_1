@@ -338,14 +338,24 @@ export default function LeaderboardScreen() {
               value: "week",
               label: t("leaderboard.thisWeek"),
               icon: "calendar-week",
+              style: timeFilter === "week" ? styles.selectedButton : undefined,
+              labelStyle: timeFilter === "week" ? styles.selectedButtonLabel : undefined,
             },
             {
               value: "month",
               label: t("leaderboard.thisMonth"),
               icon: "calendar-month",
+              style: timeFilter === "month" ? styles.selectedButton : undefined,
+              labelStyle: timeFilter === "month" ? styles.selectedButtonLabel : undefined,
             },
           ]}
           style={styles.segmentedButtons}
+          theme={{
+            colors: {
+              secondaryContainer: theme.colors.primary,
+              onSecondaryContainer: "#FFFFFF",
+            },
+          }}
         />
       </View>
 
@@ -489,6 +499,12 @@ const styles = StyleSheet.create({
   },
   segmentedButtons: {
     width: "100%",
+  },
+  selectedButton: {
+    backgroundColor: "#6200EE",
+  },
+  selectedButtonLabel: {
+    color: "#FFFFFF",
   },
   scrollView: {
     flex: 1,
