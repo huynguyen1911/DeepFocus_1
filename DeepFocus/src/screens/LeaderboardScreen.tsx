@@ -5,6 +5,7 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  SafeAreaView,
 } from "react-native";
 import {
   Card,
@@ -15,11 +16,13 @@ import {
   Chip,
   IconButton,
   Divider,
+  SegmentedButtons,
 } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import { classAPI } from "../services/api";
 import { useLanguage } from "../contexts/LanguageContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function LeaderboardScreen() {
   const theme = useTheme();
@@ -30,6 +33,7 @@ export default function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [limit, setLimit] = useState(10);
+  const [timeFilter, setTimeFilter] = useState<"week" | "month">("week");
 
   const loadLeaderboard = useCallback(async () => {
     try {
@@ -196,17 +200,17 @@ export default function LeaderboardScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <SafeAreaView style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
         <Text variant="bodyMedium" style={styles.loadingText}>
           {t("leaderboard.loading")}
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <IconButton
           icon="arrow-left"
@@ -219,6 +223,26 @@ export default function LeaderboardScreen() {
         <View style={{ width: 48 }} />
       </View>
 
+      <View style={styles.filterContainer}>
+        <SegmentedButtons
+          value={timeFilter}
+          onValueChange={(value) => setTimeFilter(value as "week" | "month")}
+          buttons={[
+            {
+              value: "week",
+              label: t("leaderboard.thisWeek"),
+              icon: "calendar-week",
+            },
+            {
+              value: "month",
+              label: t("leaderboard.thisMonth"),
+              icon: "calendar-month",
+            },
+          ]}
+          style={styles.segmentedButtons}
+        />
+      </View>
+
       <ScrollView
         style={styles.scrollView}
         refreshControl={
@@ -229,37 +253,60 @@ export default function LeaderboardScreen() {
           />
         }
       >
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <View style={styles.infoRow}>
-              <MaterialCommunityIcons
-                name="information-outline"
-                size={20}
-                color={theme.colors.primary}
-              />
-              <Text variant="bodyMedium" style={styles.infoText}>
-                {t("leaderboard.description")}
-              </Text>
-            </View>
-          </Card.Content>
-        </Card>
-
         {leaderboard.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Card.Content style={styles.emptyContent}>
-              <MaterialCommunityIcons
-                name="trophy-outline"
-                size={64}
-                color={theme.colors.outline}
-              />
-              <Text variant="titleMedium" style={styles.emptyTitle}>
-                {t("leaderboard.noData")}
+          <View style={styles.emptyContainer}>
+            <LinearGradient
+              colors={["#FFF9E6", "#FFE4F0", "#E6F0FF"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.emptyGradient}
+            >
+              <View style={styles.podiumContainer}>
+                <View style={styles.podiumRank2}>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={32}
+                    color="#C0C0C0"
+                  />
+                  <View style={styles.podiumBase2}>
+                    <Text style={styles.podiumNumber}>2</Text>
+                  </View>
+                </View>
+                <View style={styles.podiumRank1}>
+                  <MaterialCommunityIcons
+                    name="crown-outline"
+                    size={40}
+                    color="#FFD700"
+                  />
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={36}
+                    color="#FFD700"
+                  />
+                  <View style={styles.podiumBase1}>
+                    <Text style={styles.podiumNumber}>1</Text>
+                  </View>
+                </View>
+                <View style={styles.podiumRank3}>
+                  <MaterialCommunityIcons
+                    name="account-outline"
+                    size={32}
+                    color="#CD7F32"
+                  />
+                  <View style={styles.podiumBase3}>
+                    <Text style={styles.podiumNumber}>3</Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text variant="headlineSmall" style={styles.emptyTitle}>
+                {t("leaderboard.emptyTitle")}
               </Text>
               <Text variant="bodyMedium" style={styles.emptyDescription}>
-                {t("leaderboard.noDataDescription")}
+                {t("leaderboard.emptyDescription")}
               </Text>
-            </Card.Content>
-          </Card>
+            </LinearGradient>
+          </View>
         ) : (
           <View style={styles.leaderboardContainer}>
             {leaderboard.map((item, index) => renderLeaderboardItem(item, index))}
@@ -279,8 +326,20 @@ export default function LeaderboardScreen() {
             </Card.Content>
           </Card>
         )}
+
+        {/* Footer info - moved from top */}
+        <View style={styles.footerInfo}>
+          <MaterialCommunityIcons
+            name="information-outline"
+            size={16}
+            color="#999"
+          />
+          <Text variant="bodySmall" style={styles.footerText}>
+            {t("leaderboard.description")}
+          </Text>
+        </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -299,11 +358,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 8,
     paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: "#fff",
     elevation: 2,
   },
   title: {
     fontWeight: "bold",
+  },
+  filterContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+  },
+  segmentedButtons: {
+    width: "100%",
   },
   scrollView: {
     flex: 1,
@@ -312,18 +380,81 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: "#666",
   },
-  infoCard: {
+  // Empty state styles
+  emptyContainer: {
     margin: 16,
-    marginBottom: 8,
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 2,
   },
-  infoRow: {
-    flexDirection: "row",
+  emptyGradient: {
+    padding: 40,
     alignItems: "center",
+  },
+  podiumContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    marginBottom: 24,
     gap: 8,
   },
-  infoText: {
-    flex: 1,
+  podiumRank1: {
+    alignItems: "center",
+    marginBottom: 8,
   },
+  podiumRank2: {
+    alignItems: "center",
+    marginBottom: 0,
+  },
+  podiumRank3: {
+    alignItems: "center",
+    marginBottom: 0,
+  },
+  podiumBase1: {
+    width: 60,
+    height: 80,
+    backgroundColor: "#FFD700",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  podiumBase2: {
+    width: 55,
+    height: 60,
+    backgroundColor: "#C0C0C0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  podiumBase3: {
+    width: 55,
+    height: 50,
+    backgroundColor: "#CD7F32",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  podiumNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  emptyTitle: {
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 16,
+    color: "#333",
+  },
+  emptyDescription: {
+    textAlign: "center",
+    color: "#666",
+    marginTop: 8,
+    paddingHorizontal: 20,
+  },
+  // Leaderboard list styles
   leaderboardContainer: {
     padding: 16,
     paddingTop: 8,
@@ -384,27 +515,26 @@ const styles = StyleSheet.create({
     width: 1,
     height: 40,
   },
-  emptyCard: {
-    margin: 16,
-  },
-  emptyContent: {
-    alignItems: "center",
-    padding: 32,
-  },
-  emptyTitle: {
-    marginTop: 16,
-    fontWeight: "bold",
-  },
-  emptyDescription: {
-    marginTop: 8,
-    textAlign: "center",
-    color: "#666",
-  },
   loadMoreCard: {
     margin: 16,
     marginTop: 8,
   },
   loadMoreChip: {
     alignSelf: "center",
+  },
+  // Footer info styles
+  footerInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+  },
+  footerText: {
+    color: "#999",
+    fontSize: 12,
+    textAlign: "center",
+    flex: 1,
   },
 });

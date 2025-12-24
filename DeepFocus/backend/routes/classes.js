@@ -18,6 +18,7 @@ const {
   getClassLeaderboard,
   updateClassStats,
   getStudentProgress,
+  getClassAnalytics,
 } = require("../controllers/classController");
 const {
   getClassRewards,
@@ -106,6 +107,11 @@ router.put("/:id/update-stats", updateClassStats);
 // @desc    Get student progress in class
 // @access  Private (Members only)
 router.get("/:id/student/:studentId/progress", getStudentProgress);
+
+// @route   GET /api/classes/:id/analytics
+// @desc    Get class analytics with aggregated statistics
+// @access  Private (Teacher/Creator)
+router.get("/:id/analytics", getClassAnalytics);
 
 // @route   GET /api/classes/:id/rewards/summary
 // @desc    Get reward summary for a class

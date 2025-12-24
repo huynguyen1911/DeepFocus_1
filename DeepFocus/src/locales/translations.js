@@ -798,6 +798,10 @@ export const translations = {
       noData: "Chưa có dữ liệu",
       noDataDescription: "Bắt đầu học tập để xuất hiện trên bảng xếp hạng!",
       loadMore: "Xem thêm",
+      thisWeek: "Tuần Này",
+      thisMonth: "Tháng Này",
+      emptyTitle: "Vị trí số 1 đang chờ bạn!",
+      emptyDescription: "Chưa có nhà vô địch nào. Hãy hoàn thành bài tập đầu tiên để ghi danh vào đường đua!",
     },
 
     // Members management translations
@@ -1595,6 +1599,10 @@ export const translations = {
       noData: "No data yet",
       noDataDescription: "Start studying to appear on the leaderboard!",
       loadMore: "Load more",
+      thisWeek: "This Week",
+      thisMonth: "This Month",
+      emptyTitle: "The #1 spot is waiting for you!",
+      emptyDescription: "No champions yet. Complete your first assignment to join the race!",
     },
 
     // Members management translations

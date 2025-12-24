@@ -6,24 +6,24 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Card,
   Text,
   useTheme,
   ActivityIndicator,
   Chip,
-  DataTable,
-  SegmentedButtons,
-  Divider,
   IconButton,
+  Avatar,
 } from "react-native-paper";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, Stack } from "expo-router";
 import { useSession } from "../contexts/SessionContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { classAPI } from "../services/api";
 import { LineChart, BarChart } from "react-native-chart-kit";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -36,12 +36,9 @@ export default function ClassStatisticsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [studentProgress, setStudentProgress] = useState<any>(null);
-  const [selectedView, setSelectedView] = useState("leaderboard");
   const [dateRange, setDateRange] = useState("week");
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
   const [endDate, setEndDate] = useState(new Date());
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(false);
 
   useEffect(() => {
@@ -211,265 +208,335 @@ export default function ClassStatisticsScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-    >
-      {/* Header */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
+      <Stack.Screen options={{ headerShown: false }} />
+      
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Header Card with Back Button */}
+        <Card style={styles.headerCard}>
+          <Card.Content>
+            <View style={styles.headerRow}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backButton}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="chevron-left"
+                  size={28}
+                  color={theme.colors.onSurface}
+                />
+              </TouchableOpacity>
+              <View style={styles.headerTextContainer}>
+                <Text variant="headlineSmall" style={styles.title}>
+                  Thống Kế
+                </Text>
+                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Hiệu suất lớp học
+                </Text>
+              </View>
+            </View>
+          </Card.Content>
+        </Card>
+
+      {/* Filter Chips - Horizontal Scrollable */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterChipsContainer}
+        style={styles.filterChipsScroll}
+      >
+        <Chip
+          selected={dateRange === "week"}
+          onPress={() => handleDateRangeChange("week")}
+          style={[styles.filterChip, dateRange === "week" && { backgroundColor: theme.colors.primaryContainer }]}
+          textStyle={dateRange === "week" && { color: theme.colors.onPrimaryContainer }}
+        >
+          7 Ngày
+        </Chip>
+        <Chip
+          selected={dateRange === "month"}
+          onPress={() => handleDateRangeChange("month")}
+          style={[styles.filterChip, dateRange === "month" && { backgroundColor: theme.colors.primaryContainer }]}
+          textStyle={dateRange === "month" && { color: theme.colors.onPrimaryContainer }}
+        >
+          30 Ngày
+        </Chip>
+        <Chip
+          selected={dateRange === "all"}
+          onPress={() => handleDateRangeChange("all")}
+          style={[styles.filterChip, dateRange === "all" && { backgroundColor: theme.colors.primaryContainer }]}
+          textStyle={dateRange === "all" && { color: theme.colors.onPrimaryContainer }}
+        >
+          Tất cả
+        </Chip>
+      </ScrollView>
+
+      {/* Section 1: Top 3 Students Podium */}
       <Card style={styles.card}>
         <Card.Content>
-          <Text variant="headlineSmall" style={styles.title}>
-            {t("statistics.title")}
-          </Text>
-          <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-            {t("statistics.classPerformance")}
-          </Text>
-        </Card.Content>
-      </Card>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <MaterialCommunityIcons name="trophy" size={24} color={theme.colors.primary} />
+              <Text variant="titleLarge" style={styles.sectionTitleText}>
+                Học Sinh Xuất Sắc
+              </Text>
+            </View>
+            <IconButton
+              icon="refresh"
+              size={20}
+              onPress={loadLeaderboard}
+              disabled={loadingLeaderboard}
+            />
+          </View>
 
-      {/* Date Range Selector */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            {t("statistics.dateRange")}
-          </Text>
-          <SegmentedButtons
-            value={dateRange}
-            onValueChange={handleDateRangeChange}
-            buttons={[
-              { value: "week", label: t("statistics.week") },
-              { value: "month", label: t("statistics.month") },
-              { value: "all", label: t("statistics.all") },
-            ]}
-            style={styles.segmentedButtons}
-          />
+          {loadingLeaderboard ? (
+            <ActivityIndicator size="small" color={theme.colors.primary} style={{ marginVertical: 32 }} />
+          ) : leaderboard.length > 0 ? (
+            <>
+              {/* Top 3 Podium */}
+              <View style={styles.podiumContainer}>
+                {/* Rank 2 - Left */}
+                {leaderboard[1] && (
+                  <View style={styles.podiumItem}>
+                    <Avatar.Text
+                      size={56}
+                      label={leaderboard[1].userId?.username?.substring(0, 2).toUpperCase() || "??"}
+                      style={[styles.avatar, { backgroundColor: theme.colors.secondaryContainer }]}
+                    />
+                    <Text variant="bodySmall" style={styles.podiumName} numberOfLines={1}>
+                      {leaderboard[1].userId?.username || "Unknown"}
+                    </Text>
+                    <View style={[styles.podiumRank, { backgroundColor: "#C0C0C0" }]}>
+                      <Text variant="titleMedium" style={styles.podiumRankText}>2</Text>
+                    </View>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {formatDuration(leaderboard[1].totalDuration)}
+                    </Text>
+                  </View>
+                )}
 
-          {/* Custom Date Range */}
-          {dateRange === "custom" && (
-            <View style={styles.datePickerContainer}>
-              <View style={styles.datePickerRow}>
-                <Text variant="bodyMedium">{t("statistics.from")}: </Text>
-                <Chip onPress={() => setShowStartPicker(true)}>
-                  {formatDate(startDate)}
-                </Chip>
+                {/* Rank 1 - Center (Bigger) */}
+                {leaderboard[0] && (
+                  <View style={[styles.podiumItem, styles.podiumWinner]}>
+                    <MaterialCommunityIcons
+                      name="crown"
+                      size={28}
+                      color="#FFD700"
+                      style={styles.crownIcon}
+                    />
+                    <Avatar.Text
+                      size={72}
+                      label={leaderboard[0].userId?.username?.substring(0, 2).toUpperCase() || "??"}
+                      style={[styles.avatar, { backgroundColor: theme.colors.primaryContainer }]}
+                    />
+                    <Text variant="bodyMedium" style={[styles.podiumName, { fontWeight: "bold" }]} numberOfLines={1}>
+                      {leaderboard[0].userId?.username || "Unknown"}
+                    </Text>
+                    <View style={[styles.podiumRank, { backgroundColor: "#FFD700" }]}>
+                      <Text variant="titleLarge" style={[styles.podiumRankText, { fontWeight: "bold" }]}>1</Text>
+                    </View>
+                    <Text variant="bodyMedium" style={{ color: theme.colors.primary, fontWeight: "600" }}>
+                      {formatDuration(leaderboard[0].totalDuration)}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Rank 3 - Right */}
+                {leaderboard[2] && (
+                  <View style={styles.podiumItem}>
+                    <Avatar.Text
+                      size={56}
+                      label={leaderboard[2].userId?.username?.substring(0, 2).toUpperCase() || "??"}
+                      style={[styles.avatar, { backgroundColor: theme.colors.tertiaryContainer }]}
+                    />
+                    <Text variant="bodySmall" style={styles.podiumName} numberOfLines={1}>
+                      {leaderboard[2].userId?.username || "Unknown"}
+                    </Text>
+                    <View style={[styles.podiumRank, { backgroundColor: "#CD7F32" }]}>
+                      <Text variant="titleMedium" style={styles.podiumRankText}>3</Text>
+                    </View>
+                    <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                      {formatDuration(leaderboard[2].totalDuration)}
+                    </Text>
+                  </View>
+                )}
               </View>
-              <View style={styles.datePickerRow}>
-                <Text variant="bodyMedium">{t("statistics.to")}: </Text>
-                <Chip onPress={() => setShowEndPicker(true)}>
-                  {formatDate(endDate)}
-                </Chip>
-              </View>
+
+              {/* Rest of the Leaderboard (if more than 3) */}
+              {leaderboard.length > 3 && (
+                <View style={styles.restLeaderboard}>
+                  {leaderboard.slice(3).map((student, index) => (
+                    <View key={student.userId?._id || index} style={styles.leaderboardRow}>
+                      <View style={styles.leaderboardLeft}>
+                        <Text variant="bodyMedium" style={styles.leaderboardRank}>
+                          {index + 4}
+                        </Text>
+                        <Avatar.Text
+                          size={40}
+                          label={student.userId?.username?.substring(0, 2).toUpperCase() || "??"}
+                          style={{ backgroundColor: theme.colors.surfaceVariant }}
+                        />
+                        <Text variant="bodyMedium" style={styles.leaderboardName}>
+                          {student.userId?.username || "Unknown"}
+                        </Text>
+                      </View>
+                      <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {formatDuration(student.totalDuration)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="account-school-outline"
+                size={64}
+                color={theme.colors.surfaceDisabled}
+              />
+              <Text variant="titleMedium" style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
+                Lớp học chưa bắt đầu sôi động
+              </Text>
+              <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                Chưa có ai luyện tập tuần này
+              </Text>
             </View>
           )}
         </Card.Content>
       </Card>
 
-      {/* View Selector */}
+      {/* Section 2: Sessions Chart */}
       <Card style={styles.card}>
         <Card.Content>
-          <SegmentedButtons
-            value={selectedView}
-            onValueChange={setSelectedView}
-            buttons={[
-              { value: "leaderboard", label: t("statistics.leaderboard"), icon: "trophy" },
-              { value: "charts", label: t("statistics.charts"), icon: "chart-line" },
-            ]}
-          />
+          <View style={styles.sectionTitleContainer}>
+            <MaterialCommunityIcons name="chart-line" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={styles.sectionTitleText}>
+              Phiên Theo Thời Gian
+            </Text>
+          </View>
+          {sessions && sessions.length > 0 ? (
+            <LineChart
+              data={getSessionsChartData()}
+              width={screenWidth - 64}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+              style={styles.chart}
+              yAxisLabel=""
+              yAxisSuffix=""
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="chart-line-variant"
+                size={48}
+                color={theme.colors.surfaceDisabled}
+              />
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Chưa có dữ liệu
+              </Text>
+            </View>
+          )}
         </Card.Content>
       </Card>
 
-      {/* Leaderboard View */}
-      {selectedView === "leaderboard" && (
-        <Card style={styles.card}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Text variant="titleLarge" style={styles.sectionTitle}>
-                {t("statistics.topStudents")}
-              </Text>
-              <IconButton
-                icon="refresh"
-                size={20}
-                onPress={loadLeaderboard}
-                disabled={loadingLeaderboard}
+      {/* Section 3: Duration Chart */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.sectionTitleContainer}>
+            <MaterialCommunityIcons name="clock-outline" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={styles.sectionTitleText}>
+              Thời Lượng Theo Thời Gian
+            </Text>
+          </View>
+          {sessions && sessions.length > 0 ? (
+            <BarChart
+              data={getDurationChartData()}
+              width={screenWidth - 64}
+              height={220}
+              chartConfig={chartConfig}
+              style={styles.chart}
+              yAxisLabel=""
+              yAxisSuffix="m"
+              fromZero
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="chart-bar"
+                size={48}
+                color={theme.colors.surfaceDisabled}
               />
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Chưa có dữ liệu
+              </Text>
             </View>
+          )}
+        </Card.Content>
+      </Card>
 
-            {loadingLeaderboard ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : leaderboard.length > 0 ? (
-              <DataTable>
-                <DataTable.Header>
-                  <DataTable.Title style={{ flex: 0.5 }}>
-                    {t("statistics.rank")}
-                  </DataTable.Title>
-                  <DataTable.Title style={{ flex: 2 }}>
-                    {t("statistics.student")}
-                  </DataTable.Title>
-                  <DataTable.Title numeric style={{ flex: 1 }}>
-                    {t("statistics.sessions")}
-                  </DataTable.Title>
-                  <DataTable.Title numeric style={{ flex: 1.5 }}>
-                    {t("statistics.duration")}
-                  </DataTable.Title>
-                </DataTable.Header>
-
-                {leaderboard.map((student, index) => (
-                  <DataTable.Row key={student.userId?._id || index}>
-                    <DataTable.Cell style={{ flex: 0.5 }}>
-                      {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : index + 1}
-                    </DataTable.Cell>
-                    <DataTable.Cell style={{ flex: 2 }}>
-                      {student.userId?.username || "Unknown"}
-                    </DataTable.Cell>
-                    <DataTable.Cell numeric style={{ flex: 1 }}>
-                      {student.totalSessions}
-                    </DataTable.Cell>
-                    <DataTable.Cell numeric style={{ flex: 1.5 }}>
-                      {formatDuration(student.totalDuration)}
-                    </DataTable.Cell>
-                  </DataTable.Row>
-                ))}
-              </DataTable>
-            ) : (
-              <View style={styles.emptyContainer}>
-                <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {t("statistics.noData")}
+      {/* Section 4: Session Type Distribution */}
+      <Card style={styles.card}>
+        <Card.Content>
+          <View style={styles.sectionTitleContainer}>
+            <MaterialCommunityIcons name="format-list-bulleted" size={24} color={theme.colors.primary} />
+            <Text variant="titleMedium" style={styles.sectionTitleText}>
+              Phân Loại Phiên
+            </Text>
+          </View>
+          {sessions && sessions.length > 0 ? (
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons name="brain" size={32} color={theme.colors.primary} />
+                <Text variant="headlineMedium" style={{ color: theme.colors.primary, marginTop: 8 }}>
+                  {sessions.filter((s: any) => s.type === "focus").length}
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Tập trung
                 </Text>
               </View>
-            )}
-          </Card.Content>
-        </Card>
-      )}
-
-      {/* Charts View */}
-      {selectedView === "charts" && (
-        <>
-          {/* Sessions Chart */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("statistics.sessionsOverTime")}
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons name="coffee" size={32} color={theme.colors.secondary} />
+                <Text variant="headlineMedium" style={{ color: theme.colors.secondary, marginTop: 8 }}>
+                  {sessions.filter((s: any) => s.type === "short-break").length}
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Nghỉ ngắn
+                </Text>
+              </View>
+              <View style={styles.statItem}>
+                <MaterialCommunityIcons name="sleep" size={32} color={theme.colors.tertiary} />
+                <Text variant="headlineMedium" style={{ color: theme.colors.tertiary, marginTop: 8 }}>
+                  {sessions.filter((s: any) => s.type === "long-break").length}
+                </Text>
+                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                  Nghỉ dài
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <MaterialCommunityIcons
+                name="chart-donut"
+                size={48}
+                color={theme.colors.surfaceDisabled}
+              />
+              <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+                Chưa có dữ liệu
               </Text>
-              {sessions && sessions.length > 0 ? (
-                <LineChart
-                  data={getSessionsChartData()}
-                  width={screenWidth - 64}
-                  height={220}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={styles.chart}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                />
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {t("statistics.noData")}
-                  </Text>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-
-          {/* Duration Chart */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("statistics.durationOverTime")}
-              </Text>
-              {sessions && sessions.length > 0 ? (
-                <BarChart
-                  data={getDurationChartData()}
-                  width={screenWidth - 64}
-                  height={220}
-                  chartConfig={chartConfig}
-                  style={styles.chart}
-                  yAxisLabel=""
-                  yAxisSuffix="m"
-                  fromZero
-                />
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {t("statistics.noData")}
-                  </Text>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-
-          {/* Session Type Distribution */}
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("statistics.sessionTypes")}
-              </Text>
-              {sessions && sessions.length > 0 ? (
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text variant="headlineMedium" style={{ color: theme.colors.primary }}>
-                      {sessions.filter((s: any) => s.type === "focus").length}
-                    </Text>
-                    <Text variant="bodySmall">{t("statistics.focus")}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text variant="headlineMedium" style={{ color: theme.colors.secondary }}>
-                      {sessions.filter((s: any) => s.type === "short-break").length}
-                    </Text>
-                    <Text variant="bodySmall">{t("statistics.shortBreak")}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Text variant="headlineMedium" style={{ color: theme.colors.tertiary }}>
-                      {sessions.filter((s: any) => s.type === "long-break").length}
-                    </Text>
-                    <Text variant="bodySmall">{t("statistics.longBreak")}</Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {t("statistics.noData")}
-                  </Text>
-                </View>
-              )}
-            </Card.Content>
-          </Card>
-        </>
-      )}
-
-      {/* Date Pickers */}
-      {showStartPicker && (
-        <DateTimePicker
-          value={startDate}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartPicker(false);
-            if (selectedDate) {
-              setStartDate(selectedDate);
-              loadSessions();
-            }
-          }}
-        />
-      )}
-
-      {showEndPicker && (
-        <DateTimePicker
-          value={endDate}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowEndPicker(false);
-            if (selectedDate) {
-              setEndDate(selectedDate);
-              loadSessions();
-            }
-          }}
-        />
-      )}
-    </ScrollView>
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -482,40 +549,143 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  card: {
+  headerCard: {
     margin: 16,
-    marginBottom: 0,
+    marginBottom: 4,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  card: {
+    marginHorizontal: 16,
+    marginTop: 12,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  backButton: {
+    marginRight: 8,
+    marginTop: -4,
+    padding: 4,
+  },
+  headerTextContainer: {
+    flex: 1,
   },
   title: {
     fontWeight: "bold",
     marginBottom: 8,
   },
-  sectionTitle: {
-    fontWeight: "600",
-    marginBottom: 12,
+  
+  // Filter Chips Styles
+  filterChipsScroll: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
   },
+  filterChipsContainer: {
+    paddingRight: 16,
+    gap: 8,
+  },
+  filterChip: {
+    marginRight: 8,
+  },
+
+  // Section Header Styles
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  segmentedButtons: {
-    marginTop: 8,
-  },
-  datePickerContainer: {
-    marginTop: 16,
-    gap: 12,
-  },
-  datePickerRow: {
+  sectionTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    marginBottom: 16,
   },
+  sectionTitleText: {
+    fontWeight: "600",
+  },
+
+  // Podium Styles
+  podiumContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingVertical: 24,
+    gap: 16,
+  },
+  podiumItem: {
+    alignItems: "center",
+    flex: 1,
+    maxWidth: 100,
+  },
+  podiumWinner: {
+    marginBottom: 20,
+  },
+  avatar: {
+    marginBottom: 8,
+  },
+  crownIcon: {
+    position: "absolute",
+    top: -10,
+    zIndex: 1,
+  },
+  podiumName: {
+    textAlign: "center",
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  podiumRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  podiumRankText: {
+    color: "white",
+    fontWeight: "bold",
+  },
+
+  // Rest of Leaderboard Styles
+  restLeaderboard: {
+    marginTop: 16,
+    gap: 12,
+  },
+  leaderboardRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  leaderboardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  leaderboardRank: {
+    width: 24,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  leaderboardName: {
+    flex: 1,
+  },
+
+  // Chart Styles
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
+
+  // Stats Row Styles
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -524,8 +694,15 @@ const styles = StyleSheet.create({
   statItem: {
     alignItems: "center",
   },
-  emptyContainer: {
-    padding: 32,
+
+  // Empty State Styles
+  emptyState: {
+    paddingVertical: 48,
     alignItems: "center",
+    gap: 12,
+  },
+  emptyText: {
+    textAlign: "center",
+    marginTop: 8,
   },
 });

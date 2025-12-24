@@ -68,6 +68,13 @@ const ClassAnalytics = () => {
     }
   };
 
+  // Check if chart has data
+  const hasChartData = (data: any) => {
+    if (!data || !data.datasets || data.datasets.length === 0) return false;
+    const values = data.datasets[0].data;
+    return values && values.length > 0 && values.some((v: number) => v > 0);
+  };
+
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<ClassAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,35 +83,53 @@ const ClassAnalytics = () => {
   const loadClassAnalytics = async (classId: string) => {
     try {
       setLoading(true);
-      // TODO: Create API endpoint for class analytics
-      // const data = await classAPI.getClassAnalytics(classId, timeRange);
       
-      // Mock data for now
-      const mockData: ClassAnalyticsData = {
-        totalStudents: 25,
-        activeStudents: 20,
-        totalPomodoros: 450,
-        totalWorkTime: 11250, // in minutes
-        averagePerStudent: 18,
-        topPerformers: [
-          { studentId: '1', studentName: 'Nguyễn Văn A', pomodoros: 45, workTime: 1125 },
-          { studentId: '2', studentName: 'Trần Thị B', pomodoros: 40, workTime: 1000 },
-          { studentId: '3', studentName: 'Lê Văn C', pomodoros: 38, workTime: 950 },
-        ],
-        weeklyActivity: [
-          { day: language === 'vi' ? 'T2' : 'Mon', pomodoros: 65, students: 18 },
-          { day: language === 'vi' ? 'T3' : 'Tue', pomodoros: 70, students: 20 },
-          { day: language === 'vi' ? 'T4' : 'Wed', pomodoros: 62, students: 19 },
-          { day: language === 'vi' ? 'T5' : 'Thu', pomodoros: 68, students: 21 },
-          { day: language === 'vi' ? 'T6' : 'Fri', pomodoros: 75, students: 22 },
-          { day: language === 'vi' ? 'T7' : 'Sat', pomodoros: 55, students: 15 },
-          { day: language === 'vi' ? 'CN' : 'Sun', pomodoros: 55, students: 16 },
-        ],
-      };
+      // Call real API endpoint
+      const response = await classAPI.getAnalytics(classId);
       
-      setAnalytics(mockData);
+      if (response.success && response.data) {
+        // Transform API data to match our interface
+        const apiData = response.data;
+        
+        const transformedData: ClassAnalyticsData = {
+          totalStudents: apiData.totalStudents || 0,
+          activeStudents: apiData.activeStudents || 0,
+          totalPomodoros: apiData.totalPomodoros || 0,
+          totalWorkTime: apiData.totalWorkTime || 0,
+          averagePerStudent: apiData.averagePerStudent || 0,
+          topPerformers: apiData.topPerformers || [],
+          weeklyActivity: (apiData.weeklyActivity || []).map((d: any) => ({
+            day: language === 'vi' ? d.dayVi : d.day,
+            pomodoros: d.pomodoros || 0,
+            students: d.students || 0,
+          })),
+        };
+        
+        setAnalytics(transformedData);
+      } else {
+        // No data available - set empty analytics
+        setAnalytics({
+          totalStudents: 0,
+          activeStudents: 0,
+          totalPomodoros: 0,
+          totalWorkTime: 0,
+          averagePerStudent: 0,
+          topPerformers: [],
+          weeklyActivity: [],
+        });
+      }
     } catch (error) {
       console.error('❌ Failed to load class analytics:', error);
+      // Set empty analytics on error
+      setAnalytics({
+        totalStudents: 0,
+        activeStudents: 0,
+        totalPomodoros: 0,
+        totalWorkTime: 0,
+        averagePerStudent: 0,
+        topPerformers: [],
+        weeklyActivity: [],
+      });
     } finally {
       setLoading(false);
     }
@@ -336,32 +361,41 @@ const ClassAnalytics = () => {
                 titleStyle={styles.cardTitle}
               />
               <Card.Content>
-                <LineChart
-                  data={weeklyChartData}
-                  width={CHART_WIDTH}
-                  height={220}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  withDots={false}
-                  withInnerLines={false}
-                  withOuterLines={false}
-                  chartConfig={{
-                    backgroundColor: '#fff',
-                    backgroundGradientFrom: '#fff',
-                    backgroundGradientTo: '#fff',
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
-                    style: { borderRadius: 16 },
-                    propsForBackgroundLines: {
-                      strokeWidth: 0,
-                    },
-                  }}
-                  bezier
-                  style={styles.chart}
-                  fillShadowGradient="#7C4DFF"
-                  fillShadowGradientOpacity={0.3}
-                />
+                {hasChartData(weeklyChartData) ? (
+                  <LineChart
+                    data={weeklyChartData}
+                    width={CHART_WIDTH}
+                    height={220}
+                    yAxisLabel=""
+                    yAxisSuffix=""
+                    withDots={false}
+                    withInnerLines={false}
+                    withOuterLines={false}
+                    chartConfig={{
+                      backgroundColor: '#fff',
+                      backgroundGradientFrom: '#fff',
+                      backgroundGradientTo: '#fff',
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
+                      style: { borderRadius: 16 },
+                      propsForBackgroundLines: {
+                        strokeWidth: 0,
+                      },
+                    }}
+                    bezier
+                    style={styles.chart}
+                    fillShadowGradient="#7C4DFF"
+                    fillShadowGradientOpacity={0.3}
+                  />
+                ) : (
+                  <View style={styles.emptyChartContainer}>
+                    <Ionicons name="bar-chart-outline" size={60} color="#E0E0E0" />
+                    <Text style={styles.emptyChartText}>
+                      {language === 'vi' ? 'Chưa có hoạt động nào trong tuần này' : 'No activity this week'}
+                    </Text>
+                  </View>
+                )}
               </Card.Content>
             </Card>
           )}
@@ -374,38 +408,49 @@ const ClassAnalytics = () => {
                 titleStyle={styles.cardTitle}
               />
               <Card.Content>
-                <BarChart
-                  data={topPerformersChartData}
-                  width={CHART_WIDTH}
-                  height={220}
-                  yAxisLabel=""
-                  yAxisSuffix=""
-                  chartConfig={{
-                    backgroundColor: '#fff',
-                    backgroundGradientFrom: '#fff',
-                    backgroundGradientTo: '#fff',
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
-                    style: { borderRadius: 16 },
-                    barPercentage: 0.7,
-                  }}
-                  style={styles.chart}
-                />
-                <Divider style={styles.divider} />
-                {analytics.topPerformers && analytics.topPerformers.length > 0 && analytics.topPerformers.map((performer, index) => (
-                  <View key={performer.studentId || index} style={styles.performerRow}>
-                    <View style={[styles.performerRank, { backgroundColor: getRankColor(index) }]}>
-                      <Text style={styles.rankText}>#{index + 1}</Text>
-                    </View>
-                    <View style={styles.performerInfo}>
-                      <Text style={styles.performerName}>{performer.studentName || 'Unknown'}</Text>
-                      <Text style={styles.performerStats}>
-                        {performer.pomodoros || 0} pomodoros • {formatWorkTime(performer.workTime || 0)}
-                      </Text>
-                    </View>
+                {hasChartData(topPerformersChartData) ? (
+                  <>
+                    <BarChart
+                      data={topPerformersChartData}
+                      width={CHART_WIDTH}
+                      height={220}
+                      yAxisLabel=""
+                      yAxisSuffix=""
+                      chartConfig={{
+                        backgroundColor: '#fff',
+                        backgroundGradientFrom: '#fff',
+                        backgroundGradientTo: '#fff',
+                        decimalPlaces: 0,
+                        color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
+                        labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
+                        style: { borderRadius: 16 },
+                        barPercentage: 0.7,
+                      }}
+                      style={styles.chart}
+                    />
+                    <Divider style={styles.divider} />
+                    {analytics.topPerformers && analytics.topPerformers.length > 0 && analytics.topPerformers.map((performer, index) => (
+                      <View key={performer.studentId || index} style={styles.performerRow}>
+                        <View style={[styles.performerRank, { backgroundColor: getRankColor(index) }]}>
+                          <Text style={styles.rankText}>#{index + 1}</Text>
+                        </View>
+                        <View style={styles.performerInfo}>
+                          <Text style={styles.performerName}>{performer.studentName || 'Unknown'}</Text>
+                          <Text style={styles.performerStats}>
+                            {performer.pomodoros || 0} pomodoros • {formatWorkTime(performer.workTime || 0)}
+                          </Text>
+                        </View>
+                      </View>
+                    ))}
+                  </>
+                ) : (
+                  <View style={styles.emptyChartContainer}>
+                    <Ionicons name="trophy-outline" size={60} color="#E0E0E0" />
+                    <Text style={styles.emptyChartText}>
+                      {language === 'vi' ? 'Chưa có dữ liệu học sinh' : 'No student data yet'}
+                    </Text>
                   </View>
-                ))}
+                )}
               </Card.Content>
             </Card>
           )}
@@ -439,17 +484,14 @@ const ClassAnalytics = () => {
         </>
       )}
 
-      {/* Info Card */}
-      <Card style={[styles.card, styles.infoCard]}>
-        <Card.Content>
-          <Text style={styles.infoText}>
-            💡 <Text style={styles.infoBold}>{language === 'vi' ? 'Lưu ý' : 'Note'}:</Text>{' '}
-            {language === 'vi'
-              ? 'Analytics hiển thị dữ liệu tổng hợp từ tất cả học sinh trong lớp. Nhấn vào lớp học để xem chi tiết từng học sinh.'
-              : 'Analytics show aggregated data from all students in the class. Click on a class to see individual student details.'}
-          </Text>
-        </Card.Content>
-      </Card>
+      {/* Info Card - Lightweight Footnote */}
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoText}>
+          💡 {language === 'vi'
+            ? 'Analytics hiển thị dữ liệu tổng hợp từ tất cả học sinh trong lớp. Nhấn vào lớp học để xem chi tiết từng học sinh.'
+            : 'Analytics show aggregated data from all students in the class. Click on a class to see individual student details.'}
+        </Text>
+      </View>
     </ScrollView>
   </SafeAreaView>
   );
@@ -577,6 +619,21 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 16,
   },
+  // Empty Chart State
+  emptyChartContainer: {
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    marginVertical: 8,
+  },
+  emptyChartText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+  },
   // Performers
   performerRow: {
     flexDirection: 'row',
@@ -632,15 +689,17 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
-  infoCard: {
-    backgroundColor: '#E3F2FD',
+  // Info Container - Lightweight Footnote
+  infoContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   infoText: {
-    lineHeight: 22,
-    color: '#424242',
-  },
-  infoBold: {
-    fontWeight: 'bold',
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#8E8E93',
+    textAlign: 'center',
   },
 });
 

@@ -590,6 +590,16 @@ export const classAPI = {
       throw error;
     }
   },
+
+  // Get class analytics with aggregated statistics
+  getAnalytics: async (classId) => {
+    try {
+      const response = await apiClient.get(`/classes/${classId}/analytics`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 // Session Management API (Phase 3)

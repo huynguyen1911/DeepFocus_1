@@ -1,5 +1,6 @@
 const Class = require("../models/Class");
 const User = require("../models/User");
+const Session = require("../models/Session");
 
 /**
  * @desc    Create a new class (Teacher only)
@@ -1077,6 +1078,146 @@ const getStudentProgress = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Get class analytics with aggregated statistics
+ * @route   GET /api/classes/:id/analytics
+ * @access  Private (Teacher/Creator)
+ */
+const getClassAnalytics = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    // Get class and verify teacher access
+    const classData = await Class.findById(id).populate({
+      path: "members.user",
+      select: "username email focusProfile",
+    });
+
+    if (!classData) {
+      return res.status(404).json({
+        success: false,
+        message: "Class not found",
+      });
+    }
+
+    // Verify user is the creator/teacher
+    if (classData.createdBy.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only class creator can view analytics",
+      });
+    }
+
+    // Get active members (students only, exclude teacher/guardian)
+    const activeMembers = classData.members.filter(
+      (m) => m.status === "active" && m.role === "student"
+    );
+    const activeMemberIds = activeMembers.map((m) => m.user._id);
+
+    // Get all sessions for class members in the last 7 days (or custom range)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const sessions = await Session.find({
+      user: { $in: activeMemberIds },
+      class: id,
+      completed: true,
+      createdAt: { $gte: sevenDaysAgo },
+    }).populate("user", "username email focusProfile");
+
+    // Calculate total statistics
+    const totalPomodoros = sessions.filter((s) => s.type === "focus").length;
+    const totalWorkTime = sessions
+      .filter((s) => s.type === "focus")
+      .reduce((sum, s) => sum + s.duration, 0);
+
+    // Students who have at least 1 session in the last 7 days
+    const activeStudents = new Set(sessions.map((s) => s.user._id.toString()))
+      .size;
+
+    const averagePerStudent =
+      activeStudents > 0 ? Math.round(totalPomodoros / activeStudents) : 0;
+
+    // Calculate top performers
+    const performerMap = {};
+    sessions.forEach((session) => {
+      if (session.type === "focus") {
+        const userId = session.user._id.toString();
+        if (!performerMap[userId]) {
+          performerMap[userId] = {
+            studentId: userId,
+            studentName:
+              session.user.focusProfile?.fullName ||
+              session.user.username ||
+              "Unknown",
+            pomodoros: 0,
+            workTime: 0,
+          };
+        }
+        performerMap[userId].pomodoros += 1;
+        performerMap[userId].workTime += session.duration;
+      }
+    });
+
+    const topPerformers = Object.values(performerMap)
+      .sort((a, b) => b.pomodoros - a.pomodoros)
+      .slice(0, 3);
+
+    // Calculate weekly activity (last 7 days)
+    const weeklyActivity = [];
+    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const dayNamesVi = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const daySessions = sessions.filter((s) => {
+        const sessionDate = new Date(s.createdAt);
+        return (
+          sessionDate >= date && sessionDate < nextDate && s.type === "focus"
+        );
+      });
+
+      const dayIndex = date.getDay();
+      weeklyActivity.push({
+        day: dayNames[dayIndex],
+        dayVi: dayNamesVi[dayIndex],
+        pomodoros: daySessions.length,
+        students: new Set(daySessions.map((s) => s.user._id.toString())).size,
+      });
+    }
+
+    // Prepare analytics response
+    const analytics = {
+      totalStudents: activeMembers.length,
+      activeStudents,
+      totalPomodoros,
+      totalWorkTime,
+      averagePerStudent,
+      topPerformers,
+      weeklyActivity,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: analytics,
+    });
+  } catch (error) {
+    console.error("Error getting class analytics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get class analytics",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   createClass,
   getClasses,
@@ -1094,4 +1235,5 @@ module.exports = {
   getClassLeaderboard,
   updateClassStats,
   getStudentProgress,
+  getClassAnalytics,
 };
