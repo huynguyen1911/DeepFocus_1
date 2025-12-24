@@ -7,6 +7,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from "react-native";
 import {
   TextInput,
@@ -18,6 +19,8 @@ import {
 import { router } from "expo-router";
 import { useClass } from "../contexts/ClassContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from "expo-clipboard";
 
 export default function CreateClassScreen() {
@@ -107,50 +110,94 @@ export default function CreateClassScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+      {/* Custom Header with Close Button */}
+      <View style={styles.customHeader}>
+        <IconButton
+          icon="close"
+          size={24}
+          onPress={() => router.back()}
+          style={styles.closeButton}
+        />
+      </View>
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <Text variant="headlineSmall" style={styles.title}>
-            {t("classes.createClass")}
+          {/* Vector Illustration */}
+          <View style={styles.illustrationContainer}>
+            <View style={styles.illustrationCircle}>
+              <MaterialCommunityIcons name="school" size={64} color="#667eea" />
+            </View>
+          </View>
+
+          <Text variant="headlineMedium" style={styles.title}>
+            Tạo Lớp Mới
           </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            {t("classes.createClassDescription")}
+            Nhập thông tin để bắt đầu quản lý lớp học của bạn
           </Text>
 
-          <TextInput
-            label={t("classes.className")}
-            value={name}
-            onChangeText={setName}
-            mode="outlined"
-            style={styles.input}
-            placeholder={t("classes.classNamePlaceholder")}
-            maxLength={100}
-          />
+          {/* Soft UI Input Fields */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputWrapper}>
+              <View style={styles.inputIconContainer}>
+                <MaterialCommunityIcons name="book-outline" size={24} color="#667eea" />
+              </View>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                mode="flat"
+                style={styles.input}
+                placeholder="Nhập tên lớp..."
+                maxLength={100}
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+              />
+            </View>
 
-          <TextInput
-            label={t("classes.description")}
-            value={description}
-            onChangeText={setDescription}
-            mode="outlined"
-            style={styles.input}
-            placeholder={t("classes.descriptionPlaceholder")}
-            multiline
-            numberOfLines={4}
-            maxLength={500}
-          />
+            <View style={[styles.inputWrapper, styles.textAreaWrapper]}>
+              <View style={[styles.inputIconContainer, styles.textAreaIconContainer]}>
+                <MaterialCommunityIcons name="text" size={24} color="#667eea" />
+              </View>
+              <TextInput
+                value={description}
+                onChangeText={setDescription}
+                mode="flat"
+                style={[styles.input, styles.textArea]}
+                contentStyle={styles.textAreaContent}
+                placeholder="Mô tả ngắn gọn..."
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+                underlineColor="transparent"
+                activeUnderlineColor="transparent"
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
 
-          <Text variant="bodySmall" style={styles.helperText}>
-            {t("classes.createClassHelper")}
-          </Text>
-
-          <Button
-            mode="contained"
-            onPress={handleCreate}
-            loading={isCreating || loading}
-            disabled={isCreating || loading || !name.trim()}
-            style={styles.button}
-          >
-            {t("classes.create")}
-          </Button>
+          {/* Gradient CTA Button */}
+          <View style={styles.buttonContainer}>
+            <LinearGradient
+              colors={!name.trim() ? ['#d0d0d0', '#b0b0b0'] : ['#667eea', '#764ba2']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[
+                styles.gradientButton,
+                !name.trim() && styles.gradientButtonDisabled
+              ]}
+            >
+              <Button
+                mode="text"
+                onPress={handleCreate}
+                loading={isCreating || loading}
+                disabled={isCreating || loading || !name.trim()}
+                style={styles.buttonInner}
+                labelStyle={styles.buttonLabel}
+              >
+                {isCreating || loading ? 'ĐANG TẠO...' : 'TẠO LỚP NGAY'}
+              </Button>
+            </LinearGradient>
+          </View>
         </View>
       </ScrollView>
 
@@ -225,33 +272,132 @@ export default function CreateClassScreen() {
   );
 }
 
+const { width } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  customHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingTop: 48,
+    paddingBottom: 8,
+    backgroundColor: '#f5f5f5',
+  },
+  closeButton: {
+    margin: 0,
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 40,
+  },
   content: {
-    padding: 16,
+    padding: 20,
+  },
+  illustrationContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  illustrationCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f0ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
     marginBottom: 8,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#1a1a1a',
   },
   subtitle: {
-    marginBottom: 24,
+    marginBottom: 32,
     opacity: 0.7,
+    textAlign: 'center',
+    color: '#666',
+  },
+  formContainer: {
+    marginBottom: 24,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  textAreaWrapper: {
+    minHeight: 120,
+  },
+  inputIconContainer: {
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  textAreaIconContainer: {
+    paddingTop: 16,
+    justifyContent: 'flex-start',
   },
   input: {
-    marginBottom: 16,
+    flex: 1,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 0,
+    paddingRight: 16,
   },
-  helperText: {
-    marginBottom: 24,
-    opacity: 0.6,
-    textAlign: "center",
+  textArea: {
+    paddingTop: 16,
+    paddingBottom: 12,
+    minHeight: 120,
   },
-  button: {
+  textAreaContent: {
+    paddingTop: 0,
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  buttonContainer: {
     marginTop: 8,
+  },
+  gradientButton: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  gradientButtonDisabled: {
+    opacity: 0.6,
+    shadowOpacity: 0.15,
+  },
+  buttonInner: {
+    margin: 0,
+  },
+  buttonLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    paddingVertical: 8,
   },
   modalOverlay: {
     flex: 1,

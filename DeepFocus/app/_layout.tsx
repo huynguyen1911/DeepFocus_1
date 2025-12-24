@@ -93,10 +93,7 @@ export default function RootLayout() {
                   name="classes/create" 
                   options={{ 
                     presentation: 'modal',
-                    title: 'Tạo Lớp',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 
@@ -112,10 +109,7 @@ export default function RootLayout() {
                 <Stack.Screen 
                   name="classes/[id]" 
                   options={{ 
-                    title: 'Chi Tiết Lớp',
-                    headerStyle: {
-                      backgroundColor: theme.colors.primary,
-                    },
+                    headerShown: false,
                   }} 
                 />
                 <Stack.Screen 

@@ -55,6 +55,7 @@ export default function TabLayout() {
           title: isTeacher ? 'Quản Lý Lớp' : 'Lớp Học',
           tabBarLabel: 'Classes',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name={isTeacher ? "rectangle.stack.fill" : "book.fill"} color={color} />,
+          headerShown: false, // Ẩn header để dùng Large Title trong ClassListScreen
         }}
       />
 

@@ -8,8 +8,11 @@ import {
   Dimensions,
   TouchableOpacity,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, Button, Divider, SegmentedButtons, useTheme } from "react-native-paper";
 import { LineChart, BarChart } from "react-native-chart-kit";
+import { LinearGradient } from "expo-linear-gradient";
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from "expo-router";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useClass } from "../contexts/ClassContext";
@@ -43,6 +46,28 @@ const ClassAnalytics = () => {
   const { t, language } = useLanguage();
   const { classes, loadClasses } = useClass();
   const [refreshing, setRefreshing] = useState(false);
+
+  // Helper function to get ranking color (Gold/Silver/Bronze)
+  const getRankColor = (index: number) => {
+    switch (index) {
+      case 0: return '#FFD700'; // Gold
+      case 1: return '#C0C0C0'; // Silver
+      case 2: return '#CD7F32'; // Bronze
+      default: return '#4CAF50';
+    }
+  };
+
+  // Helper function to get stat icon
+  const getStatIcon = (type: string) => {
+    switch (type) {
+      case 'students': return 'people';
+      case 'active': return 'checkmark-circle';
+      case 'pomodoros': return 'timer';
+      case 'average': return 'analytics';
+      default: return 'stats-chart';
+    }
+  };
+
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<ClassAnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,12 +128,29 @@ const ClassAnalytics = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadClasses();
-    if (selectedClassId) {
-      await loadClassAnalytics(selectedClassId);
+    try {
+      await loadClasses();
+      if (selectedClassId) {
+        await loadClassAnalytics(selectedClassId);
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing analytics:', error);
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   }, [selectedClassId]);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>
+            {language === 'vi' ? 'Đang tải...' : 'Loading...'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (classes.length === 0) {
     return (
@@ -135,7 +177,7 @@ const ClassAnalytics = () => {
   const selectedClass = classes.find((c: any) => c._id === selectedClassId);
 
   // Chart data
-  const weeklyChartData = analytics ? {
+  const weeklyChartData = analytics && analytics.weeklyActivity && analytics.weeklyActivity.length > 0 ? {
     labels: analytics.weeklyActivity.map(d => d.day),
     datasets: [
       {
@@ -146,40 +188,47 @@ const ClassAnalytics = () => {
     ],
   } : null;
 
-  const topPerformersChartData = analytics ? {
-    labels: analytics.topPerformers.map(p => p.studentName.split(' ')[0]),
+  const topPerformersChartData = analytics && analytics.topPerformers && analytics.topPerformers.length > 0 ? {
+    labels: analytics.topPerformers.map(p => p.studentName?.split(' ')[0] || 'N/A'),
     datasets: [
       {
-        data: analytics.topPerformers.map(p => p.pomodoros),
+        data: analytics.topPerformers.map(p => p.pomodoros || 0),
       },
     ],
   } : null;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
-      }
-    >
-      {/* Class Selector */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Text style={styles.selectorLabel}>
-            {language === 'vi' ? '📚 Chọn lớp học' : '📚 Select Class'}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classScroll}>
-            {classes
-              .filter((classItem: any) => classItem && (classItem._id || classItem.id))
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />
+        }
+      >
+        {/* Page Title */}
+        <Text style={styles.pageTitle}>
+          {language === 'vi' ? 'Thống Kê' : 'Analytics'}
+        </Text>
+
+        {/* Class Selector - Filter Chips Style */}
+        <View style={styles.chipContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {Array.isArray(classes) && classes
+              .filter((classItem: any) => {
+                if (!classItem) return false;
+                const id = classItem._id || classItem.id;
+                return id && id !== 'undefined' && id !== null;
+              })
               .map((classItem: any) => {
                 const classId = classItem._id || classItem.id;
+                const isSelected = selectedClassId === classId;
                 return (
                   <TouchableOpacity
                     key={classId}
                     style={[
                       styles.classChip,
-                      selectedClassId === classId && styles.classChipSelected,
+                      isSelected && styles.classChipSelected,
                     ]}
                     onPress={() => {
                       if (classId && classId !== 'undefined') {
@@ -190,87 +239,96 @@ const ClassAnalytics = () => {
                     <Text
                       style={[
                         styles.classChipText,
-                        selectedClassId === classId && styles.classChipTextSelected,
+                        isSelected && styles.classChipTextSelected,
                       ]}
                     >
-                      {classItem.name}
+                      {classItem.name || 'Unnamed Class'}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
           </ScrollView>
-        </Card.Content>
-      </Card>
+        </View>
 
-      {/* Time Range Selector */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <SegmentedButtons
-            value={timeRange}
-            onValueChange={setTimeRange}
-            buttons={[
-              { value: '7days', label: language === 'vi' ? '7 ngày' : '7 days' },
-              { value: '30days', label: language === 'vi' ? '30 ngày' : '30 days' },
-              { value: 'all', label: language === 'vi' ? 'Tất cả' : 'All' },
-            ]}
-          />
-        </Card.Content>
-      </Card>
+      {/* Time Range Selector - Purple Theme */}
+      <View style={styles.timeRangeContainer}>
+        <SegmentedButtons
+          value={timeRange}
+          onValueChange={setTimeRange}
+          buttons={[
+            { value: '7days', label: language === 'vi' ? '7 ngày' : '7 days' },
+            { value: '30days', label: language === 'vi' ? '30 ngày' : '30 days' },
+            { value: 'all', label: language === 'vi' ? 'Tất cả' : 'All' },
+          ]}
+          style={styles.segmentedButtons}
+          theme={{
+            colors: {
+              secondaryContainer: '#7C4DFF',
+              onSecondaryContainer: '#FFFFFF',
+            },
+          }}
+        />
+      </View>
 
       {analytics && (
         <>
-          {/* Overview Stats */}
-          <Card style={styles.card}>
-            <Card.Title
-              title={language === 'vi' ? '📊 Tổng quan' : '📊 Overview'}
-              titleStyle={styles.cardTitle}
-            />
-            <Card.Content>
-              <View style={styles.statsGrid}>
-                <View style={styles.statBox}>
-                  <Text style={styles.statValue}>{analytics.totalStudents}</Text>
-                  <Text style={styles.statLabel}>
-                    {language === 'vi' ? 'Tổng HS' : 'Total Students'}
-                  </Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={[styles.statValue, { color: '#4CAF50' }]}>
-                    {analytics.activeStudents}
-                  </Text>
-                  <Text style={styles.statLabel}>
-                    {language === 'vi' ? 'Đang hoạt động' : 'Active'}
-                  </Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={[styles.statValue, { color: '#FF9800' }]}>
-                    {analytics.totalPomodoros}
-                  </Text>
-                  <Text style={styles.statLabel}>
-                    {language === 'vi' ? 'Pomodoros' : 'Pomodoros'}
-                  </Text>
-                </View>
-                <View style={styles.statBox}>
-                  <Text style={[styles.statValue, { color: '#9C27B0' }]}>
-                    {analytics.averagePerStudent}
-                  </Text>
-                  <Text style={styles.statLabel}>
-                    {language === 'vi' ? 'TB/HS' : 'Avg/Student'}
-                  </Text>
-                </View>
-              </View>
-              <Divider style={styles.divider} />
-              <View style={styles.timeRow}>
-                <Text style={styles.timeLabel}>
-                  {language === 'vi' ? '⏱️ Tổng thời gian học' : '⏱️ Total Study Time'}
-                </Text>
-                <Text style={styles.timeValue}>
-                  {formatWorkTime(analytics.totalWorkTime)}
-                </Text>
-              </View>
-            </Card.Content>
+          {/* Hero Card - Total Study Time */}
+          <Card style={[styles.card, styles.heroCard]}>
+            <LinearGradient
+              colors={['#7C4DFF', '#9575CD', '#B39DDB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroGradient}
+            >
+              <Ionicons name="time-outline" size={40} color="#FFFFFF" style={styles.heroIcon} />
+              <Text style={styles.heroValue}>
+                {formatWorkTime(analytics.totalWorkTime || 0)}
+              </Text>
+              <Text style={styles.heroLabel}>
+                {language === 'vi' ? 'Tổng thời gian học tập trung' : 'Total Focused Study Time'}
+              </Text>
+            </LinearGradient>
           </Card>
 
-          {/* Weekly Activity Chart */}
+          {/* Mini Stats Grid 2x2 */}
+          <View style={styles.miniStatsContainer}>
+            <View style={styles.miniStatCard}>
+              <Ionicons name={getStatIcon('students')} size={24} color="#1976D2" />
+              <Text style={styles.miniStatValue}>{analytics.totalStudents || 0}</Text>
+              <Text style={styles.miniStatLabel}>
+                {language === 'vi' ? 'Tổng HS' : 'Total'}
+              </Text>
+            </View>
+            <View style={styles.miniStatCard}>
+              <Ionicons name={getStatIcon('active')} size={24} color="#4CAF50" />
+              <Text style={[styles.miniStatValue, { color: '#4CAF50' }]}>
+                {analytics.activeStudents || 0}
+              </Text>
+              <Text style={styles.miniStatLabel}>
+                {language === 'vi' ? 'Hoạt động' : 'Active'}
+              </Text>
+            </View>
+            <View style={styles.miniStatCard}>
+              <Ionicons name={getStatIcon('pomodoros')} size={24} color="#FF9800" />
+              <Text style={[styles.miniStatValue, { color: '#FF9800' }]}>
+                {analytics.totalPomodoros || 0}
+              </Text>
+              <Text style={styles.miniStatLabel}>
+                {language === 'vi' ? 'Pomodoros' : 'Pomodoros'}
+              </Text>
+            </View>
+            <View style={styles.miniStatCard}>
+              <Ionicons name={getStatIcon('average')} size={24} color="#9C27B0" />
+              <Text style={[styles.miniStatValue, { color: '#9C27B0' }]}>
+                {analytics.averagePerStudent || 0}
+              </Text>
+              <Text style={styles.miniStatLabel}>
+                {language === 'vi' ? 'TB/HS' : 'Avg/Student'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Weekly Activity Chart - Smooth & Clean */}
           {weeklyChartData && (
             <Card style={styles.card}>
               <Card.Title
@@ -284,22 +342,25 @@ const ClassAnalytics = () => {
                   height={220}
                   yAxisLabel=""
                   yAxisSuffix=""
+                  withDots={false}
+                  withInnerLines={false}
+                  withOuterLines={false}
                   chartConfig={{
                     backgroundColor: '#fff',
                     backgroundGradientFrom: '#fff',
                     backgroundGradientTo: '#fff',
                     decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(25, 118, 210, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
                     style: { borderRadius: 16 },
-                    propsForDots: {
-                      r: '6',
-                      strokeWidth: '2',
-                      stroke: '#1976D2',
+                    propsForBackgroundLines: {
+                      strokeWidth: 0,
                     },
                   }}
                   bezier
                   style={styles.chart}
+                  fillShadowGradient="#7C4DFF"
+                  fillShadowGradientOpacity={0.3}
                 />
               </Card.Content>
             </Card>
@@ -324,22 +385,23 @@ const ClassAnalytics = () => {
                     backgroundGradientFrom: '#fff',
                     backgroundGradientTo: '#fff',
                     decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(76, 175, 80, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    color: (opacity = 1) => `rgba(124, 77, 255, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(0, 0, 0, 0.6)`,
                     style: { borderRadius: 16 },
+                    barPercentage: 0.7,
                   }}
                   style={styles.chart}
                 />
                 <Divider style={styles.divider} />
-                {analytics.topPerformers.map((performer, index) => (
-                  <View key={performer.studentId} style={styles.performerRow}>
-                    <View style={styles.performerRank}>
+                {analytics.topPerformers && analytics.topPerformers.length > 0 && analytics.topPerformers.map((performer, index) => (
+                  <View key={performer.studentId || index} style={styles.performerRow}>
+                    <View style={[styles.performerRank, { backgroundColor: getRankColor(index) }]}>
                       <Text style={styles.rankText}>#{index + 1}</Text>
                     </View>
                     <View style={styles.performerInfo}>
-                      <Text style={styles.performerName}>{performer.studentName}</Text>
+                      <Text style={styles.performerName}>{performer.studentName || 'Unknown'}</Text>
                       <Text style={styles.performerStats}>
-                        {performer.pomodoros} pomodoros • {formatWorkTime(performer.workTime)}
+                        {performer.pomodoros || 0} pomodoros • {formatWorkTime(performer.workTime || 0)}
                       </Text>
                     </View>
                   </View>
@@ -389,10 +451,15 @@ const ClassAnalytics = () => {
         </Card.Content>
       </Card>
     </ScrollView>
+  </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
@@ -400,6 +467,14 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+  },
+  // Page Title
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   card: {
     marginBottom: 16,
@@ -410,71 +485,99 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  selectorLabel: {
-    marginBottom: 12,
-    fontWeight: '600' as any,
-    fontSize: 16,
-  },
-  classScroll: {
-    marginHorizontal: -8,
+  // Class Selector - Filter Chips
+  chipContainer: {
+    marginBottom: 16,
   },
   classChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#E0E0E0',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25, // Pill shape
+    backgroundColor: '#E8E8E8',
     marginHorizontal: 4,
   },
   classChipSelected: {
-    backgroundColor: '#1976D2',
+    backgroundColor: '#7C4DFF', // Purple brand color
   },
   classChipText: {
     color: '#666',
     fontWeight: '500',
+    fontSize: 14,
   },
   classChipTextSelected: {
     color: '#FFF',
     fontWeight: '600',
   },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  // Time Range Selector
+  timeRangeContainer: {
     marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  statBox: {
+  segmentedButtons: {
+    borderRadius: 12,
+  },
+  // Hero Card - Total Study Time
+  heroCard: {
+    overflow: 'hidden',
+    elevation: 4,
+  },
+  heroGradient: {
+    padding: 24,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 160,
   },
-  statValue: {
-    fontSize: 32,
+  heroIcon: {
+    marginBottom: 12,
+  },
+  heroValue: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  heroLabel: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    opacity: 0.95,
+  },
+  // Mini Stats Grid 2x2
+  miniStatsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+    gap: 12,
+  },
+  miniStatCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    elevation: 2,
+  },
+  miniStatValue: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#1976D2',
+    marginTop: 8,
+    marginBottom: 4,
   },
-  statLabel: {
+  miniStatLabel: {
     fontSize: 12,
     color: '#666',
-    marginTop: 4,
+    textAlign: 'center',
   },
   divider: {
     marginVertical: 16,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  timeLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  timeValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976D2',
   },
   chart: {
     marginVertical: 8,
     borderRadius: 16,
   },
+  // Performers
   performerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -486,7 +589,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,

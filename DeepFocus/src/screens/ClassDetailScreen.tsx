@@ -5,25 +5,42 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  TouchableOpacity,
+  Dimensions,
+  StatusBar,
 } from "react-native";
 import {
-  Card,
   Text,
   useTheme,
   ActivityIndicator,
   Button,
   IconButton,
-  Chip,
   Portal,
   Dialog,
-  List,
   Divider,
+  Surface,
 } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import { useClass } from "../contexts/ClassContext";
 import { useRole } from "../contexts/RoleContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import * as Clipboard from "expo-clipboard";
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
+
+// Màu sắc cho class hero section (giống ClassListScreen)
+const CLASS_COLORS = [
+  ['#667eea', '#764ba2'], // Purple
+  ['#f093fb', '#f5576c'], // Pink
+  ['#4facfe', '#00f2fe'], // Blue
+  ['#43e97b', '#38f9d7'], // Green
+  ['#fa709a', '#fee140'], // Orange
+  ['#30cfd0', '#330867'], // Teal
+  ['#a8edea', '#fed6e3'], // Pastel
+  ['#ff9a9e', '#fecfef'], // Rose
+];
 
 export default function ClassDetailScreen() {
   const theme = useTheme();
@@ -48,6 +65,26 @@ export default function ClassDetailScreen() {
 
   const isTeacher = currentRole === "teacher";
   const isCreator = isTeacher; // If teacher and can access class details, they are the creator
+
+  // Helper functions
+  const getClassColor = (name: string, index: number = 0) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    hash = Math.abs(hash + index);
+    const colorIndex = hash % CLASS_COLORS.length;
+    return CLASS_COLORS[colorIndex];
+  };
+
+  const getInitials = (name: string) => {
+    if (!name || name === 'Unknown') return '?';
+    const words = name.trim().split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   useEffect(() => {
     if (id && id !== 'undefined') {
@@ -205,237 +242,292 @@ export default function ClassDetailScreen() {
 
   const approvedMembers = getApprovedMembers();
   const pendingMembers = getPendingMembers();
+  const classColors = getClassColor(currentClass.name);
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Gradient Background - Absolute Position */}
+      <LinearGradient
+        colors={classColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      >
+        {/* Decorative Icon - More subtle */}
+        <View style={styles.heroDecoration}>
+          <MaterialCommunityIcons 
+            name="book-open-page-variant" 
+            size={180} 
+            color="rgba(255, 255, 255, 0.1)" 
+          />
+        </View>
+      </LinearGradient>
+
+      {/* Header Actions - Fixed on top */}
+      <View style={styles.fixedHeader}>
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          style={styles.headerButton}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.headerButton}
+          onPress={() => {/* Settings */}}
+        >
+          <MaterialCommunityIcons name="cog-outline" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Scrollable Content - Includes hero title */}
       <ScrollView
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
             colors={[theme.colors.primary]}
+            tintColor="#FFFFFF"
           />
         }
       >
-        {/* Class Info Card */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="headlineSmall" style={styles.className}>
-              {currentClass.name}
+        {/* Hero Content - Will scroll with content */}
+        <View style={styles.heroContent}>
+          <Text variant="displaySmall" style={styles.heroTitle}>
+            {currentClass.name}
+          </Text>
+          {isTeacher && currentClass.joinCode && (
+            <Text variant="bodyLarge" style={styles.heroSubtitle}>
+              Mã lớp: {currentClass.joinCode} • Ngày tạo: {formatDate(currentClass.createdAt)}
             </Text>
-            {currentClass.description && (
-              <Text variant="bodyMedium" style={styles.description}>
-                {currentClass.description}
-              </Text>
-            )}
+          )}
+          {!isTeacher && (
+            <Text variant="bodyLarge" style={styles.heroSubtitle}>
+              {approvedMembers.length} thành viên • Ngày tạo: {formatDate(currentClass.createdAt)}
+            </Text>
+          )}
+        </View>
 
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text variant="labelSmall" style={styles.statLabel}>
-                  {t("classes.members")}
-                </Text>
-                <Text variant="titleMedium">{approvedMembers.length}</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text variant="labelSmall" style={styles.statLabel}>
-                  {t("classes.createdDate")}
-                </Text>
-                <Text variant="bodyMedium">
-                  {formatDate(currentClass.createdAt)}
-                </Text>
-              </View>
-            </View>
-          </Card.Content>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card style={styles.card}>
-          <Card.Content>
+        {/* White Container - Starts below hero */}
+        <View style={styles.whiteContainer}>
+          {/* Quick Actions Grid */}
+          <Surface style={styles.actionsCard} elevation={0}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              BẢNG ĐIỀU KHIỂN
+            </Text>
+            
             <View style={styles.actionsGrid}>
-              <Button
-                mode="contained"
-                icon="chart-bar"
+              {/* Statistics */}
+              <TouchableOpacity
+                style={styles.actionItem}
                 onPress={() => router.push(`/classes/statistics/${id}`)}
-                style={styles.actionButton}
               >
-                {t("classes.viewStatistics")}
-              </Button>
-              <Button
-                mode="contained"
-                icon="trophy"
+                <MaterialCommunityIcons name="chart-bar" size={40} color="#667eea" />
+                <Text variant="labelMedium" style={[styles.actionLabel, { color: '#667eea' }]}>
+                  Thống Kê
+                </Text>
+              </TouchableOpacity>
+
+              {/* Leaderboard */}
+              <TouchableOpacity
+                style={styles.actionItem}
                 onPress={() => router.push(`/classes/leaderboard/${id}`)}
-                style={styles.actionButton}
               >
-                {t("leaderboard.title")}
-              </Button>
-              <Button
-                mode="contained"
-                icon="account-group"
+                <MaterialCommunityIcons name="trophy" size={40} color="#FFB800" />
+                <Text variant="labelMedium" style={[styles.actionLabel, { color: '#FFB800' }]}>
+                  Xếp Hạng
+                </Text>
+              </TouchableOpacity>
+
+              {/* Members */}
+              <TouchableOpacity
+                style={styles.actionItem}
                 onPress={() => router.push(`/classes/members/${id}`)}
-                style={styles.actionButton}
               >
-                {t("members.title")}
-              </Button>
-            </View>
-            <View style={styles.actionsRow}>
-              <Button
-                mode="contained"
-                icon="gift"
+                <MaterialCommunityIcons name="account-group" size={40} color="#4facfe" />
+                <Text variant="labelMedium" style={[styles.actionLabel, { color: '#4facfe' }]}>
+                  Thành Viên
+                </Text>
+              </TouchableOpacity>
+
+              {/* Rewards */}
+              <TouchableOpacity
+                style={styles.actionItem}
                 onPress={() => router.push(`/rewards/${id}`)}
-                style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
               >
-                Phần Thưởng & Phạt
-              </Button>
+                <MaterialCommunityIcons name="gift" size={40} color="#FF9800" />
+                <Text variant="labelMedium" style={[styles.actionLabel, { color: '#FF9800' }]}>
+                  Thưởng & Phạt
+                </Text>
+              </TouchableOpacity>
             </View>
-          </Card.Content>
-        </Card>
+          </Surface>
 
         {/* Join Code Card (Teacher Only) */}
         {isTeacher && currentClass.joinCode && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("classes.joinCode")}
+          <Surface style={styles.joinCodeCard} elevation={0}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              MÃ THAM GIA
+            </Text>
+            <View style={styles.joinCodeBox}>
+              <Text variant="displaySmall" style={styles.joinCodeText}>
+                {currentClass.joinCode}
               </Text>
-              <View style={styles.joinCodeContainer}>
-                <Text variant="displaySmall" style={styles.joinCode}>
-                  {currentClass.joinCode}
-                </Text>
-                <View style={styles.codeActions}>
-                  <Button
-                    mode="outlined"
-                    icon="content-copy"
-                    onPress={handleCopyCode}
-                  >
-                    {t("classes.copyCode")}
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    icon="refresh"
-                    onPress={handleRegenerateCode}
-                  >
-                    {t("classes.regenerateCode")}
-                  </Button>
-                </View>
+              <View style={styles.joinCodeActions}>
+                <TouchableOpacity 
+                  style={styles.joinCodeButton}
+                  onPress={handleCopyCode}
+                >
+                  <MaterialCommunityIcons name="content-copy" size={20} color="#667eea" />
+                  <Text variant="labelMedium" style={styles.joinCodeButtonText}>
+                    Sao chép
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.joinCodeButton}
+                  onPress={handleRegenerateCode}
+                >
+                  <MaterialCommunityIcons name="refresh" size={20} color="#667eea" />
+                  <Text variant="labelMedium" style={styles.joinCodeButtonText}>
+                    Tạo mới
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text variant="bodySmall" style={styles.expiryText}>
-                {t("classes.codeExpiry")}:{" "}
-                {formatDate(currentClass.joinCodeExpiry)}
-              </Text>
-            </Card.Content>
-          </Card>
+            </View>
+            <Text variant="bodySmall" style={styles.expiryText}>
+              Hết hạn: {formatDate(currentClass.joinCodeExpiry)}
+            </Text>
+          </Surface>
         )}
 
         {/* Pending Requests (Teacher Only) */}
         {isTeacher && pendingMembers.length > 0 && (
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text variant="titleMedium" style={styles.sectionTitle}>
-                {t("classes.pendingRequests")} ({pendingMembers.length})
-              </Text>
-            </Card.Content>
+          <Surface style={styles.membersCard} elevation={0}>
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              YÊU CẦU CHỜ DUYỆT ({pendingMembers.length})
+            </Text>
             {pendingMembers.map((member: any, index: number) => (
               <View key={member._id}>
-                <List.Item
-                  title={member.user?.focusProfile?.fullName || t("common.unknown")}
-                  description={member.user?.email}
-                  left={(props) => <List.Icon {...props} icon="account-clock" />}
-                  right={() => (
-                    <View style={styles.memberActions}>
-                      <IconButton
-                        icon="check"
-                        iconColor={theme.colors.primary}
-                        onPress={() => handleApprove(member.user._id)}
-                      />
-                      <IconButton
-                        icon="close"
-                        iconColor={theme.colors.error}
-                        onPress={() => handleReject(member.user._id)}
-                      />
+                <View style={styles.memberItem}>
+                  <View style={styles.memberLeft}>
+                    <View style={[styles.memberAvatar, { backgroundColor: '#FF9800' }]}>
+                      <Text variant="titleMedium" style={styles.avatarText}>
+                        {getInitials(member.user?.focusProfile?.fullName || 'Unknown')}
+                      </Text>
                     </View>
-                  )}
-                />
-                {index < pendingMembers.length - 1 && <Divider />}
+                    <View style={styles.memberInfo}>
+                      <Text variant="titleSmall" style={styles.memberName}>
+                        {member.user?.focusProfile?.fullName || t("common.unknown")}
+                      </Text>
+                      <Text variant="bodySmall" style={styles.memberEmail}>
+                        {member.user?.email}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.pendingActions}>
+                    <TouchableOpacity
+                      style={[styles.actionCircle, { backgroundColor: '#E8F5E9' }]}
+                      onPress={() => handleApprove(member.user._id)}
+                    >
+                      <MaterialCommunityIcons name="check" size={20} color="#4CAF50" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionCircle, { backgroundColor: '#FFEBEE' }]}
+                      onPress={() => handleReject(member.user._id)}
+                    >
+                      <MaterialCommunityIcons name="close" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                {index < pendingMembers.length - 1 && <Divider style={styles.divider} />}
               </View>
             ))}
-          </Card>
+          </Surface>
         )}
 
         {/* Members List */}
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              {t("classes.members")} ({approvedMembers.length})
-            </Text>
-          </Card.Content>
+        <Surface style={styles.membersCard} elevation={0}>
+          <Text variant="labelLarge" style={styles.sectionLabel}>
+            DANH SÁCH THÀNH VIÊN ({approvedMembers.length})
+          </Text>
           {approvedMembers.length === 0 ? (
-            <Card.Content>
-              <Text style={styles.emptyText}>{t("classes.noMembers")}</Text>
-            </Card.Content>
+            <Text style={styles.emptyText}>{t("classes.noMembers")}</Text>
           ) : (
             approvedMembers.map((member: any, index: number) => {
               const isCreatorMember = member.role === "teacher";
               const fullName = member.user?.focusProfile?.fullName;
               const memberName = (fullName && fullName.trim()) || t("common.unknown");
               
-              if (__DEV__) {
-                console.log("🔍 Rendering member:", {
-                  email: member.user?.email,
-                  fullNameRaw: fullName,
-                  fullNameType: typeof fullName,
-                  fullNameLength: fullName?.length,
-                  displayName: memberName
-                });
-              }
-              
               return (
                 <View key={member._id}>
-                  <List.Item
-                    title={memberName}
-                    description={member.user?.email}
-                    left={(props) => (
-                      <List.Icon
-                        {...props}
-                        icon={isCreatorMember ? "account-star" : "account"}
-                      />
-                    )}
-                    right={() => (
-                      <View style={styles.memberRight}>
-                        {isCreatorMember && (
-                          <Chip mode="flat" compact>
-                            {t("classes.creator")}
-                          </Chip>
-                        )}
-                        {isTeacher && !isCreatorMember && (
-                          <IconButton
-                            icon="delete"
-                            iconColor={theme.colors.error}
-                            onPress={() => handleRemoveMember(member.user)}
-                          />
-                        )}
+                  <View style={styles.memberItem}>
+                    <View style={styles.memberLeft}>
+                      {/* Avatar with Initials */}
+                      <LinearGradient
+                        colors={getClassColor(memberName, index)}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.memberAvatar}
+                      >
+                        <Text variant="titleMedium" style={styles.avatarText}>
+                          {getInitials(memberName)}
+                        </Text>
+                      </LinearGradient>
+                      
+                      <View style={styles.memberInfo}>
+                        <View style={styles.memberNameRow}>
+                          <Text variant="titleSmall" style={styles.memberName}>
+                            {memberName}
+                          </Text>
+                          {isCreatorMember && (
+                            <View style={styles.creatorBadge}>
+                              <Text variant="labelSmall" style={styles.creatorBadgeText}>
+                                Giáo Viên
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text variant="bodySmall" style={styles.memberEmail}>
+                          {member.user?.email}
+                        </Text>
                       </View>
+                    </View>
+                    
+                    {isTeacher && !isCreatorMember && (
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => handleRemoveMember(member.user)}
+                      >
+                        <MaterialCommunityIcons name="delete-outline" size={22} color="#F44336" />
+                      </TouchableOpacity>
                     )}
-                  />
-                  {index < approvedMembers.length - 1 && <Divider />}
+                  </View>
+                  {index < approvedMembers.length - 1 && <Divider style={styles.divider} />}
                 </View>
               );
             })
           )}
-        </Card>
+        </Surface>
 
         {/* Delete Button (Creator Only) */}
         {isCreator && (
-          <Button
-            mode="outlined"
-            icon="delete"
-            textColor={theme.colors.error}
+          <TouchableOpacity
             style={styles.deleteButton}
             onPress={handleDeleteClass}
           >
-            {t("classes.deleteClass")}
-          </Button>
+            <MaterialCommunityIcons name="delete-outline" size={22} color="#F44336" />
+            <Text variant="labelLarge" style={styles.deleteButtonText}>
+              {t("classes.deleteClass")}
+            </Text>
+          </TouchableOpacity>
         )}
+        
+        <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
 
       {/* Delete Class Dialog */}
@@ -497,91 +589,248 @@ export default function ClassDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5F5F5',
   },
   centerContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: '#F5F5F5',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 280,
+    overflow: 'hidden',
+  },
+  heroDecoration: {
+    position: 'absolute',
+    right: -30,
+    top: 100,
+    opacity: 1,
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    zIndex: 10,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  card: {
-    margin: 16,
-    marginBottom: 0,
+  scrollContent: {
+    paddingTop: 120,
   },
-  className: {
-    fontWeight: "bold",
+  heroContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 30,
+  },
+  heroTitle: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
     marginBottom: 8,
   },
-  description: {
+  heroSubtitle: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 14,
+  },
+  whiteContainer: {
+    backgroundColor: '#F5F5F5',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -20,
+    paddingTop: 10,
+  },
+  actionsCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 10,
     marginBottom: 16,
-    opacity: 0.7,
+    borderRadius: 16,
+    padding: 20,
   },
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.1)",
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statLabel: {
-    opacity: 0.6,
-    marginBottom: 4,
-  },
-  sectionTitle: {
+  sectionLabel: {
+    color: '#757575',
     marginBottom: 16,
-  },
-  joinCodeContainer: {
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  joinCode: {
-    fontWeight: "bold",
-    fontFamily: "monospace",
-    letterSpacing: 4,
-    marginBottom: 16,
-  },
-  codeActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  expiryText: {
-    textAlign: "center",
-    opacity: 0.6,
+    letterSpacing: 0.5,
   },
   actionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  actionButton: {
+  actionItem: {
+    width: '48%',
+    aspectRatio: 1.1,
+    borderRadius: 16,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  actionLabel: {
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  joinCodeCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+  },
+  joinCodeBox: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  joinCodeText: {
+    fontWeight: 'bold',
+    color: '#667eea',
+    letterSpacing: 4,
+    marginBottom: 20,
+  },
+  joinCodeActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  joinCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  joinCodeButtonText: {
+    color: '#667eea',
+    fontWeight: '500',
+  },
+  expiryText: {
+    textAlign: 'center',
+    color: '#757575',
+    marginTop: 8,
+  },
+  membersCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    borderRadius: 16,
+    padding: 20,
+  },
+  memberItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
-    minWidth: "30%",
   },
-  memberActions: {
-    flexDirection: "row",
-    alignItems: "center",
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  memberRight: {
-    flexDirection: "row",
-    alignItems: "center",
+  avatarText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  memberInfo: {
+    flex: 1,
+  },
+  memberNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-  },
-  emptyText: {
-    textAlign: "center",
-    opacity: 0.5,
-  },
-  deleteButton: {
-    margin: 16,
-    borderColor: "red",
+    marginBottom: 4,
   },
   memberName: {
-    fontWeight: "bold",
+    fontWeight: '600',
+    color: '#212121',
+  },
+  memberEmail: {
+    color: '#757575',
+    fontSize: 13,
+  },
+  creatorBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  creatorBadgeText: {
+    color: '#1976D2',
+    fontWeight: '700',
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeButton: {
+    padding: 8,
+  },
+  divider: {
+    marginVertical: 0,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#9E9E9E',
+    paddingVertical: 20,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 20,
     marginTop: 8,
-    textAlign: "center",
+    marginBottom: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FFEBEE',
+    backgroundColor: '#FFFFFF',
+  },
+  deleteButtonText: {
+    color: '#F44336',
+    fontWeight: '600',
   },
 });

@@ -24,7 +24,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useRole } from "../contexts/RoleContext";
 import { formatWorkTime } from "../utils/statsUtils";
-import ClassAnalytics from "../components/ClassAnalytics";
+import ClassAnalytics from "../components/ClassAnalytics.tsx";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CHART_WIDTH = SCREEN_WIDTH - 32;
